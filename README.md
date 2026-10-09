@@ -1,64 +1,80 @@
 # Elevate
 
-Front desk and member app for climbing gyms. One Next.js app (PWA) with Supabase for the database and logins, and Prisma for database access.
+Management software for climbing gyms: a front desk app for staff and a dashboard for members.
+
+Built with Next.js, Supabase (database and authentication) and Prisma.
 
 ## Getting started
 
-You need **Node 22+**, **npm** and **Docker Desktop** (running).
+### Requirements
+
+- Node.js 22 or later
+- npm
+- Docker Desktop, running before you start the database
+
+### Setup
 
 ```bash
 git clone https://github.com/StealthStartup-455/elevate.git
 cd elevate
 npm install
 cp .env.example .env
-npm run db:start        # starts local Supabase (first run downloads images)
+npm run db:start
 ```
 
-`db:start` prints an API URL and a **publishable key**. Paste the key into `.env` as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then:
+The first `db:start` downloads Docker images and can take several minutes. When it finishes, it prints the local Supabase details. Copy the **publishable key** (called the **anon key** in older CLI versions) into `.env` as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+Then start the app:
 
 ```bash
-npm run db:migrate      # apply the database schema
-npm run dev             # http://localhost:3000
+npm run db:migrate
+npm run dev
 ```
+
+Open http://localhost:3000.
 
 ## Scripts
 
-| Command | What it does |
+| Command | Description |
 |---|---|
-| `npm run dev` | Run the app locally |
+| `npm run dev` | Start the development server |
 | `npm run lint` | Check code style |
-| `npm run build` | Production build (CI runs this) |
-| `npm run db:start` / `db:stop` | Start / stop local Supabase |
+| `npm run build` | Create a production build (also run by CI) |
+| `npm run db:start` | Start local Supabase |
+| `npm run db:stop` | Stop local Supabase |
 | `npm run db:migrate` | Create and apply a migration after editing `schema.prisma` |
-| `npm run db:seed` | Load fake data from `prisma/seed.ts` |
-| `npm run db:studio` | Browse the database in your browser |
+| `npm run db:seed` | Load sample data from `prisma/seed.ts` |
+| `npm run db:studio` | Browse the database in the browser |
 
-## Folder map
+## Project structure
 
 ```
-prisma/              database schema, migrations, seed data
-supabase/            local Supabase config
-src/app/             pages and routes, keep them thin
-  login/ join/       public pages
-  desk/              staff front desk
-  me/                member dashboard
-src/features/        business logic, one owner per folder
-  auth/              logins, roles, permissions
-  check-ins/         scanning, check-in, green/red status
-  climbers/          profiles, memberships, incidents
-  waivers/           CSV import, matching, duplicates
-  events/            calendar, resets, bookings, announcements
-  analytics/         busyness, session stats
-src/components/ui/   shared UI (Chalk theme)
-src/lib/             database and Supabase clients, tiny helpers
-src/proxy.ts         sends logged-out users to /login
+prisma/               Database schema, migrations and seed data
+supabase/             Local Supabase configuration
+src/
+  app/                Pages and routes
+    login/, join/     Public pages
+    desk/             Staff front desk (login required)
+    me/               Member dashboard (login required)
+  features/           Business logic, one folder per feature
+    auth/             Logins, roles and permissions
+    check-ins/        Scanning, check-in and green/red status
+    climbers/         Profiles, memberships and incidents
+    waivers/          CSV import, matching and duplicate checks
+    events/           Calendar, wall resets, bookings and announcements
+    analytics/        Gym busyness and session stats
+  components/ui/      Shared UI components
+  lib/                Database and Supabase clients, shared helpers
+  proxy.ts            Redirects logged-out users away from /desk and /me
 ```
 
-## Team rules
+Each feature folder has a README describing what it covers and who owns it.
 
-1. **Every folder has a `README.md`** saying what goes in it.
-2. **Feature folders share one shape:** `actions.ts`, `queries.ts`, `components/`, `*.test.ts`.
-3. **Pages stay thin.** Files in `src/app/` call into `src/features/` and never query the database directly.
-4. **Every table has a `gymId`.**
-5. **No direct pushes to `main`.** Open a PR; it needs one review and a green CI check. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Conventions
 
+- Pages in `src/app/` stay thin. They call into `src/features/` and never query the database directly.
+- Feature folders follow the same layout: `actions.ts`, `queries.ts`, `components/` and `*.test.ts`.
+- Every database table includes a `gymId`.
+- All changes go through a pull request with one approval and passing CI.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.

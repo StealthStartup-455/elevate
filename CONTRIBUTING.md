@@ -2,16 +2,14 @@
 
 This guide covers how we branch, commit, review and merge code. To propose a change to the process, open a pull request against this file.
 
-## Ground rules
-
-The following are never allowed:
+## Should Not Do
 
 - Committing or pushing directly to `main`
-- Force-pushing (`git push --force`) to `main` or to another person's branch
-- Merging without an approval or with failing CI checks
-- Committing `.env` files, API keys or passwords
-- Storing server-only secrets in `NEXT_PUBLIC_` variables, which are exposed to the browser
-- Editing a migration that has already been merged into `main`
+- Force-pushing (`git push --force`) to `main` or to another person's branch.
+- Merging without an approval or with failing CI checks.
+- Committing `.env` files, API keys or passwords.
+- Storing server-only secrets in `NEXT_PUBLIC_` variables, which are exposed to the browser.
+- Editing a migration that has already been merged into `main`.
 
 ## Workflow
 
@@ -43,7 +41,7 @@ fix/18-checkin-scan
 - Complete the PR template and link the issue (for example, `Closes #12`).
 - Confirm that `npm run lint` and `npm run build` pass locally.
 - Include screenshots or a short recording for UI changes.
-- Request a review from the owner of the area you changed (listed in the README).
+- Request a review from the owner of the area you changed (listed in that feature folder's README).
 - Changes to authentication, permissions, waivers or the database schema require a reviewer familiar with that area. Request a second reviewer for higher-risk changes.
 
 ## Code review
