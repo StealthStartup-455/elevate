@@ -8,7 +8,7 @@ Built with Next.js, Supabase (database and authentication) and Prisma.
 
 ### Requirements
 
-- Node.js 22 or later
+- Node.js 24 or later (includes npm 11)
 - npm
 - Docker Desktop, running before you start the database
 
