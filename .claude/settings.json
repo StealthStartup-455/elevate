@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f)",
+      "Bash(git push * --tags*)",
+      "Bash(git push * main*)",
+      "Bash(git push * release*)",
+      "Bash(git push * dev)",
+      "Bash(git push *:main*)",
+      "Bash(git push *:release*)",
+      "Bash(git push *:dev)",
+      "Bash(git push --delete*)",
+      "Bash(git push * --delete*)",
+      "Bash(git * --no-verify*)",
+      "Bash(git commit * -n *)",
+      "Bash(git config core.hooksPath*)",
+      "Bash(git config --global core.hooksPath*)",
+      "Bash(git tag -a*)",
+      "Bash(git tag -d*)",
+      "Bash(git tag * v*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh pr review * --approve*)",
+      "Bash(gh pr review --approve*)",
+      "Bash(gh release*)",
+      "Bash(gh api * rulesets*)",
+      "Bash(gh api * branches/*protection*)",
+      "Bash(gh repo edit*)"
+    ]
+  }
+}

@@ -166,6 +166,20 @@ AI coding agents (Claude Code, Copilot, Codex and others) follow every rule in t
 - Mention in the pull request description that an AI agent contributed. The human who opened the PR is accountable for the changes.
 - Read the Next.js docs in `node_modules/next/dist/docs/` before writing Next.js code (see `AGENTS.md`).
 - When unsure which branch a change belongs on, stop and ask.
+- If a hook, CI check or ruleset rejects an action, fix the cause and retry normally. Do not look for another route to the same result; if you cannot fix it, stop and tell the developer.
+
+### How the rules are enforced
+
+Instructions alone cannot guarantee an agent complies, so every rule is backed by checks that do not depend on the agent:
+
+| Layer | What it does | Bypassable? |
+|---|---|---|
+| GitHub rulesets (`main`, `release`, `dev`) | Block direct pushes, force-pushes and deletion; require a PR, 1 approval, `check` and `branch-policy`. | No, not even for admins. |
+| `branch-policy` CI check | Rejects PRs with a bad branch name or the wrong target branch, so a badly named branch can be pushed but can never be merged. | No (required check). |
+| Git hooks (`.githooks/`, installed by `npm install`) | `pre-commit` blocks commits on protected branches and badly named branches; `pre-push` blocks pushes to them. | Only locally with `--no-verify`, which the other layers still catch. |
+| Agent config (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, `.claude/settings.json`) | Tells each tool the rules; Claude Code additionally denies the risky commands outright. | Advisory for most tools. |
+
+Run `npm install` once after cloning so the hooks are active. Any agent that does not read these files is still stopped by the layers above it. A brand-new agent tool needs no extra setup, but if it uses its own instruction file, add a short file pointing to `AGENTS.md`.
 
 ## Database changes
 
