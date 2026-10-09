@@ -75,6 +75,7 @@ Each feature folder has a README describing what it covers and who owns it.
 - Pages in `src/app/` stay thin. They call into `src/features/` and never query the database directly.
 - Feature folders follow the same layout: `actions.ts`, `queries.ts`, `components/` and `*.test.ts`.
 - Every database table includes a `gymId`.
+- Branch from `dev` and open pull requests into `dev`. `release` and `main` only receive releases and hotfixes.
 - All changes go through a pull request with one approval and passing CI.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
