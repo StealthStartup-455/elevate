@@ -175,8 +175,7 @@ Instructions alone cannot guarantee an agent complies, so every rule is backed b
 | Layer | What it does | Bypassable? |
 |---|---|---|
 | GitHub rulesets (`main`, `release`, `dev`) | Block direct pushes, force-pushes and deletion; require a PR, 1 approval, `check` and `branch-policy`. | No, not even for admins. |
-| GitHub branch-name ruleset | Rejects creating any branch not named `<type>/<issue-number>-<short-description>` (or `dev`, `release`, `main`). | No. |
-| `branch-policy` CI check | Rejects PRs with a bad branch name or the wrong target branch. | No (required check). |
+| `branch-policy` CI check | Rejects PRs with a bad branch name or the wrong target branch, so a badly named branch can be pushed but can never be merged. | No (required check). |
 | Git hooks (`.githooks/`, installed by `npm install`) | `pre-commit` blocks commits on protected branches and badly named branches; `pre-push` blocks pushes to them. | Only locally with `--no-verify`, which the other layers still catch. |
 | Agent config (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, `.claude/settings.json`) | Tells each tool the rules; Claude Code additionally denies the risky commands outright. | Advisory for most tools. |
 
