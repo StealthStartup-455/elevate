@@ -74,6 +74,8 @@ hotfix/20-checkin-crash
 
 Rebase merges are not used.
 
+The **Branch policy** CI check enforces branch names and PR targets: `main` accepts PRs only from `release` or `hotfix/*`, `release` only from `dev`, `main`, `fix/*` or `hotfix/*`, and everything else goes into `dev`. Both checks (`check` and `branch-policy`) must pass before merging.
+
 ## Pull requests
 
 - The PR title becomes the commit message on squash merges. Keep it short and descriptive.
