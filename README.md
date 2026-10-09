@@ -60,17 +60,5 @@ src/proxy.ts         sends logged-out users to /login
 2. **Feature folders share one shape:** `actions.ts`, `queries.ts`, `components/`, `*.test.ts`.
 3. **Pages stay thin.** Files in `src/app/` call into `src/features/` and never query the database directly.
 4. **Every table has a `gymId`.**
-5. **No direct pushes to `main`.** Open a PR; it needs one review and a green CI check.
+5. **No direct pushes to `main`.** Open a PR; it needs one review and a green CI check. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Owners
-
-| Area | Owner |
-|---|---|
-| auth | _TBD_ |
-| check-ins | _TBD_ |
-| climbers | _TBD_ |
-| waivers | _TBD_ |
-| events | _TBD_ |
-| analytics | _TBD_ |
-| UI / design system | _TBD_ |
-| Database schema | _TBD_ |
