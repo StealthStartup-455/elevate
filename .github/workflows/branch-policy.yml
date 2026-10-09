@@ -1,0 +1,37 @@
+name: Branch policy
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    env:
+      BASE: ${{ github.base_ref }}
+      HEAD: ${{ github.head_ref }}
+    steps:
+      - name: Check branch name and PR target
+        run: |
+          name_re='^(feature|fix|docs|refactor|chore|hotfix)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+          fail() { echo "::error::$1 See CONTRIBUTING.md (Branch model)."; exit 1; }
+
+          case "$HEAD" in
+            dev|release|main) ;;
+            *) [[ "$HEAD" =~ $name_re ]] || fail "Branch '$HEAD' must be named <type>/<issue-number>-<short-description>." ;;
+          esac
+
+          case "$BASE" in
+            main)
+              [[ "$HEAD" == release || "$HEAD" == hotfix/* ]] \
+                || fail "PRs into main must come from 'release' or 'hotfix/*', not '$HEAD'." ;;
+            release)
+              [[ "$HEAD" == dev || "$HEAD" == main || "$HEAD" == fix/* || "$HEAD" == hotfix/* ]] \
+                || fail "PRs into release must come from 'dev', 'main' (back-merge), 'fix/*' or 'hotfix/*', not '$HEAD'." ;;
+            dev)
+              [[ "$HEAD" != release ]] \
+                || fail "'release' must not be merged into dev; merge release into main, then main into dev." ;;
+            *) fail "PRs must target dev, release or main, not '$BASE'." ;;
+          esac
+
+          echo "OK: $HEAD -> $BASE"
