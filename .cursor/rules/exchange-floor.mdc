@@ -1,0 +1,10 @@
+---
+description: Read and update the Exchange Floor log of AI-agent work
+alwaysApply: true
+---
+
+Before starting any task, run `git fetch origin` and read `EXCHANGE_FLOOR.md` from `origin/dev` (the Active work table and the last 10 timeline entries). Tell the developer what you picked up from it.
+
+When you finish, add an entry at the top of the timeline in the same pull request and mention it in the PR description.
+
+Full rule: "Exchange Floor (mandatory)" in `AGENTS.md`.

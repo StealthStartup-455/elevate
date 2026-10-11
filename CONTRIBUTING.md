@@ -164,9 +164,19 @@ AI coding agents (Claude Code, Copilot, Codex and others) follow every rule in t
 - Do not bypass hooks or CI (`--no-verify`, disabling or editing checks to make them pass). Fix the cause.
 - Run `npm run lint` and `npm run build` before opening a pull request and report the real result.
 - Mention in the pull request description that an AI agent contributed. The human who opened the PR is accountable for the changes.
+- Read `EXCHANGE_FLOOR.md` (fetch `origin/dev` first) before starting any task, and add an entry to it in your pull request when you finish. See [Exchange Floor](#exchange-floor).
 - Read the Next.js docs in `node_modules/next/dist/docs/` before writing Next.js code (see `AGENTS.md`).
 - When unsure which branch a change belongs on, stop and ask.
 - If a hook, CI check or ruleset rejects an action, fix the cause and retry normally. Do not look for another route to the same result; if you cannot fix it, stop and tell the developer.
+
+### Exchange Floor
+
+`EXCHANGE_FLOOR.md` is the living log of work done by AI agents, written as a timeline with the newest entry first. It keeps everyone's agents in sync.
+
+- **Before a task:** the agent fetches `origin/dev` and reads the log, so it knows what other agents did, decided and left open.
+- **After a task:** the agent adds an entry in the same pull request, using the template in the file.
+- The log is append-only and must never contain secrets.
+- Developers: if you work without an agent, you may add entries too. Reviewers: ask for the entry if a PR has none.
 
 ### How the rules are enforced
 

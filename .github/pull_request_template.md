@@ -14,3 +14,4 @@ Closes #
 - [ ] Screenshots added (UI changes)
 - [ ] Migration included (schema changes)
 - [ ] No secrets or `.env` committed
+- [ ] `EXCHANGE_FLOOR.md` entry added (required if an AI agent contributed)
