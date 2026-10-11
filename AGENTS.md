@@ -60,6 +60,24 @@ If you are on `dev`, `release` or `main` with uncommitted work, create the corre
 
 A hook, CI check or ruleset rejection is the system working. Fix the cause (usually the branch name or target) and retry the normal way. Do not look for another route to the same result. If you cannot fix it, stop and explain to the developer.
 
+## Exchange Floor (mandatory)
+
+`EXCHANGE_FLOOR.md` at the repo root is the shared, living log of everything AI agents have done here. It stops one agent repeating, contradicting or breaking another's work.
+
+**Before you start any task** (before planning, editing or creating a branch):
+
+1. Run `git fetch origin`, then read `EXCHANGE_FLOOR.md` from `origin/dev` (`git show origin/dev:EXCHANGE_FLOOR.md`). Read the **Active work** table and at least the last 10 timeline entries.
+2. Take in what other agents did, their decisions, gotchas and open follow-ups. If your task overlaps active work or a follow-up, tell the developer before you begin.
+3. Tell the developer in one line what you picked up from it, or that there was nothing relevant.
+
+**When you finish** (in the same branch and pull request as the work):
+
+1. Add an entry at the top of the timeline using the template in the file: what you did, files touched, decisions, gotchas, follow-ups, and the real verification results.
+2. Update the **Active work** table.
+3. Say in the PR description that you added an Exchange Floor entry.
+
+The log is append-only. Never delete or rewrite another entry, and never put secrets in one.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
