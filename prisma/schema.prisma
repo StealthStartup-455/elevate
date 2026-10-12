@@ -1,4 +1,4 @@
-// Every table needs a gymId.
+// Every table needs a gymId (except Gym itself).
 
 generator client {
   provider = "prisma-client"
@@ -7,4 +7,146 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// A climbing gym location. Each location is its own gym, so a business with
+// two locations has two rows here.
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  // Used in the public sign-up link, e.g. /join/<slug>.
+  slug      String   @unique
+  timeZone  String   @default("America/Vancouver")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staff        Staff[]
+  climbers     Climber[]
+  checkIns     CheckIn[]
+  checkInCodes CheckInCode[]
+}
+
+enum StaffRole {
+  DESK
+  MANAGER
+  OWNER
+}
+
+// Someone who works at the gym and logs in to the front desk app.
+model Staff {
+  id         String    @id @default(uuid())
+  gymId      String
+  // The Supabase Auth user this staff member logs in as.
+  authUserId String
+  name       String
+  email      String
+  role       StaffRole @default(DESK)
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  gym              Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  climbersCreated  Climber[]
+  checkInsRecorded CheckIn[]
+
+  @@unique([gymId, authUserId])
+  @@unique([gymId, email])
+}
+
+enum SignupSource {
+  SELF_SIGNUP // the climber used the public sign-up link
+  FRONT_DESK // staff filled in the form at the desk
+}
+
+// A customer of the gym.
+model Climber {
+  id          String   @id @default(uuid())
+  gymId       String
+  firstName   String
+  lastName    String
+  // Email and phone are how a climber checks in, so each is unique within a
+  // gym. At least one is required (checked in the app, not the database).
+  // Store email lowercased and phone in E.164 format (+12505551234) so
+  // lookups match.
+  email       String?
+  phone       String?
+  dateOfBirth DateTime @db.Date
+
+  // Under-18 climbers need a guardian's consent. These stay empty for adults;
+  // the app requires them when the climber is under 18 on the sign-up date.
+  guardianName      String?
+  guardianPhone     String?
+  guardianConsentAt DateTime?
+
+  signupSource     SignupSource
+  // Set when staff created the account at the desk.
+  createdByStaffId String?
+  // Set once the climber has a login for the member dashboard.
+  authUserId       String?      @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  gym            Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdByStaff Staff?        @relation(fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  checkIns       CheckIn[]
+  checkInCodes   CheckInCode[]
+
+  @@unique([gymId, email])
+  @@unique([gymId, phone])
+  @@index([gymId, lastName, firstName])
+}
+
+enum CheckInMethod {
+  PIN // climber entered the code sent to their email or phone
+  FRONT_DESK // staff checked them in after a search
+  QR // climber scanned the gym's QR code
+}
+
+// One visit to the gym. "Who is here now" is worked out from recent rows;
+// there is no checked-out state.
+model CheckIn {
+  id        String        @id @default(uuid())
+  gymId     String
+  climberId String
+  timestamp DateTime      @default(now())
+  method    CheckInMethod
+  // Set when a staff member did the check-in.
+  staffId   String?
+
+  gym     Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  climber Climber @relation(fields: [climberId], references: [id], onDelete: Cascade)
+  staff   Staff?  @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([gymId, timestamp])
+  @@index([climberId, timestamp])
+}
+
+enum CodeChannel {
+  EMAIL
+  SMS
+}
+
+// A one-time PIN sent to a climber so they can check in. The climber types
+// their email or phone, we send a code, and a matching unused, unexpired code
+// creates a CheckIn.
+model CheckInCode {
+  id        String      @id @default(uuid())
+  gymId     String
+  climberId String
+  // Never store the PIN itself, only a hash of it.
+  codeHash  String
+  channel   CodeChannel
+  // The email or phone the code was sent to.
+  sentTo    String
+  expiresAt DateTime
+  // Wrong guesses so far; the app stops accepting the code after a few.
+  attempts  Int         @default(0)
+  usedAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  gym     Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  climber Climber @relation(fields: [climberId], references: [id], onDelete: Cascade)
+
+  @@index([climberId, createdAt])
+  @@index([gymId, expiresAt])
 }

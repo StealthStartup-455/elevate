@@ -29,6 +29,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
+| 2026-10-12 | @Khanh150104 | Claude Code | `feature/33-signup-checkin-schema` | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts` | In review |
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 
 ## Entry template
@@ -53,6 +54,31 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-12 22:45 UTC: Database schema for sign-up, PIN check-in and check-ins
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate-docs#33 (also #34, #35, #36) / (this PR)
+- **Branch:** `feature/33-signup-checkin-schema`
+- **What the agent did:**
+  - Added the first real schema: `Gym`, `Staff`, `Climber`, `CheckIn`, `CheckInCode` plus enums `StaffRole`, `SignupSource`, `CheckInMethod`, `CodeChannel`.
+  - Generated the first migration (`20261012222917_signup_and_checkin`) with `prisma migrate dev`.
+  - Replaced the empty seed with a demo gym, one desk staff member, five mock climbers (one under 18) and four check-ins.
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261012222917_signup_and_checkin/migration.sql`, `prisma/migrations/migration_lock.toml`, `prisma/seed.ts`
+- **Decisions and why:**
+  - Every table has `gymId` except `Gym` itself. A two-location business is two `Gym` rows.
+  - The public sign-up link is `/join/<gym.slug>`; no separate invite-link table.
+  - `Climber.email` and `Climber.phone` are each optional but unique per gym, because they are the check-in lookup keys. "At least one of them" is enforced in app code. Store email lowercased and phone as E.164.
+  - Guardian consent (open question in #33/#34): nullable `guardianName`, `guardianPhone`, `guardianConsentAt` on `Climber`; the app requires them when the climber is under 18. Signed waivers stay with the waivers feature.
+  - `CheckInCode` stores only a hash of the PIN, with `expiresAt`, `attempts` and `usedAt`, so a code is single-use and brute-force limited.
+  - `CheckIn.timestamp` and no checked-out state, matching the busyness tracker (`feature/38-busyness-tracker`), so `getActiveCheckIns` can query it directly.
+  - `Staff.authUserId` / `Climber.authUserId` link to Supabase Auth users; no foreign key to `auth.users` since Prisma only manages `public`.
+- **Gotchas:**
+  - Prisma 7 `migrate dev` does not regenerate the client: run `npx prisma generate` (or `npm install`) after migrating, or `npm run build` fails type-checking `prisma/seed.ts`.
+  - Family members sharing one phone or email cannot both use it; a child without their own contact checks in at the desk. Revisit if gyms ask for family check-in.
+- **Open follow-ups:** sign-up and check-in actions/queries in `src/features/climbers` and `src/features/check-ins`; sending the PIN (email/SMS provider not chosen); swap the busyness mock to `CheckIn`; Supabase row-level security policies.
+- **Verification:** `prisma validate` passed; `prisma migrate dev` applied the migration to a local Postgres 16; `npm run db:seed` ran twice cleanly; a duplicate email in the same gym was rejected by `Climber_gymId_email_key`; `npm run lint` passed with no warnings; `npm run build` passed.
 
 ### 2026-10-11 00:00 UTC: Introduce the Exchange Floor
 
