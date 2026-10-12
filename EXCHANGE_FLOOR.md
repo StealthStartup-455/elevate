@@ -30,6 +30,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
+| 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `/desk` and `/me` pages, MUI setup in root layout | In review |
 
 ## Entry template
 
@@ -53,6 +54,35 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-11 23:39 UTC: Busyness tracker scaffold (front desk + customer) with mock data
+
+- **Developer:** @sethmess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** sprint board #38 (front desk) and #37 (customer) / (this PR)
+- **Branch:** `feature/38-busyness-tracker`
+- **What the agent did:**
+  - Added Material UI (`@mui/material`, `@mui/material-nextjs`, `@emotion/react`, `@emotion/styled`) and a shared `ThemeRegistry` wrapping the root layout.
+  - Built the busyness data layer in `src/features/analytics/` on mock data: `getActiveCheckIns(gymId)` is the single swap point for the real query.
+  - Front desk (`/desk`): "N check-ins in the last 2 hours", low/medium/high chip, and a recent check-ins table (name, time, waiver status).
+  - Customer (`/me`): large glanceable level plus "~N climbers here".
+  - Both views poll with `router.refresh()` every 30 s (only while the tab is visible).
+  - Added a dev-only login bypass in `src/proxy.ts` (`DEV_AUTH_BYPASS="true"` in `.env`) so `/desk` and `/me` can be tested before `/login` works.
+- **Files touched:** `src/features/analytics/{types,config,busyness,mock-data,queries}.ts`, `src/features/analytics/components/*`, `src/components/ui/ThemeRegistry.tsx`, `src/app/layout.tsx`, `src/app/globals.css`, `src/app/desk/page.tsx`, `src/app/me/page.tsx`, `src/proxy.ts`, `.env.example`, `package.json`, `package-lock.json`
+- **Decisions and why:**
+  - **MUI over shadcn/Tailwind:** the team chose MUI (per another dev), although the elevate-docs architecture draft recommended shadcn/ui. Tailwind stays; MUI styles go in `@layer mui` (`enableCssLayer`) so Tailwind utilities still override them.
+  - **Busyness is computed, not stored:** active = check-in `timestamp > now - ACTIVE_WINDOW_MINUTES`. Ticket #38 mentions a "checked out" state; do not add one or a job that flips records.
+  - **No database changes:** another team owns the DB. Mock data lives only in `mock-data.ts` and is only imported by `queries.ts`.
+  - **Customer view gets counts only** (`getBusynessSummary`), so other climbers' names never reach a member's browser. Keep it that way.
+  - Times are formatted on the server in the gym's time zone (`config.ts`, default `America/Vancouver`), not the server's zone.
+  - Pages use a placeholder `DEMO_GYM_ID` until auth knows the user's gym.
+  - The login bypass only applies when `NODE_ENV === "development"` (`next dev`) **and** `DEV_AUTH_BYPASS` is `"true"`; production builds ignore it. It touches auth, so it needs a reviewer who knows that area.
+- **Gotchas:**
+  - `cacheComponents` is on, so the busyness components call `connection()` and sit inside `<Suspense>` on the pages; removing either fails the build.
+  - `/login` is still a stub, so without the bypass there is no way to reach `/desk` or `/me` locally.
+  - `npm install` on Node 26/npm 12 warns that install scripts for prisma/esbuild were blocked; the build still passed.
+- **Open follow-ups:** remove `DEV_AUTH_BYPASS` once `/login` works; UI polish (mobile and large-screen layout) is planned for later; swap `getActiveCheckIns` to the real check-ins query once the schema exists; move thresholds/time zone to per-gym DB settings; replace `DEMO_GYM_ID` with the signed-in user's gym; add tests for `getBusynessLevel` and window filtering once a test runner is set up.
+- **Verification:** `npm run lint` passed with no warnings. `npm run build` (CI env values) passed; `/desk` and `/me` build as partial prerenders. With the bypass on in `next dev`, `/desk` and `/me` return 200 (redirect to `/login` without it) and render at 390 px and 1400 px: 28 active of 38 mock check-ins, level "Medium".
 
 ### 2026-10-11 00:00 UTC: Introduce the Exchange Floor
 
