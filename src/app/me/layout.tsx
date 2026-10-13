@@ -8,7 +8,7 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
         <Link href="/me/events">Events</Link>
         <Link href="/me/stats">Stats</Link>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="p-4 sm:p-6">{children}</main>
     </div>
   );
 }

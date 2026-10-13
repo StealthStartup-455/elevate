@@ -15,3 +15,10 @@ features/climbers/
 ```
 
 Pages in `src/app/` import from here. Nothing outside this folder talks to its tables directly.
+
+## Membership card (mock)
+
+`/me` shows `components/MembershipCard.tsx`: plan, status, renewal date, waiver status and a check-in code.
+
+- `getMyMembership()` in `queries.ts` returns one demo member until auth and the memberships table exist.
+- `DemoQrCode` only looks like a QR code. It does **not** scan. Replace it once the check-in ticket picks a code format (QR or barcode) and a library.
