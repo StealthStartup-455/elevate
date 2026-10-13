@@ -30,6 +30,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
+| 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
 
 ## Entry template
 
@@ -53,6 +54,24 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-13 00:00 UTC: Customer account creation (/join), mock data
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#33 / (this PR)
+- **Branch:** `feature/33-account-creation-customer`
+- **What the agent did:**
+  - Added `/join`, a public page where a new customer enters name, phone and date of birth. QR scanning is out of scope.
+  - Added the `features/climbers` base: types, server-side validation, `joinAsCustomer` server action, shared `ClimberForm`, fixed mock data.
+- **Files touched:** `src/features/climbers/*`, `src/app/join/page.tsx`
+- **Decisions and why:**
+  - Data is an in-memory mock (`mock-data.ts`, on `globalThis` so dev hot reloads keep it). The Prisma schema is still empty, so nothing is stored in a database yet.
+  - Mock data uses fixed values, not clock-relative timestamps, so features built on it are repeatable.
+  - `ClimberForm` is shared on purpose: the front desk issue (#34) reuses it.
+- **Gotchas:** mock records reset on server restart.
+- **Open follow-ups:** persist to the database once the schema exists; open question from the issue: do under-18s need a guardian consent form?; point the QR code at `/join`.
+- **Verification:** see the PR description.
 
 ### 2026-10-11 00:00 UTC: Introduce the Exchange Floor
 
