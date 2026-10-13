@@ -30,7 +30,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
-| 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `/desk` and `/me` pages, MUI setup in root layout | In review |
+| 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 
 ## Entry template
 
@@ -54,6 +54,50 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-13 18:55 UTC: Fuzzy desk search, home page links, membership card, simpler member busyness
+
+- **Developer:** @sethmess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** sprint board #38 and #37 / #11
+- **Branch:** `feature/38-busyness-tracker`
+- **What the agent did:**
+  - Front desk search is now fuzzy (`src/lib/fuzzy.ts`): typos, skipped letters, any word order, accents. Results rank by best match while searching; the column headers still override.
+  - Home page (`/`) has buttons to the member dashboard and the front desk.
+  - `/me` starts with a membership card (plan, renewal, waiver status, demo QR code), following the customer dashboard mock.
+  - Simplified the member busyness card: today's row only, with the full week behind "Show full week".
+- **Files touched:** `src/lib/fuzzy.ts`, `src/features/analytics/components/{CheckInTable,CustomerBusyness,BusynessHeatMap,ShowMore}.tsx`, `src/features/climbers/{queries.ts,README.md}`, `src/features/climbers/components/{MembershipCard,DemoQrCode}.tsx`, `src/app/page.tsx`, `src/app/me/page.tsx`
+- **Decisions and why:**
+  - `fuzzyScore` is in `src/lib/` (not analytics) so climber lookup can reuse it. Number-only search words match the phone; other words fuzzy-match the name.
+  - **The QR code is fake on purpose** (`DemoQrCode`): it has QR corner squares but does not scan. The real code format belongs to the check-in ticket.
+  - The membership card is in `features/climbers/` with its own mock `getMyMembership()`. It's outside #37/#38, but added here at the developer's request.
+- **Gotchas:** `/me` and `/desk` still need `DEV_AUTH_BYPASS="true"` locally, including when reached from the new home page buttons.
+- **Open follow-ups:** real membership query once auth exists; replace `DemoQrCode` with a real QR or barcode; unit tests for `fuzzyScore` once a test runner exists.
+- **Verification:** `npm run lint` passed with no warnings; `npm run build` passed (`/` static, `/desk` and `/me` partial prerenders). `/`, `/me` and `/desk` return 200 in `next dev` with the bypass on. Screenshots checked at 390 px for `/` and `/me`. Sample fuzzy queries checked with `tsx` ("jmie", "chen jam", "jamei", "tremv", "nguyn" all find the right person; "xyz" finds nothing). The search box, sorting and "Show full week" toggle were not clicked through in a browser.
+
+### 2026-10-13 17:44 UTC: Busyness tracker review changes: fixed mock scenarios, heat map, desk search
+
+- **Developer:** @sethmess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** sprint board #38 and #37 / #11
+- **Branch:** `feature/38-busyness-tracker`
+- **What the agent did:**
+  - Replaced the "now minus minutes" mock with fixed JSON scenarios (`quiet` 8, `moderate` 28, `busy` 55 climbers) built around one reference time, picked with `MOCK_BUSYNESS_SCENARIO`. Added `npm run mock:busyness` to regenerate them with any counts.
+  - Added a typical-week heat map (`BusynessHeatMap`, `getWeeklyBusyness`) to both dashboards, with the current hour outlined.
+  - Restyled the customer card after the customer dashboard mock attached to PR #11.
+  - Front desk: search (name or phone, partial and any order), waiver status filter with counts, and sorting by name or time (`CheckInTable`, client component). Two-column layout on wide screens.
+- **Files touched:** `scripts/generate-busyness-mock.ts`, `src/features/analytics/{mock-data,queries,busyness,types}.ts`, `src/features/analytics/mock/*.json`, `src/features/analytics/components/{BusynessHeatMap,CheckInTable,CustomerBusyness,FrontDeskBusyness,BusynessLevelChip}.tsx`, `src/components/ui/ThemeRegistry.tsx`, `src/app/{desk,me}/layout.tsx`, `.env.example`, `package.json`
+- **Decisions and why:**
+  - **Mock clock:** queries get "now" from `busynessNow()`, which returns the scenario's fixed reference time. The real version returns `new Date()`; nothing else needs to change.
+  - **Heat map is in scope now:** the original brief listed heat maps as out of scope, but the PR review asked for one. The heat map currently reads mock `week.json`; the real version averages the active count per hour over recent weeks.
+  - **Level labels are now Quiet / Moderate / Busy** (to match the mock's legend) in both views. The internal values are still `low | medium | high`.
+  - **Theme primary colour** is the mock's green (`#24705c`, lighter in dark mode) until the style guide lands.
+  - The desk table rows are formatted on the server, so only plain strings and numbers cross into the client component. The customer view still gets counts only.
+- **Gotchas:**
+  - The busyness page always shows 6:30 PM on Thursday because of the mock clock. That's intended.
+  - `mock/*.json` is generated; edit the script or rerun it rather than hand-editing (hand edits are fine but get overwritten on regenerate).
+- **Open follow-ups:** the same follow-ups as the 2026-10-11 entry, plus: replace `getWeeklyBusyness` with a real query; full restyle once the style guide is done.
+- **Verification:** `npm run lint` passed with no warnings; `npm run build` passed (`/desk` and `/me` as partial prerenders). All three scenarios render on `/desk` and `/me` in `next dev` at 390 px and 1440 px (8, 28 and 55 check-ins → Quiet, Moderate, Busy). `npm run mock:busyness` run twice gives byte-identical files.
 
 ### 2026-10-11 23:39 UTC: Busyness tracker scaffold (front desk + customer) with mock data
 

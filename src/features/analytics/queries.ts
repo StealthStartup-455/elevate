@@ -1,15 +1,28 @@
 import { connection } from "next/server";
-import { getBusynessLevel, activeWindowStart } from "./busyness";
+import { activeWindowStart, getBusynessLevel, gymClock } from "./busyness";
 import { ACTIVE_WINDOW_MINUTES, getGymBusynessSettings } from "./config";
-import { MOCK_CLIMBERS, mockCheckIns } from "./mock-data";
+import { mockCheckIns, mockClimbers, mockNow, mockWeek } from "./mock-data";
 import type {
   ActiveCheckIn,
   BusynessSummary,
   FrontDeskBusyness,
+  WeeklyBusyness,
 } from "./types";
 
 // Busyness is computed, not stored: a climber is "in the gym" for
 // ACTIVE_WINDOW_MINUTES after checking in. There is no checked-out state.
+
+/**
+ * The current time for busyness. Returns the mock data's fixed clock so
+ * results are the same on every request.
+ *
+ * When the real query lands, return `new Date()` instead.
+ */
+async function busynessNow(): Promise<Date> {
+  // Render per request, never at build time.
+  await connection();
+  return mockNow();
+}
 
 /**
  * Check-ins for a gym inside the active window, newest first.
@@ -20,13 +33,13 @@ import type {
  */
 export async function getActiveCheckIns(
   gymId: string,
-  now: Date = new Date(),
+  now: Date,
 ): Promise<ActiveCheckIn[]> {
   const since = activeWindowStart(now, ACTIVE_WINDOW_MINUTES);
-  const climbers = new Map(MOCK_CLIMBERS.map((c) => [c.id, c]));
+  const climbers = new Map(mockClimbers().map((c) => [c.id, c]));
 
-  return mockCheckIns(now)
-    .filter((c) => c.gymId === gymId && c.timestamp > since)
+  return mockCheckIns()
+    .filter((c) => c.gymId === gymId && c.timestamp > since && c.timestamp <= now)
     .flatMap((c) => {
       const climber = climbers.get(c.climberId);
       return climber ? [{ ...c, climber }] : [];
@@ -53,9 +66,7 @@ function summarize(
 export async function getFrontDeskBusyness(
   gymId: string,
 ): Promise<FrontDeskBusyness> {
-  // Render per request, never at build time.
-  await connection();
-  const now = new Date();
+  const now = await busynessNow();
   const checkIns = await getActiveCheckIns(gymId, now);
   return { ...summarize(gymId, checkIns.length, now), checkIns };
 }
@@ -65,8 +76,20 @@ export async function getFrontDeskBusyness(
 export async function getBusynessSummary(
   gymId: string,
 ): Promise<BusynessSummary> {
-  await connection();
-  const now = new Date();
+  const now = await busynessNow();
   const checkIns = await getActiveCheckIns(gymId, now);
   return summarize(gymId, checkIns.length, now);
+}
+
+/**
+ * Typical busyness by weekday and hour, for the heat map.
+ *
+ * Mock for now. The real version averages the active count per hour over
+ * the last few weeks of check-ins.
+ */
+export async function getWeeklyBusyness(gymId: string): Promise<WeeklyBusyness> {
+  const now = await busynessNow();
+  const { timeZone } = getGymBusynessSettings(gymId);
+  const { startHour, endHour, days, values } = mockWeek();
+  return { gymId, startHour, endHour, days, values, now: gymClock(now, timeZone) };
 }

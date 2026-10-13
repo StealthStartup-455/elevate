@@ -9,7 +9,7 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
         <Link href="/desk/events">Events</Link>
         <Link href="/desk/waivers">Waivers</Link>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="p-4 sm:p-6">{children}</main>
     </div>
   );
 }

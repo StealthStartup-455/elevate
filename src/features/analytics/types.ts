@@ -39,3 +39,16 @@ export type BusynessSummary = {
 export type FrontDeskBusyness = BusynessSummary & {
   checkIns: ActiveCheckIn[];
 };
+
+// Typical climbers in the gym by weekday (Mon first) and hour, for the heat map.
+export type WeeklyBusyness = {
+  gymId: string;
+  // Hours shown, as [startHour, endHour) on the gym's clock.
+  startHour: number;
+  endHour: number;
+  days: string[];
+  // values[day][hour - startHour]
+  values: number[][];
+  // The current slot, outlined on the heat map.
+  now: { day: number; hour: number };
+};
