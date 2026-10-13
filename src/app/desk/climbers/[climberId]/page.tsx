@@ -11,6 +11,7 @@ import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
 import { formatDate } from "@/features/climbers/format";
+import { usernameFor } from "@/features/auth/mock-users";
 import { getClimber } from "@/features/climbers/queries";
 
 export default function ClimberPage({
@@ -42,6 +43,15 @@ async function ClimberDetails({
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
           {climber.firstName} {climber.lastName}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Username{" "}
+          <Box
+            component="span"
+            sx={{ fontFamily: "var(--font-geist-mono)", color: "text.primary" }}
+          >
+            {usernameFor(climber)}
+          </Box>
         </Typography>
 
         <Box
