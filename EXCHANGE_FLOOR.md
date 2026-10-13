@@ -30,6 +30,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
+| 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-34-account-creation` | `src/features/climbers/*`, `src/app/join`, `src/app/desk/climbers/*` | In review |
 
 ## Entry template
 
@@ -53,6 +54,32 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-13 00:00 UTC: Account creation (customer and front desk), mock data
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#33 and #34 / (this PR)
+- **Branch:** `feature/33-34-account-creation`
+- **What the agent did:**
+  - Added `/join`, a public page where a new customer enters name, phone and date of birth (QR scanning is out of scope).
+  - Added `/desk/climbers` (list of all climbers), `/desk/climbers/new` (same form) and `/desk/climbers/[climberId]` (edit details, placeholder "Look at waiver" button).
+  - Added the `features/climbers` module: types, server-side validation, server actions, queries and fixed mock data.
+  - Made the desk and member nav wrap on narrow screens.
+- **Files touched:** `src/features/climbers/*`, `src/app/join/page.tsx`, `src/app/desk/climbers/**`, `src/app/desk/layout.tsx`, `src/app/me/layout.tsx`
+- **Decisions and why:**
+  - One branch for both issues, at the developer's request. The name `33-34` satisfies the branch regex; the issues live in `elevate-docs`.
+  - Data is an in-memory mock (`mock-data.ts`, kept on `globalThis` so dev hot reloads keep edits). The Prisma schema is still empty, so nothing is stored in a database yet.
+  - Mock check-in timestamps are fixed, not relative to the clock, so features built on them are repeatable.
+  - Staff actions have a `TODO(auth)`; role checks belong in `features/auth` once it exists.
+- **Gotchas:**
+  - Mock edits reset when the server restarts and are not shared between server instances.
+  - `/desk/*` redirects to `/login` without a session; the dev auth bypass lives in PR #11, not on `dev`.
+- **Open follow-ups:**
+  - Persist to the database once the schema exists (issues say "stored in the database").
+  - Open question from the issues: do under-18s need a guardian consent form attached? Not implemented.
+  - Wire "Look at waiver" to the waivers feature; point the QR code at `/join`.
+- **Verification:** `npm run lint` clean; `npm run build` succeeded. Validation logic spot-checked with `tsx`. `/join` renders all four fields. The `/desk/climbers*` pages were not exercised in a browser (auth redirect).
 
 ### 2026-10-11 00:00 UTC: Introduce the Exchange Floor
 
