@@ -7,7 +7,7 @@ import LinkButton from "@/features/climbers/components/LinkButton";
 
 export default function NewClimberPage() {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start gap-1">
         <LinkButton href="/desk/climbers" variant="text">
           ← Climbers
