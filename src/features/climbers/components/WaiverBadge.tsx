@@ -1,15 +1,15 @@
+import Chip from "@mui/material/Chip";
 import type { WaiverStatus } from "../types";
 
-const LABEL: Record<WaiverStatus, string> = {
-  valid: "Waiver valid",
-  expired: "Waiver expired",
-  missing: "No waiver",
-};
+// Same colours and wording as the waiver column in the check-in table.
+const COLOR = {
+  valid: "success",
+  expired: "warning",
+  missing: "error",
+} as const satisfies Record<WaiverStatus, string>;
 
 export default function WaiverBadge({ status }: { status: WaiverStatus }) {
   return (
-    <span className="whitespace-nowrap rounded-full border border-foreground/30 px-2 py-0.5 text-sm">
-      {LABEL[status]}
-    </span>
+    <Chip size="small" variant="outlined" label={status} color={COLOR[status]} />
   );
 }

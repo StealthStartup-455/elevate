@@ -1,4 +1,6 @@
-export type WaiverStatus = "valid" | "expired" | "missing";
+import type { WaiverStatus } from "@/features/analytics/types";
+
+export type { WaiverStatus };
 
 export type Climber = {
   id: string;
