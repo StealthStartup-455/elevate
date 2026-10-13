@@ -92,12 +92,18 @@ export function climberStore(): Climber[] {
   ]);
 }
 
+// New climbers get ids from 5001 up. That range sits above every busyness
+// scenario's climbers (they stop at 67) and below the demo accounts (9001+),
+// so a new account never collides with a check-in whichever scenario is active.
+const NEW_CLIMBER_ID_START = 5001;
+
 // A new climber with the next free id (climber-N), no waiver yet.
 export function addMockClimber(input: ClimberInput): Climber {
   const all = climberStore();
-  // Demo accounts (9001 and up) don't count, so new climbers follow the real ones.
-  const next =
-    Math.max(0, ...all.map((c) => idNumber(c.id)).filter((n) => n < 9000)) + 1;
+  const next = Math.max(
+    NEW_CLIMBER_ID_START - 1,
+    ...all.map((c) => idNumber(c.id)).filter((n) => n >= NEW_CLIMBER_ID_START && n < 9000),
+  ) + 1;
   // New accounts have no waiver and no membership until they buy one.
   const climber: Climber = {
     id: `climber-${next}`,
