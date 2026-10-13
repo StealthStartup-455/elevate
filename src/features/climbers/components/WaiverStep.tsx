@@ -8,21 +8,37 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { signWaiver } from "../actions";
 
-// Placeholder for the real waiver signing flow (waivers feature).
+// Placeholder for the real waiver signing flow (waivers feature): a fixed
+// spinner, then the climber's waiver is marked as signed.
 const SPINNER_MS = 5000;
-// TODO: the page after waiver signing is still to be decided. The member
-// dashboard shows the waiver status, so it is the stand-in for now.
-const NEXT_PATH = "/me";
 
-export default function WaiverStep() {
+type Props = {
+  climberId: string;
+  /** Show a Continue button to this page once the waiver is signed. */
+  nextHref?: string;
+};
+
+export default function WaiverStep({ climberId, nextHref }: Props) {
   const [step, setStep] = useState<"idle" | "signing" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (step !== "signing") return;
-    const timer = setTimeout(() => setStep("done"), SPINNER_MS);
+    // Mark the waiver signed only after the spinner, so the page behind this
+    // step doesn't change (and unmount this) while it is still showing.
+    const timer = setTimeout(async () => {
+      const result = await signWaiver(climberId);
+      if (result.ok) {
+        setStep("done");
+      } else {
+        setError(result.message ?? "Couldn't sign the waiver. Try again.");
+        setStep("idle");
+      }
+    }, SPINNER_MS);
     return () => clearTimeout(timer);
-  }, [step]);
+  }, [step, climberId]);
 
   if (step === "signing") {
     return (
@@ -40,22 +56,30 @@ export default function WaiverStep() {
   if (step === "done") {
     return (
       <Stack spacing={2}>
-        <Alert severity="success">Waiver step complete.</Alert>
-        <Button component={Link} href={NEXT_PATH} variant="contained" size="large">
-          Continue
-        </Button>
+        <Alert severity="success">Waiver signed.</Alert>
+        {nextHref ? (
+          <Button component={Link} href={nextHref} variant="contained" size="large">
+            Continue
+          </Button>
+        ) : null}
       </Stack>
     );
   }
 
   return (
-    <Button
-      type="button"
-      variant="contained"
-      size="large"
-      onClick={() => setStep("signing")}
-    >
-      Sign a waiver now
-    </Button>
+    <Stack spacing={1.5}>
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      <Button
+        type="button"
+        variant="contained"
+        size="large"
+        onClick={() => {
+          setError(null);
+          setStep("signing");
+        }}
+      >
+        Sign a waiver now
+      </Button>
+    </Stack>
   );
 }

@@ -41,7 +41,9 @@ export default function ClimberForm({
     return (
       <Stack spacing={2}>
         <Alert severity="success">{state.message}</Alert>
-        <WaiverStep />
+        {state.climberId ? (
+          <WaiverStep climberId={state.climberId} nextHref="/me" />
+        ) : null}
       </Stack>
     );
   }

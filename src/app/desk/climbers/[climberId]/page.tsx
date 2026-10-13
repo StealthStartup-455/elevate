@@ -9,13 +9,15 @@ import { updateClimber } from "@/features/climbers/actions";
 import ClimberForm from "@/features/climbers/components/ClimberForm";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
+import WaiverStep from "@/features/climbers/components/WaiverStep";
+import { formatDate } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
 
 export default function ClimberPage({
   params,
 }: PageProps<"/desk/climbers/[climberId]">) {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start">
         <LinkButton href="/desk/climbers" variant="text">
           ← Climbers
@@ -56,11 +58,23 @@ async function ClimberDetails({
             Waiver
           </Typography>
           <WaiverBadge status={climber.waiverStatus} />
+          {climber.waiverExpiresOn ? (
+            <Typography variant="body2" color="text.secondary">
+              {climber.waiverStatus === "valid" ? "Expires" : "Expired"}{" "}
+              {formatDate(climber.waiverExpiresOn, true)}
+            </Typography>
+          ) : null}
           {/* Placeholder until the waivers feature exists. */}
           <Button variant="outlined" size="small" disabled title="Coming soon">
             Look at waiver
           </Button>
         </Box>
+
+        {climber.waiverStatus !== "valid" ? (
+          <Box sx={{ mb: 2.5 }}>
+            <WaiverStep climberId={climber.id} />
+          </Box>
+        ) : null}
 
         <ClimberForm
           // Remount with fresh defaults when the climber changes.

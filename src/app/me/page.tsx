@@ -5,7 +5,7 @@ import MembershipCard from "@/features/climbers/components/MembershipCard";
 
 export default function MePage() {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 sm:gap-6">
       <h1 className="text-2xl font-semibold">My dashboard</h1>
       <Suspense fallback={<p>Loading membership...</p>}>
         <MembershipCard />
