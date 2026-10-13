@@ -1,7 +1,13 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import { useActionState } from "react";
 import type { ClimberInput, FormState } from "../types";
+import WaiverStep from "./WaiverStep";
 
 type Props = {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -18,11 +24,8 @@ const EMPTY: ClimberInput = {
   dateOfBirth: "",
 };
 
-const INPUT =
-  "min-h-11 w-full rounded-md border border-foreground/30 bg-transparent px-3 text-base";
-
-type FieldName = keyof ClimberInput;
-
+// The same fields on /join and in the front desk. Follows the MUI theme, so it
+// matches the busyness and membership cards.
 export default function ClimberForm({
   action,
   defaults = EMPTY,
@@ -36,92 +39,78 @@ export default function ClimberForm({
 
   if (hideOnSuccess && state.status === "success") {
     return (
-      <p role="status" className="rounded-md border border-foreground/30 p-4">
-        {state.message}
-      </p>
+      <Stack spacing={2}>
+        <Alert severity="success">{state.message}</Alert>
+        <WaiverStep />
+      </Stack>
     );
   }
 
   const values = state.values ?? defaults;
   const errors = state.errors ?? {};
 
-  function input(name: FieldName, type: string, extra: object = {}) {
-    return (
-      <input
-        id={name}
-        name={name}
-        type={type}
-        required
-        defaultValue={values[name]}
-        aria-invalid={errors[name] ? true : undefined}
-        aria-describedby={errors[name] ? `${name}-error` : undefined}
-        className={INPUT}
-        {...extra}
-      />
-    );
-  }
-
   return (
-    <form
-      action={formAction}
-      className="flex w-full max-w-md flex-col gap-4"
-      noValidate
-    >
-      <Field label="First name" name="firstName" error={errors.firstName}>
-        {input("firstName", "text", { autoComplete: "given-name" })}
-      </Field>
-      <Field label="Last name" name="lastName" error={errors.lastName}>
-        {input("lastName", "text", { autoComplete: "family-name" })}
-      </Field>
-      <Field label="Phone number" name="phone" error={errors.phone}>
-        {input("phone", "tel", { inputMode: "tel", autoComplete: "tel" })}
-      </Field>
-      <Field label="Date of birth" name="dateOfBirth" error={errors.dateOfBirth}>
-        {input("dateOfBirth", "date", { autoComplete: "bday" })}
-      </Field>
+    <Box component="form" action={formAction} noValidate>
+      <Stack spacing={2}>
+        <Stack spacing={2} direction={{ xs: "column", sm: "row" }}>
+          <TextField
+            name="firstName"
+            label="First name"
+            required
+            fullWidth
+            defaultValue={values.firstName}
+            error={Boolean(errors.firstName)}
+            helperText={errors.firstName}
+            slotProps={{ htmlInput: { autoComplete: "given-name" } }}
+          />
+          <TextField
+            name="lastName"
+            label="Last name"
+            required
+            fullWidth
+            defaultValue={values.lastName}
+            error={Boolean(errors.lastName)}
+            helperText={errors.lastName}
+            slotProps={{ htmlInput: { autoComplete: "family-name" } }}
+          />
+        </Stack>
+        <TextField
+          name="phone"
+          label="Phone number"
+          type="tel"
+          required
+          fullWidth
+          defaultValue={values.phone}
+          error={Boolean(errors.phone)}
+          helperText={errors.phone}
+          slotProps={{ htmlInput: { autoComplete: "tel", inputMode: "tel" } }}
+        />
+        <TextField
+          name="dateOfBirth"
+          label="Date of birth"
+          type="date"
+          required
+          fullWidth
+          defaultValue={values.dateOfBirth}
+          error={Boolean(errors.dateOfBirth)}
+          helperText={errors.dateOfBirth}
+          slotProps={{
+            inputLabel: { shrink: true },
+            htmlInput: { autoComplete: "bday" },
+          }}
+        />
 
-      {state.message ? (
-        <p
-          role={state.status === "error" ? "alert" : "status"}
-          className={state.status === "error" ? "text-red-600" : undefined}
-        >
-          {state.message}
-        </p>
-      ) : null}
+        {state.status === "error" && state.message ? (
+          <Alert severity="error">{state.message}</Alert>
+        ) : null}
+        {state.status === "success" && state.message ? (
+          <Alert severity="success">{state.message}</Alert>
+        ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 rounded-md bg-foreground px-4 text-base font-medium text-background disabled:opacity-60"
-      >
-        {pending ? "Saving…" : submitLabel}
-      </button>
-    </form>
-  );
-}
-
-function Field({
-  label,
-  name,
-  error,
-  children,
-}: {
-  label: string;
-  name: FieldName;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p id={`${name}-error`} className="text-sm text-red-600">
-          {error}
-        </p>
-      ) : null}
-    </div>
+        <Button type="submit" variant="contained" size="large" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
+        </Button>
+      </Stack>
+    </Box>
   );
 }

@@ -1,21 +1,28 @@
-import ClimberForm from "@/features/climbers/components/ClimberForm";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
 import { joinAsCustomer } from "@/features/climbers/actions";
+import ClimberForm from "@/features/climbers/components/ClimberForm";
 
 // Public landing page for a brand new customer (the QR code will point here).
 export default function JoinPage() {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Join</h1>
-        <p className="text-sm opacity-70">
-          Tell us a bit about yourself to create your account.
-        </p>
-      </div>
-      <ClimberForm
-        action={joinAsCustomer}
-        submitLabel="Create account"
-        hideOnSuccess
-      />
+    <main className="mx-auto flex w-full max-w-xl flex-col p-4 sm:p-6">
+      <Card variant="outlined" sx={{ width: "100%", borderRadius: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
+            Join
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
+            Tell us a bit about yourself to create your account.
+          </Typography>
+          <ClimberForm
+            action={joinAsCustomer}
+            submitLabel="Create account"
+            hideOnSuccess
+          />
+        </CardContent>
+      </Card>
     </main>
   );
 }

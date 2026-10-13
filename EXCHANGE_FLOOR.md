@@ -109,6 +109,8 @@ Newest first.
 - **What the agent did:**
   - Added `/join`, a public page where a new customer enters name, phone and date of birth. QR scanning is out of scope.
   - Added the `features/climbers` base: types, server-side validation, `joinAsCustomer` server action, shared `ClimberForm`, fixed mock data.
+  - After signing up, "Sign a waiver now" shows a fixed 5 s spinner (placeholder) and then a Continue button to `/me` (next page still TBD).
+  - Merged `dev` (PR #11) and restyled the form with MUI (outlined card, `TextField`, `Button`) to match the busyness and membership cards.
 - **Files touched:** `src/features/climbers/*`, `src/app/join/page.tsx`
 - **Decisions and why:**
   - Data is an in-memory mock (`mock-data.ts`, on `globalThis` so dev hot reloads keep it). The Prisma schema is still empty, so nothing is stored in a database yet.
