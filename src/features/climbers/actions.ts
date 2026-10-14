@@ -1,13 +1,15 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { climberStore } from "./mock-data";
+import { revalidatePath } from "next/cache";
+import { MOCK_USER_COOKIE } from "@/features/auth/mock-users";
+import { addMockClimber, climberStore } from "./mock-data";
 import type { FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
-// TODO(auth): createClimberAtDesk and updateClimber are staff-only. Check the
+// TODO(auth): createClimberAtDesk and updateClimber are staff-only, and
+// signWaiver must only accept the caller's own id (or staff). Check the
 // caller's role here once features/auth exists; a page guard is not enough.
 // joinAsCustomer is intentionally public: it only creates a new record.
 
@@ -22,6 +24,13 @@ function invalid(
   };
 }
 
+function refreshClimberPages(climberId?: string) {
+  revalidatePath("/desk");
+  revalidatePath("/desk/climbers");
+  revalidatePath("/me");
+  if (climberId) revalidatePath(`/desk/climbers/${climberId}`);
+}
+
 // /join: a new customer registers themselves.
 export async function joinAsCustomer(
   _prev: FormState,
@@ -30,15 +39,20 @@ export async function joinAsCustomer(
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed);
 
-  climberStore().push({
-    id: `climber-${randomUUID()}`,
-    ...parsed.value,
-    waiverStatus: "missing",
-  });
-  revalidatePath("/desk/climbers");
+  const climber = addMockClimber(parsed.value);
+  // Demo only: "sign in" as the new climber so /me shows their account.
+  if (process.env.NODE_ENV !== "production") {
+    (await cookies()).set(MOCK_USER_COOKIE, climber.id, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+  refreshClimberPages();
   return {
     status: "success",
     message: "You're registered. Head to the front desk to check in.",
+    climberId: climber.id,
   };
 }
 
@@ -50,12 +64,8 @@ export async function createClimberAtDesk(
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed);
 
-  climberStore().push({
-    id: `climber-${randomUUID()}`,
-    ...parsed.value,
-    waiverStatus: "missing",
-  });
-  revalidatePath("/desk/climbers");
+  addMockClimber(parsed.value);
+  refreshClimberPages();
   redirect("/desk/climbers");
 }
 
@@ -72,7 +82,24 @@ export async function updateClimber(
   if (!climber) return { status: "error", message: "Climber not found." };
 
   Object.assign(climber, parsed.value);
-  revalidatePath("/desk/climbers");
-  revalidatePath(`/desk/climbers/${climberId}`);
+  refreshClimberPages(climberId);
   return { status: "success", message: "Saved." };
+}
+
+// Marks the climber's waiver as signed today, valid for a year. The signing
+// itself is a placeholder until the waivers feature exists.
+export async function signWaiver(
+  climberId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const climber = climberStore().find((c) => c.id === climberId);
+  if (!climber) return { ok: false, message: "Climber not found." };
+
+  const now = new Date();
+  const expires = new Date(
+    Date.UTC(now.getUTCFullYear() + 1, now.getUTCMonth(), now.getUTCDate()),
+  );
+  climber.waiverStatus = "valid";
+  climber.waiverExpiresOn = expires.toISOString().slice(0, 10);
+  refreshClimberPages(climberId);
+  return { ok: true };
 }

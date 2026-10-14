@@ -3,6 +3,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { getWaiverStatuses } from "@/features/climbers/queries";
 import { formatWindow } from "../busyness";
 import { BUSYNESS_POLL_INTERVAL_MS, getGymBusynessSettings } from "../config";
 import { getFrontDeskBusyness } from "../queries";
@@ -17,6 +18,8 @@ import { formatTime } from "./format";
 export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
   const busyness = await getFrontDeskBusyness(gymId);
   const { timeZone } = getGymBusynessSettings(gymId);
+  // Waivers signed from the app update here, not just in the busyness mock.
+  const waivers = await getWaiverStatuses();
 
   const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => ({
     id: checkIn.id,
@@ -25,7 +28,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
     phone: checkIn.climber.phone,
     checkedInAt: checkIn.timestamp.getTime(),
     timeLabel: formatTime(checkIn.timestamp, timeZone),
-    waiverStatus: checkIn.climber.waiverStatus,
+    waiverStatus: waivers.get(checkIn.climber.id) ?? checkIn.climber.waiverStatus,
   }));
 
   return (

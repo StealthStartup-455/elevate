@@ -33,6 +33,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/34-account-creation-front-desk` | `src/features/climbers/*`, `src/app/desk/climbers/*` | In review (stacked on #33 branch) |
+| 2026-10-13 | @agamkamran02 | Claude Code | `feature/41-account-login` | `src/features/auth/*`, `/`, `/login`, `/me`, `src/features/climbers/*` | In review (stacked on #33/#34 branches) |
 
 ## Entry template
 
@@ -56,6 +57,30 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-13 00:00 UTC: Hard-coded demo login, demo accounts, waiver signing, membership states
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#41 / (this PR)
+- **Branch:** `feature/41-account-login` (built on `feature/34-account-creation-front-desk`)
+- **What the agent did:**
+  - Home page (`/`) and `/login` show a static login card: username and password are the same string, taken from the mock climbers (`first.last`), plus `desk` for the front desk. "Join the gym" sits under it; an "i" icon lists demo accounts.
+  - Twelve demo accounts (`demo-<waiver>-<membership>`) cover waiver valid/expired/missing x membership none/active/paused/expired.
+  - Log out button at the top right of the `/me` and `/desk` layouts.
+  - `/me` shows the logged-in climber (cookie), membership and waiver expiry lines, and Sign waiver / Buy / Renew buttons by status.
+  - "Sign a waiver now" runs a 5 s spinner, then marks the waiver valid for a year (desk climber page, `/me`, `/join`).
+  - New accounts start with membership `none` and a Buy membership button.
+  - `/me` and the desk climber page are centered on desktop; the check-in table reads live waiver status.
+- **Files touched:** `src/features/auth/*`, `src/app/{page,login/page}.tsx`, `src/app/{me,desk}/layout.tsx`, `src/app/me/page.tsx`, `src/app/desk/climbers/[climberId]/page.tsx`, `src/features/climbers/*`, `src/features/analytics/components/FrontDeskBusyness.tsx`
+- **Decisions and why:**
+  - The login is hard-coded as the issue asks. The action refuses to run when `NODE_ENV` is `production`, and `getMyMembership` ignores the cookie in production.
+  - It sets a cookie only; it does not create a Supabase session, so `/me` and `/desk` still need `DEV_AUTH_BYPASS="true"` locally. `proxy.ts` is unchanged on purpose.
+  - Demo accounts use ids `climber-9001` and up so they never clash with the busyness mock climbers.
+  - Climber mock data lives in `features/climbers/mock-data.ts` (seeded from the busyness mock) and is mutable in memory; it resets on server restart.
+- **Gotchas:** every 7th mock climber is paused and every 10th expired so those states are visible. Buy and Renew membership are disabled placeholders.
+- **Open follow-ups:** replace the demo login with Supabase auth; real memberships and payments; wire "Look at waiver" to the waivers feature; real next page after waiver signing.
+- **Verification:** see the PR description.
 
 ### 2026-10-13 18:55 UTC: Fuzzy desk search, home page links, membership card, simpler member busyness
 
