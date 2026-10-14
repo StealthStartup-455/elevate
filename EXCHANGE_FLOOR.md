@@ -34,7 +34,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/34-account-creation-front-desk` | `src/features/climbers/*`, `src/app/desk/climbers/*` | In review (stacked on #33 branch) |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/41-account-login` | `src/features/auth/*`, `/`, `/login`, `/me`, `src/features/climbers/*` | In review (stacked on #33/#34 branches) |
-| 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/README.md`, `README.md` | Done (docs only) |
+| 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
 
 ## Entry template
 
@@ -59,19 +59,19 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
-### 2026-10-14 03:40 UTC: Database guide (prisma/README.md)
+### 2026-10-14 03:40 UTC: Database guide (prisma/DATABASE.md)
 
 - **Developer:** @TylerLeHere
 - **AI tool / model:** Claude Code
 - **Issue / PR:** StealthStartup-455/elevate-docs#21 / no PR yet
 - **Branch:** `feature/21-build-a-mock-database`
 - **What the agent did:**
-  - Added `prisma/README.md`: how the database works, the six tables, the one-gym rule, the check-in steps, every column, a Prisma code example and the database commands.
+  - Added `prisma/DATABASE.md`: how the database works, the six tables, the one-gym rule, the check-in steps, every column, a Prisma code example and the database commands.
   - Linked it from the main `README.md` under Scripts.
   - Merged the latest `dev` into this branch (no conflicts) so this log and the guide sit on current code.
-- **Files touched:** `prisma/README.md`, `README.md`, `EXCHANGE_FLOOR.md`
+- **Files touched:** `prisma/DATABASE.md`, `README.md`, `EXCHANGE_FLOOR.md`
 - **Decisions and why:** The guide describes the schema exactly as committed by @Khanh150104 in `7117344`. Diagrams are plain text, not Mermaid, so they read the same in every Markdown viewer.
-- **Gotchas:** The guide must change with the schema. Whoever edits `schema.prisma` updates `prisma/README.md` in the same PR. `package-lock.json` on this branch still has unrelated churn from a different npm version; left for the branch owner.
+- **Gotchas:** The guide must change with the schema. Whoever edits `schema.prisma` updates `prisma/DATABASE.md` in the same PR. `package-lock.json` matches `dev` again after the latest merge.
 - **Open follow-ups:** Open the PR into `dev`. `prisma/seed.ts` is still empty. The screens on `dev` show waiver expiry, paused memberships and per-gym busyness limits, which the schema has no columns for.
 - **Verification:** `npm run lint` passed and `npm run build` passed on this branch after merging `dev`. Docs-only change; no code or schema changed.
 

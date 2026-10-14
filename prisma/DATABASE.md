@@ -243,7 +243,7 @@ Table and column names have capital letters, so raw SQL needs double quotes: `"C
 1. Edit `prisma/schema.prisma`.
 2. Run `npm run db:migrate -- --name short_description`.
 3. Commit the schema and the new migration folder in the same PR.
-4. Update this README if a table or rule changed.
+4. Update this guide if a table or rule changed.
 
 Never edit a migration after it's merged. Make a new one instead.
 
