@@ -1,11 +1,15 @@
-import Link from "next/link";
+import LoginForm from "@/features/auth/components/LoginForm";
+import { getDemoLogins } from "@/features/auth/demo-logins";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-8">
-      <h1 className="text-3xl font-semibold">Elevate</h1>
-      <Link href="/login" className="underline">Log in</Link>
-      <Link href="/join" className="underline">Join the gym</Link>
-    </main>
+    <div className="flex flex-1 flex-col">
+      <header className="p-4 sm:px-6">
+        <span className="text-xl font-semibold">Elevate</span>
+      </header>
+      <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
+        <LoginForm demoAccounts={getDemoLogins()} />
+      </main>
+    </div>
   );
 }

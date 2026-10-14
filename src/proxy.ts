@@ -3,6 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Redirects logged-out users to /login. Real permission checks go in features/auth.
 export async function proxy(request: NextRequest) {
+  // Local testing only: skip the login check until /login works.
+  // Ignored outside `next dev`, so it can never open up a deployed app.
+  if (process.env.NODE_ENV === "development" && process.env.DEV_AUTH_BYPASS === "true") {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
