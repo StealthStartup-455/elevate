@@ -1,0 +1,502 @@
+{
+  "scenario": "moderate",
+  "referenceTime": "2026-10-09T01:30:00.000Z",
+  "climbers": [
+    {
+      "id": "climber-1",
+      "firstName": "Alex",
+      "lastName": "Nguyen",
+      "phone": "250-555-0100",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-2",
+      "firstName": "Sam",
+      "lastName": "Singh",
+      "phone": "250-555-0101",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-3",
+      "firstName": "Jordan",
+      "lastName": "Roy",
+      "phone": "250-555-0102",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-4",
+      "firstName": "Taylor",
+      "lastName": "Scott",
+      "phone": "250-555-0103",
+      "waiverStatus": "expired"
+    },
+    {
+      "id": "climber-5",
+      "firstName": "Riley",
+      "lastName": "Martin",
+      "phone": "250-555-0104",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-6",
+      "firstName": "Casey",
+      "lastName": "Tremblay",
+      "phone": "250-555-0105",
+      "waiverStatus": "missing"
+    },
+    {
+      "id": "climber-7",
+      "firstName": "Morgan",
+      "lastName": "Gill",
+      "phone": "250-555-0106",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-8",
+      "firstName": "Jamie",
+      "lastName": "Chen",
+      "phone": "250-555-0107",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-9",
+      "firstName": "Avery",
+      "lastName": "Lee",
+      "phone": "250-555-0108",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-10",
+      "firstName": "Quinn",
+      "lastName": "Campbell",
+      "phone": "250-555-0109",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-11",
+      "firstName": "Drew",
+      "lastName": "Patel",
+      "phone": "250-555-0110",
+      "waiverStatus": "expired"
+    },
+    {
+      "id": "climber-12",
+      "firstName": "Rowan",
+      "lastName": "Wilson",
+      "phone": "250-555-0111",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-13",
+      "firstName": "Skyler",
+      "lastName": "Wong",
+      "phone": "250-555-0112",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-14",
+      "firstName": "Reese",
+      "lastName": "Smith",
+      "phone": "250-555-0113",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-15",
+      "firstName": "Emerson",
+      "lastName": "Brown",
+      "phone": "250-555-0114",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-16",
+      "firstName": "Hayden",
+      "lastName": "Kaur",
+      "phone": "250-555-0115",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-17",
+      "firstName": "Alex",
+      "lastName": "Smith",
+      "phone": "250-555-0116",
+      "waiverStatus": "missing"
+    },
+    {
+      "id": "climber-18",
+      "firstName": "Sam",
+      "lastName": "Brown",
+      "phone": "250-555-0117",
+      "waiverStatus": "expired"
+    },
+    {
+      "id": "climber-19",
+      "firstName": "Jordan",
+      "lastName": "Kaur",
+      "phone": "250-555-0118",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-20",
+      "firstName": "Taylor",
+      "lastName": "Nguyen",
+      "phone": "250-555-0119",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-21",
+      "firstName": "Riley",
+      "lastName": "Singh",
+      "phone": "250-555-0120",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-22",
+      "firstName": "Casey",
+      "lastName": "Roy",
+      "phone": "250-555-0121",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-23",
+      "firstName": "Morgan",
+      "lastName": "Scott",
+      "phone": "250-555-0122",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-24",
+      "firstName": "Jamie",
+      "lastName": "Martin",
+      "phone": "250-555-0123",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-25",
+      "firstName": "Avery",
+      "lastName": "Tremblay",
+      "phone": "250-555-0124",
+      "waiverStatus": "expired"
+    },
+    {
+      "id": "climber-26",
+      "firstName": "Quinn",
+      "lastName": "Gill",
+      "phone": "250-555-0125",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-27",
+      "firstName": "Drew",
+      "lastName": "Chen",
+      "phone": "250-555-0126",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-28",
+      "firstName": "Rowan",
+      "lastName": "Lee",
+      "phone": "250-555-0127",
+      "waiverStatus": "missing"
+    },
+    {
+      "id": "climber-29",
+      "firstName": "Skyler",
+      "lastName": "Campbell",
+      "phone": "250-555-0128",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-30",
+      "firstName": "Reese",
+      "lastName": "Patel",
+      "phone": "250-555-0129",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-31",
+      "firstName": "Emerson",
+      "lastName": "Wilson",
+      "phone": "250-555-0130",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-32",
+      "firstName": "Hayden",
+      "lastName": "Wong",
+      "phone": "250-555-0131",
+      "waiverStatus": "expired"
+    },
+    {
+      "id": "climber-33",
+      "firstName": "Alex",
+      "lastName": "Patel",
+      "phone": "250-555-0132",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-34",
+      "firstName": "Sam",
+      "lastName": "Wilson",
+      "phone": "250-555-0133",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-35",
+      "firstName": "Jordan",
+      "lastName": "Wong",
+      "phone": "250-555-0134",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-36",
+      "firstName": "Taylor",
+      "lastName": "Smith",
+      "phone": "250-555-0135",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-37",
+      "firstName": "Riley",
+      "lastName": "Brown",
+      "phone": "250-555-0136",
+      "waiverStatus": "valid"
+    },
+    {
+      "id": "climber-38",
+      "firstName": "Casey",
+      "lastName": "Kaur",
+      "phone": "250-555-0137",
+      "waiverStatus": "valid"
+    }
+  ],
+  "checkIns": [
+    {
+      "id": "checkin-1",
+      "climberId": "climber-1",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:29:00.000Z"
+    },
+    {
+      "id": "checkin-2",
+      "climberId": "climber-2",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:22:00.000Z"
+    },
+    {
+      "id": "checkin-3",
+      "climberId": "climber-3",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:17:00.000Z"
+    },
+    {
+      "id": "checkin-4",
+      "climberId": "climber-4",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:16:00.000Z"
+    },
+    {
+      "id": "checkin-5",
+      "climberId": "climber-5",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:11:00.000Z"
+    },
+    {
+      "id": "checkin-6",
+      "climberId": "climber-6",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:08:00.000Z"
+    },
+    {
+      "id": "checkin-7",
+      "climberId": "climber-7",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:00:00.000Z"
+    },
+    {
+      "id": "checkin-8",
+      "climberId": "climber-8",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T01:00:00.000Z"
+    },
+    {
+      "id": "checkin-9",
+      "climberId": "climber-9",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:52:00.000Z"
+    },
+    {
+      "id": "checkin-10",
+      "climberId": "climber-10",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:49:00.000Z"
+    },
+    {
+      "id": "checkin-11",
+      "climberId": "climber-11",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:47:00.000Z"
+    },
+    {
+      "id": "checkin-12",
+      "climberId": "climber-12",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:42:00.000Z"
+    },
+    {
+      "id": "checkin-13",
+      "climberId": "climber-13",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:35:00.000Z"
+    },
+    {
+      "id": "checkin-14",
+      "climberId": "climber-14",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:32:00.000Z"
+    },
+    {
+      "id": "checkin-15",
+      "climberId": "climber-15",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:30:00.000Z"
+    },
+    {
+      "id": "checkin-16",
+      "climberId": "climber-16",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:25:00.000Z"
+    },
+    {
+      "id": "checkin-17",
+      "climberId": "climber-17",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:21:00.000Z"
+    },
+    {
+      "id": "checkin-18",
+      "climberId": "climber-18",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:16:00.000Z"
+    },
+    {
+      "id": "checkin-19",
+      "climberId": "climber-19",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:10:00.000Z"
+    },
+    {
+      "id": "checkin-20",
+      "climberId": "climber-20",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:06:00.000Z"
+    },
+    {
+      "id": "checkin-21",
+      "climberId": "climber-21",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:02:00.000Z"
+    },
+    {
+      "id": "checkin-22",
+      "climberId": "climber-22",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-09T00:00:00.000Z"
+    },
+    {
+      "id": "checkin-23",
+      "climberId": "climber-23",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:55:00.000Z"
+    },
+    {
+      "id": "checkin-24",
+      "climberId": "climber-24",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:51:00.000Z"
+    },
+    {
+      "id": "checkin-25",
+      "climberId": "climber-25",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:47:00.000Z"
+    },
+    {
+      "id": "checkin-26",
+      "climberId": "climber-26",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:42:00.000Z"
+    },
+    {
+      "id": "checkin-27",
+      "climberId": "climber-27",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:39:00.000Z"
+    },
+    {
+      "id": "checkin-28",
+      "climberId": "climber-28",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:32:00.000Z"
+    },
+    {
+      "id": "checkin-29",
+      "climberId": "climber-29",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T23:04:00.000Z"
+    },
+    {
+      "id": "checkin-30",
+      "climberId": "climber-30",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T22:48:00.000Z"
+    },
+    {
+      "id": "checkin-31",
+      "climberId": "climber-31",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T22:19:00.000Z"
+    },
+    {
+      "id": "checkin-32",
+      "climberId": "climber-32",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T21:53:00.000Z"
+    },
+    {
+      "id": "checkin-33",
+      "climberId": "climber-33",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T21:40:00.000Z"
+    },
+    {
+      "id": "checkin-34",
+      "climberId": "climber-34",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T21:25:00.000Z"
+    },
+    {
+      "id": "checkin-35",
+      "climberId": "climber-35",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T20:56:00.000Z"
+    },
+    {
+      "id": "checkin-36",
+      "climberId": "climber-36",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T20:24:00.000Z"
+    },
+    {
+      "id": "checkin-37",
+      "climberId": "climber-37",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T20:07:00.000Z"
+    },
+    {
+      "id": "checkin-38",
+      "climberId": "climber-38",
+      "gymId": "demo-gym",
+      "timestamp": "2026-10-08T19:46:00.000Z"
+    }
+  ]
+}
