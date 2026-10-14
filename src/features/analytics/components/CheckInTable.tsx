@@ -13,6 +13,7 @@ import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fuzzyScore } from "@/lib/fuzzy";
 import type { WaiverStatus } from "../types";
@@ -20,6 +21,8 @@ import type { WaiverStatus } from "../types";
 // One row, already formatted on the server (dates don't cross the boundary).
 export type CheckInRow = {
   id: string;
+  // Opens the climber on the front desk.
+  href?: string;
   name: string;
   phone: string;
   checkedInAt: number;
@@ -174,7 +177,15 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
           <TableBody>
             {visible.map((row) => (
               <TableRow key={row.id} hover>
-                <TableCell>{row.name}</TableCell>
+                <TableCell>
+                  {row.href ? (
+                    <Link href={row.href} className="hover:underline">
+                      {row.name}
+                    </Link>
+                  ) : (
+                    row.name
+                  )}
+                </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{row.timeLabel}</TableCell>
                 <TableCell>
                   <Chip

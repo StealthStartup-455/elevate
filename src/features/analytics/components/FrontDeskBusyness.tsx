@@ -20,6 +20,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
 
   const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => ({
     id: checkIn.id,
+    href: `/desk/climbers/${checkIn.climber.id}`,
     name: `${checkIn.climber.firstName} ${checkIn.climber.lastName}`,
     phone: checkIn.climber.phone,
     checkedInAt: checkIn.timestamp.getTime(),

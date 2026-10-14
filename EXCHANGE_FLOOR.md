@@ -32,6 +32,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
+| 2026-10-13 | @agamkamran02 | Claude Code | `feature/34-account-creation-front-desk` | `src/features/climbers/*`, `src/app/desk/climbers/*` | In review (stacked on #33 branch) |
 
 ## Entry template
 
@@ -99,6 +100,26 @@ Newest first.
   - `mock/*.json` is generated; edit the script or rerun it rather than hand-editing (hand edits are fine but get overwritten on regenerate).
 - **Open follow-ups:** the same follow-ups as the 2026-10-11 entry, plus: replace `getWeeklyBusyness` with a real query; full restyle once the style guide is done.
 - **Verification:** `npm run lint` passed with no warnings; `npm run build` passed (`/desk` and `/me` as partial prerenders). All three scenarios render on `/desk` and `/me` in `next dev` at 390 px and 1440 px (8, 28 and 55 check-ins → Quiet, Moderate, Busy). `npm run mock:busyness` run twice gives byte-identical files.
+### 2026-10-13 00:00 UTC: Front desk account creation and climber list
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#34 / (this PR)
+- **Branch:** `feature/34-account-creation-front-desk` (built on `feature/33-account-creation-customer`)
+- **What the agent did:**
+  - Added `/desk/climbers` (all climbers from the mock data, each selectable), `/desk/climbers/new` and `/desk/climbers/[climberId]` (edit details).
+  - Added a placeholder, disabled "Look at waiver" button on the climber page.
+  - Added `createClimberAtDesk` and `updateClimber` server actions, `queries.ts` and `WaiverBadge`.
+  - Made the desk and member nav wrap on narrow screens.
+  - Merged `dev` (PR #11) and aligned with it: MUI cards, tables and chips (same waiver colours as the check-in table), an "Add climber" button on `/desk`, and check-in table names that open the climber.
+  - Climber mock data is now seeded from the busyness mock (same ids, names, phones, waiver status), so the desk list and the check-in table agree; `getMyMembership` (Jordan, `climber-3`) matches the same person. Dates of birth are generated from the id.
+- **Files touched:** `src/features/climbers/{actions,queries}.ts`, `src/features/climbers/components/WaiverBadge.tsx`, `src/app/desk/**`, `src/app/me/layout.tsx`
+- **Decisions and why:**
+  - Reuses the `ClimberForm` from the #33 branch so customer and desk forms stay identical.
+  - Staff actions carry a `TODO(auth)`; role checks belong in `features/auth` once it exists.
+- **Gotchas:** `/desk/*` redirects to `/login` without a session; the dev auth bypass is in PR #11. A missing climber ID renders not-found content with HTTP 200 because it streams inside Suspense.
+- **Open follow-ups:** persist to the database; wire "Look at waiver" to the waivers feature; guardian-consent question (see #33 entry).
+- **Verification:** see the PR description.
 
 ### 2026-10-13 00:00 UTC: Customer account creation (/join), mock data
 
