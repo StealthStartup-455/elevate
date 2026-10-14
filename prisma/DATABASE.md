@@ -1,79 +1,69 @@
 # Database
 
-Elevate's database holds everything the front desk needs to answer one question: **can this climber come in today?**
-
-**Contents:** [How it works](#how-it-works) · [The tables](#the-tables) · [One gym, one set of data](#one-gym-one-set-of-data) · [Checking someone in](#checking-someone-in) · [Table reference](#table-reference) · [Code example](#code-example) · [Working with the database](#working-with-the-database)
+All of this exists so the front desk can answer one thing fast: **can this person climb today?**
 
 ## How it works
 
-```
-schema.prisma ──▶ migrations/ ──▶ Postgres ◀── server code
- (you edit)         (SQL)        (the data)   (src/lib/db.ts)
-```
+You only ever edit `schema.prisma`. Run `npm run db:migrate` and Prisma writes the change as SQL into `migrations/` and applies it to your local Postgres (Supabase, running in Docker). Commit the migration with the schema change so everyone else gets the same tables.
 
-| Part | Where | What it does |
-|---|---|---|
-| **Schema** | `prisma/schema.prisma` | Describes the tables. The only file you edit to change the database. |
-| **Migrations** | `prisma/migrations/` | The SQL Prisma writes from the schema when you run `npm run db:migrate`. Everyone runs the same ones, so everyone has the same database. |
-| **Database** | Postgres, run by Supabase in Docker | Stores the data on your computer. |
-| **Client** | `src/lib/db.ts` | Server code reads and writes through `db`. Pages and components never touch the database directly. |
+Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query the database directly.
 
 ## The tables
 
 | Table | One row is | Example |
 |---|---|---|
-| `Gym` | A climbing gym | Granite Peak |
-| `Staff` | A person who works at a gym | Sam, front desk |
-| `Climber` | A customer of a gym | Kim Lee, age 12 |
-| `Pass` | Something that lets a climber in | 10-visit punch card, 7 left |
-| `Waiver` | A signed waiver | Version `v2`, signed by Kim's parent |
-| `CheckIn` | One visit | Kim, 4:12 pm, QR scan |
+| `Gym` | A gym | BoulderHouse Victoria |
+| `Staff` | Someone who works the desk | Sam, closing shift |
+| `Climber` | A customer | Kim Lee, 12, youth team |
+| `Pass` | Whatever gets them in | 10-punch card, 7 left |
+| `Waiver` | One signed waiver | `v2`, signed by Kim's dad |
+| `CheckIn` | One visit | Kim, 4:12 pm, scanned QR |
 
-```
+```text
 Gym
  ├── Staff
  └── Climber
       ├── Pass
       ├── Waiver
-      └── CheckIn ── Staff (who checked them in, optional)
+      └── CheckIn ── Staff
 ```
 
-A gym has staff and climbers. A climber has passes, waivers and check-ins. Staff are optional on a check-in (climbers can check themselves in) and on a climber (climbers can sign up online).
+### Intentional design choices
 
-A few things to know:
+- Phone and email are not unique. Families often share one, so a phone search can return several climbers. One login can also manage several climbers.
+- Prices are not stored. Payments happen in the gym's own POS; a `Pass` only records what the climber has.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row.
 
-- **Families can share** a phone number or email, so neither is unique. One parent's login can manage several kids.
-- **Prices aren't stored.** The gym takes payment in its own system. A `Pass` only records what the climber has.
-- **Nothing is deleted.** Staff who leave are set to `active = false`. Waivers are legal records, so a new signature is always a new row.
+## Gym isolation
 
-## One gym, one set of data
+All gyms share the same tables. The `gymId` column on every table except `Gym` is what separates them.
 
-Every table except `Gym` has a `gymId`, and the database won't let a row from one gym point at a row from another.
+**Filter every query by `gymId`, and take it from the logged-in staff member, not from the URL or form input.** Otherwise one gym can read another gym's members.
 
-That works because rows link to a climber or staff member using two columns together: the id **and** the `gymId`. A check-in at Gym B that points at a Gym A climber doesn't match anyone, so Postgres rejects it:
+The database blocks cross-gym writes. Rows reference a climber or staff member by `id` and `gymId` together, so a check-in can't point at another gym's climber:
 
-```
+```text
 ERROR: insert or update on table "CheckIn" violates foreign key constraint "CheckIn_climberId_gymId_fkey"
 ```
 
-The database also makes sure that:
+It does not protect reads. A query without a `gymId` filter returns every gym's data.
 
-- every gym's `slug` (used in `/join/granite-peak`) is unique
-- one login can be staff at a gym only once
-- a climber with passes, waivers or visits can't be deleted
-- nobody can read the tables through Supabase's public API (Row Level Security is on for every table)
+## Database constraints
 
-Everything else is checked in app code. **Always filter queries by `gymId`, and take it from the logged-in staff member, never from the URL or a form.**
+- Gym slugs are unique. The slug is used in the sign-up link: `/join/boulderhouse-victoria`.
+- A login can be staff at a gym only once.
+- A climber with passes, waivers or check-ins cannot be deleted.
+- Row Level Security is enabled on every table, so Supabase's public API cannot read them.
 
 ## Checking someone in
 
-1. **Find the climber** by QR code, phone or name, only within this gym.
-2. **Check the waiver.** They need a `Waiver` whose `version` matches the gym's `waiverVersion`. If the gym has none set, any signed waiver counts.
-3. **Check the pass.** They need a `Pass` that has started, hasn't expired, and has visits left if it's a punch card.
-4. **Use a punch** if it's a punch card.
-5. **Save a `CheckIn`.** Only allowed visits are saved.
+1. Find them by QR, phone or name, within this gym only.
+2. Waiver: they need one whose `version` matches the gym's `waiverVersion`. If the gym hasn't set one, any signed waiver is fine.
+3. Pass: started, not expired, and visits left if it's a punch card.
+4. Punch card? Take a punch.
+5. Save the `CheckIn`. Turned-away visits aren't saved.
 
-The busyness page counts check-ins from the last 120 minutes.
+Busyness counts check-ins from the last 120 minutes.
 
 ## Table reference
 
@@ -84,7 +74,7 @@ Every table has an `id` (a UUID made by Prisma). Most also have `createdAt` and 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | `name` | text | yes | |
-| `slug` | text | yes, unique | Used in the sign-up link: `/join/granite-peak` |
+| `slug` | text | yes, unique | Used in the sign-up link: `/join/boulderhouse-victoria` |
 | `timeZone` | text | yes | Default `America/Vancouver` |
 | `system` | `GymSystem` | yes | Where passes and waivers really live: `ELEVATE` (default), `REDPOINT`, `ROCK_GYM_PRO` |
 | `waiverVersion` | text | no | The waiver version climbers must have signed. Empty means any signed waiver counts |
