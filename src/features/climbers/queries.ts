@@ -133,10 +133,55 @@ export async function getCheckInClimbers(): Promise<Map<string, CheckInClimber>>
   for (const row of rows) {
     // Seeded busyness climbers keep the mock's id (climber-12) as externalId.
     if (!row.externalId?.startsWith("climber-")) continue;
-    map.set(row.externalId, {
+    const value = {
       id: row.id,
       waiverStatus: summarizeWaiver(row.waivers[0], gym.waiverVersion, now).status,
-    });
+    };
+    map.set(row.externalId, value);
+    // Check-ins saved by the desk refer to the climber by database id.
+    map.set(row.id, value);
   }
   return map;
+}
+
+// Visits saved in the CheckIn table inside the active window, newest first.
+// Only front desk check-ins are saved so far (see checkInClimber).
+export async function getSavedCheckIns(since: Date): Promise<
+  {
+    id: string;
+    climberId: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    timestamp: Date;
+    waiverStatus: WaiverStatus;
+  }[]
+> {
+  await connection();
+  const gym = await getGym();
+  const now = new Date();
+  const rows = await db.checkIn.findMany({
+    where: { gymId: gym.id, checkedInAt: { gt: since } },
+    orderBy: { checkedInAt: "desc" },
+    include: {
+      climber: {
+        include: {
+          waivers: {
+            orderBy: { signedAt: "desc" },
+            take: 1,
+            select: { signedAt: true, version: true },
+          },
+        },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    climberId: r.climberId,
+    firstName: r.climber.firstName,
+    lastName: r.climber.lastName,
+    phone: r.climber.phone ? formatPhone(r.climber.phone) : "",
+    timestamp: r.checkedInAt,
+    waiverStatus: summarizeWaiver(r.climber.waivers[0], gym.waiverVersion, now).status,
+  }));
 }

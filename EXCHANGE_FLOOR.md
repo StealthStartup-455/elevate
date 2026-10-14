@@ -60,6 +60,22 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-15 00:30 UTC: Manual check in dialog on the front desk
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 / no PR yet
+- **Branch:** `feature/42-connect-frontend-and-backend`
+- **What the agent did:**
+  - Added a "Manual check in" button next to "Add climber" on `/desk`. It opens a dialog with fuzzy search (same matcher as the climbers list), a list of matches, and a view of the selected climber's membership and waiver with a "Manually check in" button.
+  - New server action `checkInClimber` saves a `CheckIn` row (`FRONT_DESK`). It refuses a waiver that is not valid, a membership that is not active, and a repeat within 2 hours.
+  - The desk list and busyness count now include saved check-ins on top of the JSON mock.
+- **Files touched:** `src/features/climbers/components/ManualCheckIn.tsx`, `ManualCheckInButton.tsx`, `actions.ts`, `queries.ts`, `src/features/analytics/queries.ts`, `src/app/desk/page.tsx`
+- **Decisions and why:** Saved check-ins use the real clock, not the mock's fixed one, so they are cut off by the real 2 hour window and merged in newest first. The check rules follow `prisma/DATABASE.md` ("Checking someone in"); there is no staff override yet.
+- **Gotchas:** This overlaps with `feature/36-check-in-front-desk` (Tyler). Whoever merges second should reconcile on `CheckIn` writes. `staffId` is not set until auth exists.
+- **Open follow-ups:** Staff override for a missing waiver; punch card visits; set `staffId`; QR check in.
+- **Verification:** `npx tsc --noEmit` and `npx eslint src` clean. Browser: fuzzy "tylr" finds Tyler Le, check in succeeds and the count goes 28 to 29, a demo account with a missing waiver is blocked, a repeat is refused.
+
 ### 2026-10-14 23:50 UTC: Connect the climbers and login screens to the database
 
 - **Developer:** @agamkamran02

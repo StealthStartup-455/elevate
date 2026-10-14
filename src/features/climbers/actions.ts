@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { setSession } from "@/features/auth/session";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
+import { getClimber } from "./queries";
 import { toStoredPhone } from "./phone";
 import type { ClimberInput, FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
@@ -129,5 +130,44 @@ export async function signWaiver(
     },
   });
   refreshClimberPages(climberId);
+  return { ok: true };
+}
+
+// Front desk "manual check in" (the desk dialog). Follows the rules in
+// prisma/DATABASE.md: a current waiver and an active membership. Turned-away
+// visits are not saved. Saves a CheckIn row, so the desk list and the busyness
+// count pick it up.
+export async function checkInClimber(
+  climberId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  // TODO(auth): staff only; set staffId from the logged-in staff member.
+  if (!UUID.test(climberId)) return { ok: false, message: "Climber not found." };
+
+  const climber = await getClimber(climberId);
+  if (!climber) return { ok: false, message: "Climber not found." };
+  if (climber.waiverStatus !== "valid") {
+    return { ok: false, message: "Waiver is not valid. Sign a waiver first." };
+  }
+  if (climber.membershipStatus !== "active") {
+    return { ok: false, message: "No active membership." };
+  }
+
+  const gym = await getGym();
+  // The same visit isn't saved twice: busyness counts a climber for two hours.
+  const recent = await db.checkIn.findFirst({
+    where: {
+      gymId: gym.id,
+      climberId,
+      checkedInAt: { gt: new Date(Date.now() - 120 * 60 * 1000) },
+    },
+    select: { id: true },
+  });
+  if (recent) return { ok: false, message: "Already checked in in the last 2 hours." };
+
+  await db.checkIn.create({
+    data: { gymId: gym.id, climberId, method: "FRONT_DESK" },
+  });
+  revalidatePath("/desk");
+  revalidatePath("/me");
   return { ok: true };
 }
