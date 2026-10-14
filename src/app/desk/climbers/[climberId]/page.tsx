@@ -18,7 +18,7 @@ export default function ClimberPage({
   params,
 }: PageProps<"/desk/climbers/[climberId]">) {
   return (
-    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 sm:gap-6">
+    <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start">
         <LinkButton href="/desk/climbers" variant="text">
           ← Climbers
@@ -40,11 +40,11 @@ async function ClimberDetails({
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+      <CardContent>
         <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
           {climber.firstName} {climber.lastName}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           Username{" "}
           <Box
             component="span"
@@ -59,9 +59,9 @@ async function ClimberDetails({
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
-            gap: 1.5,
-            mt: 1.5,
-            mb: 2.5,
+            gap: 3,
+            mt: 3,
+            mb: 5,
           }}
         >
           <Typography variant="body2" color="text.secondary">
@@ -81,7 +81,7 @@ async function ClimberDetails({
         </Box>
 
         {climber.waiverStatus !== "valid" ? (
-          <Box sx={{ mb: 2.5 }}>
+          <Box sx={{ mb: 5 }}>
             <WaiverStep climberId={climber.id} />
           </Box>
         ) : null}

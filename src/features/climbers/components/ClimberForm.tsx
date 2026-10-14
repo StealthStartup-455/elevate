@@ -39,7 +39,7 @@ export default function ClimberForm({
 
   if (hideOnSuccess && state.status === "success") {
     return (
-      <Stack spacing={2}>
+      <Stack spacing={4}>
         <Alert severity="success">{state.message}</Alert>
         {state.climberId ? (
           <WaiverStep climberId={state.climberId} nextHref="/me" />
@@ -53,8 +53,8 @@ export default function ClimberForm({
 
   return (
     <Box component="form" action={formAction} noValidate>
-      <Stack spacing={2}>
-        <Stack spacing={2} direction={{ xs: "column", sm: "row" }}>
+      <Stack spacing={4}>
+        <Stack spacing={4} direction={{ xs: "column", sm: "row" }}>
           <TextField
             name="firstName"
             label="First name"

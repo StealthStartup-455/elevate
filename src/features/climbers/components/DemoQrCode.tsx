@@ -26,6 +26,7 @@ function Finder({ x, y }: { x: number; y: number }) {
   return (
     <>
       <rect x={x} y={y} width={7} height={7} />
+      {/* eslint-disable-next-line no-restricted-syntax -- QR codes stay dark on white in both themes so scanners can read them */}
       <rect x={x + 1} y={y + 1} width={5} height={5} fill="#fff" />
       <rect x={x + 2} y={y + 2} width={3} height={3} />
     </>
@@ -50,8 +51,10 @@ export default function DemoQrCode({ value, size = 104 }: { value: string; size?
       role="img"
       aria-label={`Demo check-in code for ${value}`}
       shapeRendering="crispEdges"
+      // eslint-disable-next-line no-restricted-syntax -- always white, like a printed code
       style={{ background: "#fff", borderRadius: 6 }}
     >
+      {/* eslint-disable-next-line no-restricted-syntax -- always dark, like a printed code */}
       <g fill="#111">
         <Finder x={0} y={0} />
         <Finder x={SIZE - 7} y={0} />

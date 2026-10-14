@@ -1,3 +1,4 @@
+import Typography from "@mui/material/Typography";
 import { Suspense } from "react";
 import FrontDeskBusyness from "@/features/analytics/components/FrontDeskBusyness";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
@@ -7,7 +8,7 @@ export default function DeskPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Front desk</h1>
+        <Typography variant="pageTitle">Front desk</Typography>
         <LinkButton href="/desk/climbers/new">Add climber</LinkButton>
       </div>
       <Suspense fallback={<p>Loading busyness...</p>}>

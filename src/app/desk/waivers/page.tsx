@@ -1,3 +1,5 @@
+import Typography from "@mui/material/Typography";
+
 export default function WaiversPage() {
-  return <h1 className="text-2xl font-semibold">Waivers</h1>;
+  return <Typography variant="pageTitle">Waivers</Typography>;
 }
