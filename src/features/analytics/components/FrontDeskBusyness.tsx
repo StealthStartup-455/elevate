@@ -11,7 +11,7 @@ import AutoRefresh from "./AutoRefresh";
 import BusynessHeatMap from "./BusynessHeatMap";
 import BusynessLevelChip from "./BusynessLevelChip";
 import CheckInTable, { type CheckInRow } from "./CheckInTable";
-import { formatTime } from "./format";
+import { formatDateTime, formatTime } from "./format";
 
 // Front desk busyness: headline count, level, typical week and who
 // checked in (#38). Side by side on wide screens, stacked on narrow ones.
@@ -30,7 +30,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
       name: `${checkIn.climber.firstName} ${checkIn.climber.lastName}`,
       phone: checkIn.climber.phone,
       checkedInAt: checkIn.timestamp.getTime(),
-      timeLabel: formatTime(checkIn.timestamp, timeZone),
+      timeLabel: formatDateTime(checkIn.timestamp, timeZone),
       waiverStatus: climber?.waiverStatus ?? checkIn.climber.waiverStatus,
     };
   });
