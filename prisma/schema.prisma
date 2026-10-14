@@ -1,4 +1,12 @@
-// Every table needs a gymId.
+// Elevate database. Six tables.
+//
+// Rules every table follows:
+// - Every table except Gym has a gymId, so each gym only sees its own rows.
+// - Child rows link to Climber and Staff by (id, gymId) together, so the
+//   database refuses a check-in that points at another gym's climber.
+// - Nothing is deleted. Staff are switched off with `active`.
+// - Row Level Security is turned on for every table in the first migration,
+//   so Supabase's public API can't read them. Prisma is not affected.
 
 generator client {
   provider = "prisma-client"
@@ -7,4 +15,157 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// One climbing gym location.
+model Gym {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique // used in the sign-up link: /join/<slug>
+  timeZone      String    @default("America/Vancouver")
+  system        GymSystem @default(ELEVATE) // where passes and waivers really live
+  waiverVersion String? // the waiver wording climbers must have signed; empty means any signed waiver counts
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  staff    Staff[]
+  climbers Climber[]
+  passes   Pass[]
+  waivers  Waiver[]
+  checkIns CheckIn[]
+}
+
+// Someone who works at the gym and logs in to the desk app.
+// Their email lives on their Supabase login, so it isn't stored twice here.
+model Staff {
+  id         String    @id @default(uuid())
+  gymId      String
+  authUserId String // their Supabase login
+  name       String
+  role       StaffRole @default(DESK)
+  active     Boolean   @default(true) // switch off when someone leaves
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  gym             Gym       @relation(fields: [gymId], references: [id])
+  climbersCreated Climber[]
+  checkIns        CheckIn[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, authUserId])
+}
+
+// A customer. Families can share one phone or email, so neither is unique.
+model Climber {
+  id               String   @id @default(uuid())
+  gymId            String
+  firstName        String
+  lastName         String
+  email            String? // saved lowercased
+  phone            String? // saved like +12505551234
+  dateOfBirth      DateTime @db.Date
+  authUserId       String? // the login that manages this climber; one parent login can manage several kids
+  createdByStaffId String? // empty means they signed themselves up
+  externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  gym            Gym       @relation(fields: [gymId], references: [id])
+  createdByStaff Staff?    @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
+  passes         Pass[]
+  waivers        Waiver[]
+  checkIns       CheckIn[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, externalId])
+  @@index([gymId, phone])
+  @@index([gymId, email])
+  @@index([gymId, lastName])
+  @@index([authUserId])
+}
+
+// Anything that lets a climber in: a day pass, a punch card or a membership.
+// Prices and billing stay in the gym's own system.
+model Pass {
+  id         String    @id @default(uuid())
+  gymId      String
+  climberId  String
+  kind       PassKind
+  startsAt   DateTime
+  expiresAt  DateTime? // empty means no end date
+  visitsLeft Int? // punch cards only
+  externalId String?
+  createdAt  DateTime  @default(now())
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@unique([gymId, externalId])
+  @@index([gymId, climberId, expiresAt])
+}
+
+// One signed waiver. Every version is kept, because it's a legal record.
+// For a minor, the parent or guardian is the one who signs.
+model Waiver {
+  id             String         @id @default(uuid())
+  gymId          String
+  climberId      String
+  version        String // which wording they agreed to
+  signedAt       DateTime       @default(now())
+  signedByName   String
+  signerRelation SignerRelation @default(SELF)
+  externalId     String?
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@unique([gymId, externalId])
+  @@index([gymId, climberId])
+}
+
+// One visit. Only visits that were allowed are saved.
+model CheckIn {
+  id          String        @id @default(uuid())
+  gymId       String
+  climberId   String
+  checkedInAt DateTime      @default(now())
+  method      CheckInMethod
+  staffId     String? // filled when staff checked them in
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  staff   Staff?  @relation(fields: [staffId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@index([gymId, checkedInAt]) // busyness
+  @@index([climberId, checkedInAt]) // a climber's history
+}
+
+enum GymSystem {
+  ELEVATE
+  REDPOINT
+  ROCK_GYM_PRO
+}
+
+enum StaffRole {
+  DESK
+  MANAGER
+  OWNER
+}
+
+enum PassKind {
+  DAY
+  PUNCH
+  MEMBERSHIP
+}
+
+enum SignerRelation {
+  SELF
+  PARENT
+  GUARDIAN
+}
+
+enum CheckInMethod {
+  SELF
+  FRONT_DESK
+  QR
 }

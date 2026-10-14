@@ -46,6 +46,8 @@ Open http://localhost:3000.
 | `npm run db:seed` | Load sample data from `prisma/seed.ts` |
 | `npm run db:studio` | Browse the database in the browser |
 
+How the database works, its tables and how to change them: [`prisma/DATABASE.md`](prisma/DATABASE.md).
+
 ## Project structure
 
 ```
