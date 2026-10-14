@@ -1,7 +1,9 @@
 import type { ClimberInput, FieldErrors } from "./types";
 
 const MAX_NAME_LENGTH = 60;
+const MAX_EMAIL_LENGTH = 254;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function field(formData: FormData, name: keyof ClimberInput): string {
   const value = formData.get(name);
@@ -29,6 +31,7 @@ export function parseClimberInput(
     firstName: field(formData, "firstName"),
     lastName: field(formData, "lastName"),
     phone: field(formData, "phone"),
+    email: field(formData, "email").toLowerCase(),
     dateOfBirth: field(formData, "dateOfBirth"),
   };
 
@@ -45,6 +48,10 @@ export function parseClimberInput(
   if (!values.phone) errors.phone = "Enter a phone number.";
   else if (digits.length < 10 || digits.length > 15)
     errors.phone = "Enter a valid phone number, including area code.";
+
+  // Optional: staff can add a climber who has no email.
+  if (values.email && (values.email.length > MAX_EMAIL_LENGTH || !EMAIL.test(values.email)))
+    errors.email = "Enter a valid email address, or leave it empty.";
 
   if (!values.dateOfBirth) errors.dateOfBirth = "Enter a date of birth.";
   else if (!isRealPastDate(values.dateOfBirth, now))

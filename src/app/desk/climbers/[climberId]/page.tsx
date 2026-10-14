@@ -11,7 +11,6 @@ import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
 import { formatDate } from "@/features/climbers/format";
-import { usernameFor } from "@/features/auth/mock-users";
 import { getClimber } from "@/features/climbers/queries";
 
 export default function ClimberPage({
@@ -50,7 +49,7 @@ async function ClimberDetails({
             component="span"
             sx={{ fontFamily: "var(--font-geist-mono)", color: "text.primary" }}
           >
-            {usernameFor(climber)}
+            {climber.username}
           </Box>
         </Typography>
 
@@ -94,6 +93,7 @@ async function ClimberDetails({
             firstName: climber.firstName,
             lastName: climber.lastName,
             phone: climber.phone,
+            email: climber.email,
             dateOfBirth: climber.dateOfBirth,
           }}
           submitLabel="Save changes"

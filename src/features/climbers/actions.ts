@@ -1,17 +1,20 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { MOCK_USER_COOKIE } from "@/features/auth/mock-users";
-import { addMockClimber, climberStore } from "./mock-data";
-import type { FormState } from "./types";
+import { setSession } from "@/features/auth/session";
+import { db } from "@/lib/db";
+import { getGym } from "@/lib/gym";
+import { toStoredPhone } from "./phone";
+import type { ClimberInput, FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
 // TODO(auth): createClimberAtDesk and updateClimber are staff-only, and
 // signWaiver must only accept the caller's own id (or staff). Check the
 // caller's role here once features/auth exists; a page guard is not enough.
 // joinAsCustomer is intentionally public: it only creates a new record.
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function invalid(
   parsed: Extract<ParsedClimberInput, { ok: false }>,
@@ -31,6 +34,18 @@ function refreshClimberPages(climberId?: string) {
   if (climberId) revalidatePath(`/desk/climbers/${climberId}`);
 }
 
+// The columns for the fields the form edits. Waiver and membership are not
+// part of the form, so a new climber has neither until they sign / buy.
+function toColumns(input: ClimberInput) {
+  return {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    phone: toStoredPhone(input.phone),
+    email: input.email || null,
+    dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00Z`),
+  };
+}
+
 // /join: a new customer registers themselves.
 export async function joinAsCustomer(
   _prev: FormState,
@@ -39,15 +54,13 @@ export async function joinAsCustomer(
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed);
 
-  const climber = addMockClimber(parsed.value);
+  const gym = await getGym();
+  const climber = await db.climber.create({
+    data: { gymId: gym.id, ...toColumns(parsed.value) },
+    select: { id: true },
+  });
   // Demo only: "sign in" as the new climber so /me shows their account.
-  if (process.env.NODE_ENV !== "production") {
-    (await cookies()).set(MOCK_USER_COOKIE, climber.id, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
+  await setSession(climber.id);
   refreshClimberPages();
   return {
     status: "success",
@@ -64,7 +77,9 @@ export async function createClimberAtDesk(
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed);
 
-  addMockClimber(parsed.value);
+  const gym = await getGym();
+  // TODO(auth): set createdByStaffId from the logged-in staff member.
+  await db.climber.create({ data: { gymId: gym.id, ...toColumns(parsed.value) } });
   refreshClimberPages();
   redirect("/desk/climbers");
 }
@@ -77,29 +92,42 @@ export async function updateClimber(
 ): Promise<FormState> {
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed);
+  if (!UUID.test(climberId)) return { status: "error", message: "Climber not found." };
 
-  const climber = climberStore().find((c) => c.id === climberId);
-  if (!climber) return { status: "error", message: "Climber not found." };
+  const gym = await getGym();
+  const { count } = await db.climber.updateMany({
+    where: { id: climberId, gymId: gym.id },
+    data: toColumns(parsed.value),
+  });
+  if (count === 0) return { status: "error", message: "Climber not found." };
 
-  Object.assign(climber, parsed.value);
   refreshClimberPages(climberId);
   return { status: "success", message: "Saved." };
 }
 
-// Marks the climber's waiver as signed today, valid for a year. The signing
-// itself is a placeholder until the waivers feature exists.
+// Records a signed waiver for the climber, valid for a year. The signing
+// itself is a placeholder until the waivers feature exists: it saves a new
+// Waiver row (old ones are kept, they are legal records).
 export async function signWaiver(
   climberId: string,
 ): Promise<{ ok: boolean; message?: string }> {
-  const climber = climberStore().find((c) => c.id === climberId);
+  if (!UUID.test(climberId)) return { ok: false, message: "Climber not found." };
+
+  const gym = await getGym();
+  const climber = await db.climber.findFirst({
+    where: { id: climberId, gymId: gym.id },
+    select: { firstName: true, lastName: true },
+  });
   if (!climber) return { ok: false, message: "Climber not found." };
 
-  const now = new Date();
-  const expires = new Date(
-    Date.UTC(now.getUTCFullYear() + 1, now.getUTCMonth(), now.getUTCDate()),
-  );
-  climber.waiverStatus = "valid";
-  climber.waiverExpiresOn = expires.toISOString().slice(0, 10);
+  await db.waiver.create({
+    data: {
+      gymId: gym.id,
+      climberId,
+      version: gym.waiverVersion ?? "v1",
+      signedByName: `${climber.firstName} ${climber.lastName}`,
+    },
+  });
   refreshClimberPages(climberId);
   return { ok: true };
 }

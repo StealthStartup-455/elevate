@@ -35,6 +35,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/34-account-creation-front-desk` | `src/features/climbers/*`, `src/app/desk/climbers/*` | In review (stacked on #33 branch) |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/41-account-login` | `src/features/auth/*`, `/`, `/login`, `/me`, `src/features/climbers/*` | In review (stacked on #33/#34 branches) |
 | 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
+| 2026-10-14 | @agamkamran02 | Claude Code | `42-connect-frontend-and-backend` | `src/features/climbers/*`, `src/features/auth/*`, `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma` | In review |
 
 ## Entry template
 
@@ -58,6 +59,32 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-14 23:50 UTC: Connect the climbers and login screens to the database
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 / no PR yet
+- **Branch:** `42-connect-frontend-and-backend` (created by @TylerLeHere; the name has no type prefix, so the branch-policy check may reject a PR from it)
+- **What the agent did:**
+  - Replaced the in-memory climber store with Prisma queries and actions on `Climber`, `Waiver` and `Pass`; removed `src/features/climbers/mock-data.ts`.
+  - `prisma/seed.ts` now also seeds the busyness mock climbers, waivers and passes, and one demo account for every waiver x membership state (still in the database, same usernames).
+  - The demo session cookie now lasts 30 days and holds the climber's database id; `/me` with no session redirects to `/`. Desk and `/me` URLs use database ids and survive restarts.
+  - Check-in rows on `/desk` link to the real climber and show the live waiver status.
+  - Added an optional email field to the sign up and desk forms (the schema has `email`).
+- **Files touched:** `src/features/climbers/*` (queries, actions, status, phone, demo-accounts, types, validate), `src/features/auth/*` (session, mock-users, actions), `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma`, new migration `pass_paused_at`, `prisma/DATABASE.md`
+- **Decisions and why:**
+  - Added `Pass.pausedAt` (migration `pass_paused_at`) because the design has paused memberships and the schema had no way to say so. Everything else is derived, see "How the app shows waiver and membership status" in `prisma/DATABASE.md`.
+  - A waiver is valid for one year from `signedAt`; the schema has no expiry column.
+  - `Climber.externalId` holds the busyness mock id (`climber-N`) or the demo username. It is a mock-only use of a column meant for Redpoint / Rock Gym Pro ids.
+  - Check-ins stay on the JSON busyness mock for now; #36 (check-in) owns real `CheckIn` rows.
+- **Gotchas:**
+  - `npm run db:seed` resets the demo gym's climbers, so anyone added in the app is removed.
+  - Existing sessions and bookmarked `climber-N` URLs stop working: ids are now UUIDs.
+  - On Windows, Hyper-V can reserve ports 54245-54344, which breaks Supabase's default 543xx ports. Change them locally in `supabase/config.toml` and `.env` (not committed).
+  - `DEV_AUTH_BYPASS="true"` is still needed to open `/desk` and `/me` locally, because the demo login does not create a Supabase session.
+- **Open follow-ups:** Real auth (Supabase) in place of the demo cookie; set `createdByStaffId` from the logged-in staff member; real `CheckIn` rows (#36); a real waiver signing flow; buying and renewing memberships.
+- **Verification:** `npx eslint .` clean, `npx tsc --noEmit` clean, `npm run build` passed, `npm run db:seed` seeds 89 climbers. Checked in a browser against local Supabase: login, waiver signing on `/me` and `/desk`, session across a new browser context, `/join` new member (no membership, Buy button), desk list and detail, check-in links.
 
 ### 2026-10-14 03:40 UTC: Database guide (prisma/DATABASE.md)
 
