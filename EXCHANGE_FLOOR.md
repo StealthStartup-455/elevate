@@ -59,6 +59,21 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-14 21:17 UTC: GitHub Pages product page
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Added a responsive, standalone product page in `docs/` with use cases, real app screenshots, product status and privacy notes, pricing transparency, FAQs and GitHub calls to action.
+  - Added a GitHub Pages workflow that deploys `docs/` from `dev`, and documented the one-time Pages setup.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/*.png`, `.github/workflows/deploy-pages.yml`, `README.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept the marketing site static and separate from the authenticated Next.js app so GitHub Pages can serve it directly. Screenshots are from the running app with fictional demo data; no customer testimonials or prices were invented.
+- **Gotchas:** GitHub Pages must be enabled with **Settings → Pages → GitHub Actions** before the deployment workflow can publish.
+- **Open follow-ups:** Enable the Pages source in repository settings and merge the page to `dev` to deploy it.
+- **Verification:** `npm run lint` passed; `npm run build` passed; static link/asset check passed (5 anchors, 6 local references); Chrome mobile (390px) and desktop (1425px) checks passed with no horizontal overflow or broken images; `git diff --check` passed.
+
 ### 2026-10-14 03:40 UTC: Database guide (prisma/DATABASE.md)
 
 - **Developer:** @TylerLeHere
