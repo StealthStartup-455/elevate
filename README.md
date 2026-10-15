@@ -4,6 +4,13 @@ Management software for climbing gyms: a front desk app for staff and a dashboar
 
 Built with Next.js, Supabase (database and authentication) and Prisma.
 
+## Product page
+
+The static product page for GitHub Pages lives in [`docs/`](docs/). In the repository's
+**Settings → Pages**, set the build and deployment source to **GitHub Actions**. The
+`Deploy product page` workflow publishes changes from `dev` and can also be run
+manually from the Actions tab on `dev`.
+
 ## Getting started
 
 ### Requirements

@@ -29,6 +29,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
+| 2026-10-15 | @ekamgill | Copilot CLI | `feature/24-product-page` | `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md` | Done (local; uncommitted) |
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
@@ -60,6 +61,98 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-15 02:20 UTC: Separate pricing from FAQ section
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Added vertical space below the pricing card so it is visually distinct from the FAQ section.
+- **Files touched:** `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Used section margin rather than changing either section's layout or content.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; Chrome measured a 48px gap between pricing and FAQ at 1425px and 390px viewport widths; page returned HTTP 200.
+
+### 2026-10-15 02:15 UTC: Remove climber photo and pricing placeholder
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the climber photo and its responsive styles.
+  - Removed the “Not set yet.” pricing heading.
+  - Removed the hero tagline badge at the developer's request.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/climber.jpg`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Removed the badge instead of replacing its wording, as requested.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; no pricing placeholder, climber-photo, or hero badge references remain.
+
+### 2026-10-15 02:05 UTC: Replace hero climber illustration with photo
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the hero screenshot caption and replaced the custom climber illustration with a cropped climber photo overlapping the screenshot.
+  - Replaced “Built for the whole gym” with “One place for staff & members.”
+  - Adjusted the photo and sticker at mobile/tablet breakpoints.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/climber.jpg`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Use a real climbing photo rather than abstract shapes; keep the badge short and explicitly about staff and members.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; local page and climber asset returned HTTP 200; Chrome previews checked at 1425px and 390px; mobile DOM reported 390px document width with no horizontal page overflow.
+
+### 2026-10-15 01:55 UTC: Refine screenshot labels and climber illustration
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the staff/member number labels above the product screenshots.
+  - Moved the climber illustration fully below the hero screenshot and refined its limbs, joints, and pose.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept the illustration as a small inline SVG, with connected, articulated limbs; screenshot content remains unobstructed on desktop and mobile.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** Local page returned HTTP 200; Chrome checks passed at 390px and 1425px with the climber below the screenshot, number labels absent, no horizontal overflow, and no broken images; static links/assets and `git diff --check` passed.
+
+### 2026-10-15 01:44 UTC: Refine product page copy and layout
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Replaced the generic hero headline with product-specific copy for staff and members.
+  - Removed the numbered trust strip and the standalone use-case and trust sections.
+  - Simplified pricing to a compact status, disclosure and contact link; updated the closing CTA to “Help shape a better climbing day.”
+  - Redrew the climber illustration with connected limbs and a cohesive climbing pose.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept concise early-preview and fictional demo-data disclosures so the page does not suggest real customers, available paid plans or production data.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** Local static server returned HTTP 200; Chrome checks passed at 390px and 1425px with no horizontal overflow and no broken images; `git diff --check` passed.
+
+### 2026-10-14 21:17 UTC: GitHub Pages product page
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Added a responsive, standalone product page in `docs/` with use cases, real app screenshots, product status and privacy notes, pricing transparency, FAQs and GitHub calls to action.
+  - Added a GitHub Pages workflow that deploys `docs/` from `dev`, and documented the one-time Pages setup.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/*.png`, `.github/workflows/deploy-pages.yml`, `README.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept the marketing site static and separate from the authenticated Next.js app so GitHub Pages can serve it directly. Screenshots are from the running app with fictional demo data; no customer testimonials or prices were invented.
+- **Gotchas:** GitHub Pages must be enabled with **Settings → Pages → GitHub Actions** before the deployment workflow can publish.
+- **Open follow-ups:** Enable the Pages source in repository settings and merge the page to `dev` to deploy it.
+- **Verification:** `npm run lint` passed; `npm run build` passed; static link/asset check passed (5 anchors, 6 local references); Chrome mobile (390px) and desktop (1425px) checks passed with no horizontal overflow or broken images; `git diff --check` passed.
 ### 2026-10-15 00:30 UTC: Manual check in dialog on the front desk
 
 - **Developer:** @agamkamran02
