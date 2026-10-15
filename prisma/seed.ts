@@ -1,41 +1,211 @@
-// Run with `npm run db:seed`.
+// Run with `npm run db:seed`. Safe to run again: it resets the demo gym's
+// climbers, waivers, passes and check-ins, so climbers added in the app are
+// removed.
+//
+// What it creates:
+// - the demo gym
+// - the team's own climbers (CLIMBERS below)
+// - the climbers the busyness mock check-ins refer to (src/features/analytics/mock),
+//   saved with the mock's id (climber-12) as externalId so the desk can link
+//   a check-in to the real climber
+// - one demo account for every waiver and membership state, which log in with
+//   their username as the password (src/features/climbers/demo-accounts.ts)
 
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { DEFAULT_GYM_SLUG } from "../src/lib/gym";
 import { db } from "../src/lib/db";
+import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
+import { toStoredPhone } from "../src/features/climbers/phone";
+import type {
+  MembershipStatus,
+  WaiverStatus,
+} from "../src/features/climbers/types";
 
-const CLIMBERS = [
-  { firstName: "Tyler", lastName: "Le", phone: "+12505550101", email: "tyler.le@uvic.canada", dateOfBirth: "2003-08-15" },
-  { firstName: "Agam", lastName: "Kamran", phone: "+12505550102", email: "agam.kamran@uvic.canada", dateOfBirth: "2003-04-12" },
-  { firstName: "Ekam", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2002-11-21" },
+type SeedClimber = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+  dateOfBirth: string;
+  externalId?: string;
+  waiver: WaiverStatus;
+  membership: MembershipStatus;
+};
+
+// Same people as before, now with a waiver and membership each so every
+// state shows up on the desk list.
+const CLIMBERS: SeedClimber[] = [
+  { firstName: "Tyler", lastName: "Le", phone: "+12505550101", email: "tyler.le@uvic.canada", dateOfBirth: "2003-08-15", waiver: "valid", membership: "active" },
+  { firstName: "Agam", lastName: "Kamran", phone: "+12505550102", email: "agam.kamran@uvic.canada", dateOfBirth: "2003-04-12", waiver: "valid", membership: "active" },
+  { firstName: "Ekam", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2002-11-21", waiver: "valid", membership: "active" },
   // Same last name + minor sharing parent/guardian's phone and email
-  { firstName: "Nevin", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2015-01-17" },
-  { firstName: "Scott", lastName: "Squires", phone: "+12505550104", email: "scott.squires@uvic.canada", dateOfBirth: "2001-08-30" },
-  { firstName: "Zachary", lastName: "Zhao", phone: "+12505550105", email: "zachary.zhao@uvic.canada", dateOfBirth: "2003-06-02" },
-  { firstName: "Seth", lastName: "Miller", phone: "+12505550106", email: null, dateOfBirth: "2002-12-05" },
-  { firstName: "Khanh", lastName: "Truong", phone: "+12505550107", email: "khanh.truong@uvic.canada", dateOfBirth: "2003-02-28" },
-  { firstName: "Jose", lastName: "Garcia", phone: "+12505550108", email: "jose.garcia@uvic.canada", dateOfBirth: "2001-09-14" },
-  { firstName: "Zack", lastName: "Zhao", phone: "+12505550109", email: "zack.zhao@uvic.canada", dateOfBirth: "2008-07-23" },
+  { firstName: "Nevin", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2015-01-17", waiver: "valid", membership: "none" },
+  { firstName: "Scott", lastName: "Squires", phone: "+12505550104", email: "scott.squires@uvic.canada", dateOfBirth: "2001-08-30", waiver: "valid", membership: "active" },
+  { firstName: "Zachary", lastName: "Zhao", phone: "+12505550105", email: "zachary.zhao@uvic.canada", dateOfBirth: "2003-06-02", waiver: "valid", membership: "active" },
+  { firstName: "Seth", lastName: "Miller", phone: "+12505550106", email: null, dateOfBirth: "2002-12-05", waiver: "missing", membership: "none" },
+  { firstName: "Khanh", lastName: "Truong", phone: "+12505550107", email: "khanh.truong@uvic.canada", dateOfBirth: "2003-02-28", waiver: "valid", membership: "paused" },
+  { firstName: "Jose", lastName: "Garcia", phone: "+12505550108", email: "jose.garcia@uvic.canada", dateOfBirth: "2001-09-14", waiver: "valid", membership: "expired" },
+  { firstName: "Zack", lastName: "Zhao", phone: "+12505550109", email: "zack.zhao@uvic.canada", dateOfBirth: "2008-07-23", waiver: "expired", membership: "active" },
 ];
+
+type BusynessMockClimber = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  waiverStatus: WaiverStatus;
+};
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function numberOf(id: string): number {
+  return Number(id.replace(/\D/g, "")) || 0;
+}
+
+// Made up from the id, so the same climber always gets the same date.
+function dateOfBirthFor(n: number): string {
+  // Every 9th climber is a child, so the under-18 case is visible.
+  const year = n % 9 === 0 ? 2012 + (n % 4) : 1965 + ((n * 7) % 40);
+  return `${year}-${pad(((n * 5) % 12) + 1)}-${pad(((n * 11) % 28) + 1)}`;
+}
+
+// Most are active, every 7th is paused, every 10th expired, so each state of
+// the dashboard can be seen.
+function membershipFor(n: number): MembershipStatus {
+  if (n % 10 === 4) return "expired";
+  if (n % 10 === 7) return "paused";
+  return "active";
+}
+
+// The busyness scenarios share ids; the busiest one has every climber.
+function busynessClimbers(): SeedClimber[] {
+  const dir = join(process.cwd(), "src/features/analytics/mock");
+  const byId = new Map<string, BusynessMockClimber>();
+  for (const scenario of ["quiet", "moderate", "busy"]) {
+    const data = JSON.parse(readFileSync(join(dir, `${scenario}.json`), "utf8"));
+    for (const c of data.climbers as BusynessMockClimber[]) byId.set(c.id, c);
+  }
+  return [...byId.values()].map((c) => {
+    const n = numberOf(c.id);
+    return {
+      firstName: c.firstName,
+      lastName: c.lastName,
+      phone: toStoredPhone(c.phone),
+      email: null,
+      dateOfBirth: dateOfBirthFor(n),
+      externalId: c.id,
+      waiver: c.waiverStatus,
+      membership: membershipFor(n),
+    };
+  });
+}
+
+function demoClimbers(): SeedClimber[] {
+  return DEMO_ACCOUNTS.map((d, i) => ({
+    firstName: "Demo",
+    lastName: `${d.waiverStatus[0].toUpperCase()}${d.waiverStatus.slice(1)}-${d.membershipStatus[0].toUpperCase()}${d.membershipStatus.slice(1)}`,
+    phone: toStoredPhone(`250-555-${9001 + i}`),
+    email: null,
+    dateOfBirth: "1990-06-15",
+    // The username is the login, and how the app tells demo accounts apart.
+    externalId: d.username,
+    waiver: d.waiverStatus,
+    membership: d.membershipStatus,
+  }));
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+function daysFromNow(days: number): Date {
+  return new Date(Date.now() + days * DAY);
+}
+
+// A valid waiver was signed within the last year; an expired one over a year ago.
+function waiversFor(c: SeedClimber, gymId: string, n: number) {
+  if (c.waiver === "missing") return [];
+  const ago = c.waiver === "valid" ? 30 + (n % 200) : 400 + (n % 100);
+  return [
+    {
+      gymId,
+      version: "v1",
+      signedAt: daysFromNow(-ago),
+      signedByName: `${c.firstName} ${c.lastName}`,
+    },
+  ];
+}
+
+// A membership is a Pass of kind MEMBERSHIP that ends on the renewal date.
+function passesFor(c: SeedClimber, gymId: string, n: number) {
+  const base = { gymId, kind: "MEMBERSHIP" as const };
+  switch (c.membership) {
+    case "none":
+      return [];
+    case "active":
+      return [{ ...base, startsAt: daysFromNow(-40), expiresAt: daysFromNow(10 + (n % 20)) }];
+    case "paused":
+      return [
+        {
+          ...base,
+          startsAt: daysFromNow(-60),
+          expiresAt: daysFromNow(20),
+          pausedAt: daysFromNow(-5),
+        },
+      ];
+    case "expired":
+      return [{ ...base, startsAt: daysFromNow(-120), expiresAt: daysFromNow(-(15 + (n % 30))) }];
+  }
+}
 
 async function main() {
   const gym = await db.gym.upsert({
-    where: { slug: "boulderhouse-victoria" },
+    where: { slug: DEFAULT_GYM_SLUG },
     update: { name: "BoulderHouse Climbing Victoria" },
-    create: { name: "BoulderHouse Climbing Victoria", slug: "boulderhouse-victoria" },
+    create: { name: "BoulderHouse Climbing Victoria", slug: DEFAULT_GYM_SLUG },
   });
 
-  await db.$transaction([
-    db.climber.deleteMany({ where: { gymId: gym.id } }),
-    db.climber.createMany({
-      data: CLIMBERS.map((c) => ({
-        ...c,
-        gymId: gym.id,
-        dateOfBirth: new Date(c.dateOfBirth),
-      })),
-    }),
-  ]);
+  const all: SeedClimber[] = [...CLIMBERS, ...busynessClimbers(), ...demoClimbers()];
 
-  console.log(`Seeded ${CLIMBERS.length} climbers into ${gym.name}.`);
+  await db.$transaction(
+    async (tx) => {
+      // Children first: they reference climbers with ON DELETE RESTRICT.
+      await tx.checkIn.deleteMany({ where: { gymId: gym.id } });
+      await tx.waiver.deleteMany({ where: { gymId: gym.id } });
+      await tx.pass.deleteMany({ where: { gymId: gym.id } });
+      await tx.climber.deleteMany({ where: { gymId: gym.id } });
+
+      const waivers = [];
+      const passes = [];
+      for (const [i, c] of all.entries()) {
+        const n = c.externalId ? numberOf(c.externalId) || i + 1 : i + 1;
+        const climber = await tx.climber.create({
+          data: {
+            gymId: gym.id,
+            firstName: c.firstName,
+            lastName: c.lastName,
+            phone: c.phone,
+            email: c.email,
+            dateOfBirth: new Date(`${c.dateOfBirth}T00:00:00Z`),
+            externalId: c.externalId ?? null,
+          },
+          select: { id: true },
+        });
+        for (const w of waiversFor(c, gym.id, n)) waivers.push({ ...w, climberId: climber.id });
+        for (const p of passesFor(c, gym.id, n)) passes.push({ ...p, climberId: climber.id });
+      }
+      await tx.waiver.createMany({ data: waivers });
+      await tx.pass.createMany({ data: passes });
+    },
+    { timeout: 60_000 },
+  );
+
+  console.log(
+    `Seeded ${all.length} climbers into ${gym.name} ` +
+      `(${CLIMBERS.length} team, ${all.length - CLIMBERS.length - DEMO_ACCOUNTS.length} busyness, ${DEMO_ACCOUNTS.length} demo).`,
+  );
 }
 
 main()

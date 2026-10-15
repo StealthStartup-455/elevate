@@ -94,6 +94,7 @@ model Pass {
   startsAt   DateTime
   expiresAt  DateTime? // empty means no end date
   visitsLeft Int? // punch cards only
+  pausedAt   DateTime? // memberships only: set while the membership is on hold
   externalId String?
   createdAt  DateTime  @default(now())
 

@@ -5,24 +5,33 @@ export type { WaiverStatus };
 // "none" is a climber who has never bought a membership (every new account).
 export type MembershipStatus = "none" | "active" | "paused" | "expired";
 
+// A climber as the screens use it. Built from the Climber, Waiver and Pass
+// tables in queries.ts.
 export type Climber = {
+  /** The database id (a UUID). Stable, so URLs built from it keep working. */
   id: string;
   firstName: string;
   lastName: string;
+  /** Shown like 250-555-0101. */
   phone: string;
+  /** Empty when none was given. */
+  email: string;
   /** ISO calendar date, YYYY-MM-DD. */
   dateOfBirth: string;
+  /** What they type to log in (demo login only). */
+  username: string;
   waiverStatus: WaiverStatus;
   /** ISO date the current waiver runs out (or ran out). Unset when never signed. */
   waiverExpiresOn?: string;
-  /** Mock only: pins the membership state. Otherwise it is derived from the id. */
-  membershipStatus?: MembershipStatus;
+  membershipStatus: MembershipStatus;
+  /** ISO date the membership renews, or ended. Unset when there is none. */
+  membershipRenewsOn?: string;
 };
 
 // The fields a customer or staff member enters.
 export type ClimberInput = Pick<
   Climber,
-  "firstName" | "lastName" | "phone" | "dateOfBirth"
+  "firstName" | "lastName" | "phone" | "email" | "dateOfBirth"
 >;
 
 export type FieldErrors = Partial<Record<keyof ClimberInput, string>>;
