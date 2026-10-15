@@ -28,7 +28,10 @@ const digits = (s: string) => s.replace(/\D/g, "");
 
 // Match quality, 0 for no match. Number-only words match the phone, the rest
 // fuzzy match the name (same rules as the check-in table).
-function searchScore(row: ClimberRow, query: string): number {
+export function searchScore(
+  row: { name: string; phone: string },
+  query: string,
+): number {
   const terms = query.split(/\s+/).filter(Boolean);
   const numbers = terms.filter((t) => /^[\d()+-]+$/.test(t)).map(digits);
   const words = terms.filter((t) => !/^[\d()+-]+$/.test(t));

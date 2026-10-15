@@ -3,7 +3,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { getWaiverStatuses } from "@/features/climbers/queries";
+import { getCheckInClimbers } from "@/features/climbers/queries";
 import { formatWindow } from "../busyness";
 import { BUSYNESS_POLL_INTERVAL_MS, getGymBusynessSettings } from "../config";
 import { getFrontDeskBusyness } from "../queries";
@@ -11,25 +11,29 @@ import AutoRefresh from "./AutoRefresh";
 import BusynessHeatMap from "./BusynessHeatMap";
 import BusynessLevelChip from "./BusynessLevelChip";
 import CheckInTable, { type CheckInRow } from "./CheckInTable";
-import { formatTime } from "./format";
+import { formatDateTime, formatTime } from "./format";
 
 // Front desk busyness: headline count, level, typical week and who
 // checked in (#38). Side by side on wide screens, stacked on narrow ones.
 export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
   const busyness = await getFrontDeskBusyness(gymId);
   const { timeZone } = getGymBusynessSettings(gymId);
-  // Waivers signed from the app update here, not just in the busyness mock.
-  const waivers = await getWaiverStatuses();
+  // The mock check-ins point at climbers in the database, so names link to
+  // their real page and waivers signed in the app show up here.
+  const climbers = await getCheckInClimbers();
 
-  const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => ({
-    id: checkIn.id,
-    href: `/desk/climbers/${checkIn.climber.id}`,
-    name: `${checkIn.climber.firstName} ${checkIn.climber.lastName}`,
-    phone: checkIn.climber.phone,
-    checkedInAt: checkIn.timestamp.getTime(),
-    timeLabel: formatTime(checkIn.timestamp, timeZone),
-    waiverStatus: waivers.get(checkIn.climber.id) ?? checkIn.climber.waiverStatus,
-  }));
+  const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => {
+    const climber = climbers.get(checkIn.climber.id);
+    return {
+      id: checkIn.id,
+      href: climber ? `/desk/climbers/${climber.id}` : undefined,
+      name: `${checkIn.climber.firstName} ${checkIn.climber.lastName}`,
+      phone: checkIn.climber.phone,
+      checkedInAt: checkIn.timestamp.getTime(),
+      timeLabel: formatDateTime(checkIn.timestamp, timeZone),
+      waiverStatus: climber?.waiverStatus ?? checkIn.climber.waiverStatus,
+    };
+  });
 
   return (
     <Box

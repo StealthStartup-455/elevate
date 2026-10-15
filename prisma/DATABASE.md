@@ -115,7 +115,16 @@ Searchable by phone, email and last name within a gym.
 | `startsAt` | timestamp | yes | |
 | `expiresAt` | timestamp | no | Empty means no end date |
 | `visitsLeft` | integer | no | Punch cards only |
+| `pausedAt` | timestamp | no | Memberships only. Set while the membership is on hold |
 | `externalId` | text | no | Its id in the gym's own system. Unique per gym |
+
+### How the app shows waiver and membership status
+
+Nothing stores a status. `src/features/climbers/status.ts` works it out from the rows:
+
+- **Waiver:** the climber's latest `Waiver`. No row is `missing`. Signed more than a year ago, or on a different wording than the gym's `waiverVersion`, is `expired`. Otherwise `valid`.
+- **Membership:** the climber's latest `MEMBERSHIP` pass. No row is `none`. Past `expiresAt` is `expired`, a set `pausedAt` is `paused`, otherwise `active`. `expiresAt` is the renewal date.
+- **Demo and busyness climbers:** `prisma/seed.ts` stores the busyness mock's id (`climber-12`) or the demo username (`demo-valid-active`) in `externalId`, so the desk can link a mock check-in to the real climber and log in by username.
 
 ### Waiver
 

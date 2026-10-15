@@ -21,6 +21,7 @@ const EMPTY: ClimberInput = {
   firstName: "",
   lastName: "",
   phone: "",
+  email: "",
   dateOfBirth: "",
 };
 
@@ -86,6 +87,16 @@ export default function ClimberForm({
           error={Boolean(errors.phone)}
           helperText={errors.phone}
           slotProps={{ htmlInput: { autoComplete: "tel", inputMode: "tel" } }}
+        />
+        <TextField
+          name="email"
+          label="Email (optional)"
+          type="email"
+          fullWidth
+          defaultValue={values.email}
+          error={Boolean(errors.email)}
+          helperText={errors.email}
+          slotProps={{ htmlInput: { autoComplete: "email", inputMode: "email" } }}
         />
         <TextField
           name="dateOfBirth"

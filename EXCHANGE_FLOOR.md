@@ -29,12 +29,14 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
+| 2026-10-15 | @ekamgill | Copilot CLI | `feature/24-product-page` | `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md` | Done (local; uncommitted) |
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/34-account-creation-front-desk` | `src/features/climbers/*`, `src/app/desk/climbers/*` | In review (stacked on #33 branch) |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/41-account-login` | `src/features/auth/*`, `/`, `/login`, `/me`, `src/features/climbers/*` | In review (stacked on #33/#34 branches) |
 | 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
+| 2026-10-14 | @agamkamran02 | Claude Code | `42-connect-frontend-and-backend` | `src/features/climbers/*`, `src/features/auth/*`, `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma` | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 
 ## Entry template
@@ -59,6 +61,140 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-15 02:20 UTC: Separate pricing from FAQ section
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Added vertical space below the pricing card so it is visually distinct from the FAQ section.
+- **Files touched:** `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Used section margin rather than changing either section's layout or content.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; Chrome measured a 48px gap between pricing and FAQ at 1425px and 390px viewport widths; page returned HTTP 200.
+
+### 2026-10-15 02:15 UTC: Remove climber photo and pricing placeholder
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the climber photo and its responsive styles.
+  - Removed the “Not set yet.” pricing heading.
+  - Removed the hero tagline badge at the developer's request.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/climber.jpg`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Removed the badge instead of replacing its wording, as requested.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; no pricing placeholder, climber-photo, or hero badge references remain.
+
+### 2026-10-15 02:05 UTC: Replace hero climber illustration with photo
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the hero screenshot caption and replaced the custom climber illustration with a cropped climber photo overlapping the screenshot.
+  - Replaced “Built for the whole gym” with “One place for staff & members.”
+  - Adjusted the photo and sticker at mobile/tablet breakpoints.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/climber.jpg`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Use a real climbing photo rather than abstract shapes; keep the badge short and explicitly about staff and members.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `git diff --check` passed; local page and climber asset returned HTTP 200; Chrome previews checked at 1425px and 390px; mobile DOM reported 390px document width with no horizontal page overflow.
+
+### 2026-10-15 01:55 UTC: Refine screenshot labels and climber illustration
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Removed the staff/member number labels above the product screenshots.
+  - Moved the climber illustration fully below the hero screenshot and refined its limbs, joints, and pose.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept the illustration as a small inline SVG, with connected, articulated limbs; screenshot content remains unobstructed on desktop and mobile.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** Local page returned HTTP 200; Chrome checks passed at 390px and 1425px with the climber below the screenshot, number labels absent, no horizontal overflow, and no broken images; static links/assets and `git diff --check` passed.
+
+### 2026-10-15 01:44 UTC: Refine product page copy and layout
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Replaced the generic hero headline with product-specific copy for staff and members.
+  - Removed the numbered trust strip and the standalone use-case and trust sections.
+  - Simplified pricing to a compact status, disclosure and contact link; updated the closing CTA to “Help shape a better climbing day.”
+  - Redrew the climber illustration with connected limbs and a cohesive climbing pose.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept concise early-preview and fictional demo-data disclosures so the page does not suggest real customers, available paid plans or production data.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** Local static server returned HTTP 200; Chrome checks passed at 390px and 1425px with no horizontal overflow and no broken images; `git diff --check` passed.
+
+### 2026-10-14 21:17 UTC: GitHub Pages product page
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / no PR yet
+- **Branch:** `feature/24-product-page`
+- **What the agent did:**
+  - Added a responsive, standalone product page in `docs/` with use cases, real app screenshots, product status and privacy notes, pricing transparency, FAQs and GitHub calls to action.
+  - Added a GitHub Pages workflow that deploys `docs/` from `dev`, and documented the one-time Pages setup.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/*.png`, `.github/workflows/deploy-pages.yml`, `README.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Kept the marketing site static and separate from the authenticated Next.js app so GitHub Pages can serve it directly. Screenshots are from the running app with fictional demo data; no customer testimonials or prices were invented.
+- **Gotchas:** GitHub Pages must be enabled with **Settings → Pages → GitHub Actions** before the deployment workflow can publish.
+- **Open follow-ups:** Enable the Pages source in repository settings and merge the page to `dev` to deploy it.
+- **Verification:** `npm run lint` passed; `npm run build` passed; static link/asset check passed (5 anchors, 6 local references); Chrome mobile (390px) and desktop (1425px) checks passed with no horizontal overflow or broken images; `git diff --check` passed.
+### 2026-10-15 00:30 UTC: Manual check in dialog on the front desk
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 / no PR yet
+- **Branch:** `feature/42-connect-frontend-and-backend`
+- **What the agent did:**
+  - Added a "Manual check in" button next to "Add climber" on `/desk`. It opens a dialog with fuzzy search (same matcher as the climbers list), a list of matches, and a view of the selected climber's membership and waiver with a "Manually check in" button.
+  - New server action `checkInClimber` saves a `CheckIn` row (`FRONT_DESK`). It refuses a waiver that is not valid, a membership that is not active, and a repeat within 2 hours.
+  - The desk list and busyness count now include saved check-ins on top of the JSON mock.
+- **Files touched:** `src/features/climbers/components/ManualCheckIn.tsx`, `ManualCheckInButton.tsx`, `actions.ts`, `queries.ts`, `src/features/analytics/queries.ts`, `src/app/desk/page.tsx`
+- **Decisions and why:** Saved check-ins use the real clock, not the mock's fixed one, so they are cut off by the real 2 hour window and merged in newest first. The check rules follow `prisma/DATABASE.md` ("Checking someone in"); there is no staff override yet.
+- **Gotchas:** This overlaps with `feature/36-check-in-front-desk` (Tyler). Whoever merges second should reconcile on `CheckIn` writes. `staffId` is not set until auth exists.
+- **Open follow-ups:** Staff override for a missing waiver; punch card visits; set `staffId`; QR check in.
+- **Verification:** `npx tsc --noEmit` and `npx eslint src` clean. Browser: fuzzy "tylr" finds Tyler Le, check in succeeds and the count goes 28 to 29, a demo account with a missing waiver is blocked, a repeat is refused.
+
+### 2026-10-14 23:50 UTC: Connect the climbers and login screens to the database
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 / no PR yet
+- **Branch:** `42-connect-frontend-and-backend` (created by @TylerLeHere; the name has no type prefix, so the branch-policy check may reject a PR from it)
+- **What the agent did:**
+  - Replaced the in-memory climber store with Prisma queries and actions on `Climber`, `Waiver` and `Pass`; removed `src/features/climbers/mock-data.ts`.
+  - `prisma/seed.ts` now also seeds the busyness mock climbers, waivers and passes, and one demo account for every waiver x membership state (still in the database, same usernames).
+  - The demo session cookie now lasts 30 days and holds the climber's database id; `/me` with no session redirects to `/`. Desk and `/me` URLs use database ids and survive restarts.
+  - Check-in rows on `/desk` link to the real climber and show the live waiver status.
+  - Added an optional email field to the sign up and desk forms (the schema has `email`).
+- **Files touched:** `src/features/climbers/*` (queries, actions, status, phone, demo-accounts, types, validate), `src/features/auth/*` (session, mock-users, actions), `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma`, new migration `pass_paused_at`, `prisma/DATABASE.md`
+- **Decisions and why:**
+  - Added `Pass.pausedAt` (migration `pass_paused_at`) because the design has paused memberships and the schema had no way to say so. Everything else is derived, see "How the app shows waiver and membership status" in `prisma/DATABASE.md`.
+  - A waiver is valid for one year from `signedAt`; the schema has no expiry column.
+  - `Climber.externalId` holds the busyness mock id (`climber-N`) or the demo username. It is a mock-only use of a column meant for Redpoint / Rock Gym Pro ids.
+  - Check-ins stay on the JSON busyness mock for now; #36 (check-in) owns real `CheckIn` rows.
+- **Gotchas:**
+  - `npm run db:seed` resets the demo gym's climbers, so anyone added in the app is removed.
+  - Existing sessions and bookmarked `climber-N` URLs stop working: ids are now UUIDs.
+  - On Windows, Hyper-V can reserve ports 54245-54344, which breaks Supabase's default 543xx ports. Change them locally in `supabase/config.toml` and `.env` (not committed).
+  - `DEV_AUTH_BYPASS="true"` is still needed to open `/desk` and `/me` locally, because the demo login does not create a Supabase session.
+- **Open follow-ups:** Real auth (Supabase) in place of the demo cookie; set `createdByStaffId` from the logged-in staff member; real `CheckIn` rows (#36); a real waiver signing flow; buying and renewing memberships.
+- **Verification:** `npx eslint .` clean, `npx tsc --noEmit` clean, `npm run build` passed, `npm run db:seed` seeds 89 climbers. Checked in a browser against local Supabase: login, waiver signing on `/me` and `/desk`, session across a new browser context, `/join` new member (no membership, Buy button), desk list and detail, check-in links.
 
 ### 2026-10-14 22:02 UTC: Style guide, MUI theme and design tokens
 
@@ -85,6 +221,7 @@ Newest first.
   - Page titles (`<h1 className="text-2xl font-semibold">`) became `<Typography variant="pageTitle">`; `max-w-[560px]` became `max-w-narrow`; check-in and climber table names are now MUI links (slate blue); `--font-geist-mono` no longer exists, use `var(--font-mono)`.
   - `StatusPill` must stay a client component: MUI's Chip clones its icon, which breaks hydration when the icon comes from a Server Component.
   - `DemoQrCode` keeps its black-on-white colors on purpose, with `eslint-disable` comments explaining why.
+  - 2026-10-15: merged `dev`. The new `ManualCheckIn` dialog (#42) got the same treatment: its `sx` spacing values were doubled, and its raw `rgba()` box shadow was removed so the dialog uses the theme's floating shadow. `/desk` keeps the `pageTitle` heading with the new "Manual check in" button beside "Add climber".
 - **Open follow-ups:** move older screens to the six variant names, then remove the built-in variants from the Typography types; switch `WaiverBadge`, `BusynessLevelChip` and the check-in table's waiver chips to `StatusPill` so status always has its icon; replace `features/climbers/LinkButton` (navigation shown as a filled button) with `LinkArrow` or a text link; decide whether `ColorModeToggle` goes in the app header; lint does not check `sx` values or variant names yet.
 - **Verification:** `npm run lint` passed with no warnings. `npm run build` passed with the CI placeholder env values (`/style-guide` builds as static). In `next dev` (with `DEV_AUTH_BYPASS`): `/style-guide`, `/desk`, `/me` and `/join` checked at 1280px and 375px, light and dark; measured buttons 24/28/40px, fields 28px (40px with 16px text on touch), labels centred, no horizontal overflow at 375px, no console errors after the `StatusPill` fix. Every text color pair in `tokens.ts` passes WCAG AA in both themes (lowest 4.80:1). Not checked: real devices, Safari.
 
