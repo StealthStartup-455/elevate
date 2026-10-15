@@ -385,4 +385,4 @@ Newest first.
   - The latest scan is kept in server memory (`scan-store.ts`), not the database. It is demo only, holds one scan at a time, and is lost on server restart.
 - **Gotchas:** The desk only polls while its tab is visible. Test with a normal window (desk) and a private window (climber), since one browser holds one login.
 - **Open follow-ups:** Real scanning (camera or scanner) and a real QR code; save QR check-ins with method `QR`; staff-only check on `takeLatestScan` once auth exists.
-- **Verification:** `npm run lint` ✅ / `npm run build` ✅ (change these if yours differ); tested by hand with demo-valid-active and demo-missing-expired.
+- **Verification:** tested by hand with demo-valid-active and demo-missing-expired.
