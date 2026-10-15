@@ -201,7 +201,6 @@ summary:focus-visible {
   text-transform: uppercase;
 }
 
-.status-dot,
 .photo-indicator {
   display: inline-block;
   width: 8px;
@@ -279,9 +278,10 @@ h2 span {
 .hero-art {
   position: relative;
   display: grid;
-  min-height: 480px;
+  min-height: 550px;
   align-items: center;
   justify-items: center;
+  overflow-x: clip;
 }
 
 .hero-art::before {
@@ -322,7 +322,7 @@ h2 span {
   border-radius: 8px;
   background: var(--white);
   box-shadow: 0 24px 70px rgba(23, 50, 40, 0.15);
-  transform: rotate(1.4deg);
+  transform: rotate(1.4deg) translateY(-48px);
 }
 
 .hero-photo {
@@ -332,144 +332,6 @@ h2 span {
   border-radius: 4px 4px 0 0;
   object-fit: cover;
   object-position: top left;
-}
-
-.photo-caption {
-  display: flex;
-  height: 38px;
-  align-items: center;
-  padding: 0 0.6rem;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 650;
-}
-
-.photo-indicator {
-  width: 7px;
-  height: 7px;
-  margin-right: 0.5rem;
-  background: var(--green);
-}
-
-.hero-sticker {
-  position: absolute;
-  z-index: 1;
-  top: 13%;
-  right: -2%;
-  display: flex;
-  width: 104px;
-  height: 104px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--lime);
-  color: var(--ink);
-  line-height: 1.05;
-  text-align: center;
-  transform: rotate(8deg);
-}
-
-.hero-sticker span {
-  margin-bottom: 0.3rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.hero-sticker strong {
-  font-family: var(--serif);
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-.hero-climber {
-  position: absolute;
-  z-index: 1;
-  right: 4%;
-  bottom: -7%;
-  width: 140px;
-  height: 174px;
-  transform: rotate(8deg);
-}
-
-.hero-climber svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.climber-body,
-.climber-limb {
-  fill: none;
-  stroke: var(--green-dark);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 8;
-}
-
-.climber-body {
-  fill: var(--orange);
-  stroke-width: 2;
-}
-
-.climber-head {
-  fill: var(--orange);
-  stroke: var(--green-dark);
-  stroke-width: 2;
-}
-
-.climber-rope {
-  fill: none;
-  stroke: #819b8d;
-  stroke-dasharray: 4 5;
-  stroke-width: 2;
-}
-
-.climber-hold {
-  fill: var(--green);
-}
-
-.hold-two {
-  fill: var(--orange);
-}
-
-.hold-three {
-  fill: #a3c66c;
-}
-
-.trust-strip {
-  display: flex;
-  min-height: 96px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 1.3rem 2rem;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: #f0f3ed;
-  gap: clamp(1.5rem, 6vw, 6rem);
-}
-
-.trust-strip > div {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 650;
-}
-
-.trust-icon {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--green-light);
-  color: var(--green-dark);
-  font-size: 0.62rem;
-  font-weight: 800;
 }
 
 .section {
@@ -485,8 +347,6 @@ h2 span {
 }
 
 .section-heading h2,
-.use-cases-intro h2,
-.trust-copy h2,
 .pricing-copy h2,
 .faq-heading h2 {
   margin-bottom: 1rem;
@@ -534,14 +394,6 @@ h2 span {
   font-weight: 500;
   letter-spacing: -0.04em;
   line-height: 1.1;
-}
-
-.screen-number {
-  flex: 0 0 auto;
-  color: #87958e;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
 }
 
 .screenshot-description {
@@ -613,213 +465,31 @@ h2 span {
   font-size: 0.68rem;
 }
 
-.use-cases {
-  display: grid;
-  align-items: start;
-  grid-template-columns: 0.74fr 1.26fr;
-  padding-top: 2rem;
-  gap: clamp(3rem, 8vw, 8rem);
-}
-
-.use-cases-intro {
-  position: sticky;
-  top: 2rem;
-  padding-top: 1rem;
-}
-
-.use-cases-intro h2 {
-  font-size: clamp(2.8rem, 4.4vw, 4rem);
-}
-
-.use-cases-intro > p:last-child {
-  max-width: 340px;
-  color: var(--muted);
-}
-
-.story-list {
-  border-top: 1px solid var(--line);
-}
-
-.story {
-  display: grid;
-  grid-template-columns: 42px 1fr 22px;
-  padding: 1.55rem 0;
-  border-bottom: 1px solid var(--line);
-  gap: 0.9rem;
-}
-
-.story-index {
-  padding-top: 0.1rem;
-  color: var(--green);
-  font-size: 0.73rem;
-  font-weight: 800;
-}
-
-.story-role {
-  margin: 0 0 0.4rem;
-  color: #7a8981;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.story h3 {
-  max-width: 570px;
-  margin-bottom: 0.6rem;
-  font-family: var(--serif);
-  font-size: clamp(1.4rem, 2vw, 1.85rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1.2;
-}
-
-.story p:last-child {
-  max-width: 590px;
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 0.83rem;
-}
-
-.story-arrow {
-  color: var(--green);
-  font-size: 1.1rem;
-}
-
-.trust-section {
-  display: grid;
-  align-items: center;
-  grid-template-columns: 0.9fr 1.1fr;
-  padding: 6.5rem max(2rem, calc((100vw - 1180px) / 2));
-  background: #e9efe7;
-  gap: clamp(3rem, 7vw, 7rem);
-}
-
-.trust-copy h2 {
-  font-size: clamp(2.7rem, 4vw, 3.8rem);
-}
-
-.trust-copy > p:not(.eyebrow) {
-  max-width: 480px;
-  margin-bottom: 1.2rem;
-  color: var(--muted);
-}
-
-.trust-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.8rem;
-}
-
-.trust-card {
-  min-height: 205px;
-  padding: 1.2rem;
-  border: 1px solid #d5dfd5;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.trust-card-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 1.25rem;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--green-light);
-  color: var(--green-dark);
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.trust-card h3 {
-  margin-bottom: 0.45rem;
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
-.trust-card p {
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 0.73rem;
-  line-height: 1.55;
-}
-
 .pricing {
   display: grid;
   align-items: center;
-  grid-template-columns: 1fr 0.8fr;
-  gap: clamp(3rem, 8vw, 8rem);
+  grid-template-columns: 1fr auto;
+  margin-bottom: 3rem;
+  padding: 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f0f3ed;
+  gap: 2rem;
 }
 
 .pricing-copy h2 {
-  font-size: clamp(3rem, 4.7vw, 4.5rem);
+  margin-bottom: 0.55rem;
+  font-size: clamp(2.4rem, 4vw, 3.4rem);
 }
 
 .pricing-copy > p:not(.eyebrow) {
-  max-width: 495px;
-  margin-bottom: 1.5rem;
-  color: var(--muted);
-}
-
-.pricing-card {
-  padding: 2rem;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--white);
-  box-shadow: 0 14px 50px rgba(23, 50, 40, 0.06);
-}
-
-.pricing-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pricing-label {
-  color: var(--green);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.pricing-mark {
-  color: var(--orange);
-  font-size: 1.5rem;
-}
-
-.pricing-statement {
-  margin: 1.7rem 0;
-  font-family: var(--serif);
-  font-size: 2.45rem;
-  letter-spacing: -0.05em;
-  line-height: 1.1;
-}
-
-.pricing-card ul {
-  display: grid;
+  max-width: 540px;
   margin: 0;
-  padding: 1.3rem 0 0;
-  border-top: 1px solid var(--line);
-  gap: 0.8rem;
-  list-style: none;
-}
-
-.pricing-card li {
   color: var(--muted);
-  font-size: 0.82rem;
 }
 
-.pricing-card li span {
-  margin-right: 0.55rem;
-  color: var(--green);
-  font-weight: 800;
-}
-
-.pricing-footnote {
-  margin: 1.25rem 0 0;
-  color: #78857e;
-  font-size: 0.7rem;
+.pricing .text-link {
+  white-space: nowrap;
 }
 
 .faq-section {
@@ -997,22 +667,11 @@ h2 span {
   }
 
   .hero-art {
-    min-height: 410px;
+    min-height: 500px;
   }
 
   .hero-photo {
     height: 270px;
-  }
-
-  .hero-sticker {
-    right: -1%;
-    width: 86px;
-    height: 86px;
-  }
-
-  .hero-climber {
-    width: 110px;
-    height: 140px;
   }
 
   .screenshots {
@@ -1031,20 +690,15 @@ h2 span {
     height: 360px;
   }
 
-  .trust-section {
-    grid-template-columns: 1fr;
-    padding: 5rem max(1.5rem, calc((100vw - 760px) / 2));
-    gap: 2.5rem;
-  }
-
-  .trust-cards {
-    max-width: 760px;
-  }
-
   .pricing,
   .faq-section {
     grid-template-columns: 1fr 1fr;
     gap: 2.5rem;
+  }
+
+  .pricing {
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
   }
 
   .faq-section {
@@ -1143,51 +797,21 @@ h2 span {
   }
 
   .hero-art {
-    min-height: 350px;
+    min-height: 400px;
     width: 100%;
     min-width: 0;
-    overflow: clip;
     margin-top: 1.6rem;
   }
 
   .hero-photo-wrap {
     width: 90%;
     max-width: 100%;
+    transform: rotate(1.4deg) translateY(-30px);
   }
 
   .hero-photo {
     max-width: 100%;
     height: clamp(180px, 58vw, 260px);
-  }
-
-  .hero-sticker {
-    top: 4%;
-    right: 0;
-    width: 76px;
-    height: 76px;
-  }
-
-  .hero-sticker strong {
-    font-size: 0.95rem;
-  }
-
-  .hero-climber {
-    right: 1%;
-    bottom: -5%;
-    width: 90px;
-    height: 112px;
-  }
-
-  .trust-strip {
-    min-height: unset;
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 1.25rem 1.2rem;
-    gap: 0.85rem;
-  }
-
-  .trust-strip > div {
-    font-size: 0.8rem;
   }
 
   .section {
@@ -1201,8 +825,6 @@ h2 span {
   }
 
   .section-heading h2,
-  .use-cases-intro h2,
-  .trust-copy h2,
   .pricing-copy h2,
   .faq-heading h2 {
     font-size: clamp(2.6rem, 11vw, 3.4rem);
@@ -1229,10 +851,6 @@ h2 span {
     font-size: 0.8rem;
   }
 
-  .screen-number {
-    font-size: 0.54rem;
-  }
-
   .image-link img {
     height: 230px;
   }
@@ -1245,76 +863,14 @@ h2 span {
     font-size: 0.62rem;
   }
 
-  .use-cases {
-    grid-template-columns: 1fr;
-    padding-top: 0;
-    gap: 1.7rem;
-  }
-
-  .use-cases-intro {
-    position: static;
-  }
-
-  .use-cases-intro > p:last-child {
-    margin-bottom: 0;
-  }
-
-  .story {
-    grid-template-columns: 28px 1fr 16px;
-    padding: 1.2rem 0;
-    gap: 0.45rem;
-  }
-
-  .story h3 {
-    font-size: 1.42rem;
-  }
-
-  .story p:last-child {
-    font-size: 0.77rem;
-  }
-
-  .trust-section {
-    padding: 4rem 1rem;
-    gap: 2rem;
-  }
-
-  .trust-copy > p:not(.eyebrow) {
-    font-size: 0.9rem;
-  }
-
-  .trust-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .trust-card {
-    min-height: unset;
-    padding: 1rem;
-  }
-
-  .trust-card-icon {
-    margin-bottom: 0.75rem;
-  }
-
-  .trust-card p {
-    font-size: 0.78rem;
-  }
-
   .pricing {
     grid-template-columns: 1fr;
-    padding: 4.5rem 0;
-    gap: 1.5rem;
+    padding: 1.5rem;
+    gap: 1.25rem;
   }
 
   .pricing-copy > p:not(.eyebrow) {
-    font-size: 0.9rem;
-  }
-
-  .pricing-card {
-    padding: 1.4rem;
-  }
-
-  .pricing-statement {
-    font-size: 2.1rem;
+    font-size: 0.86rem;
   }
 
   .faq-section {
