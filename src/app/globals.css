@@ -2,27 +2,94 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Tailwind is for layout only: flex, grid, gap, padding, width, breakpoints.
+ * Its default palette, type scale, radii and shadows are removed so off-system classes like
+ * bg-green-500 or text-2xl don't exist. Every value below comes from the MUI theme's CSS
+ * variables (src/components/ui/theme/tokens.ts), so light and dark switch together.
+ * See STYLE_GUIDE.md.
+ */
+
+/* Matches MUI's light/dark attribute on <html>. Rarely needed: the colors below switch by themselves. */
+@custom-variant dark (&:where([data-mui-color-scheme="dark"], [data-mui-color-scheme="dark"] *));
+
+/* Fonts are emitted as real CSS variables, so var(--font-mono) also works in sx. */
+@theme {
+  --font-*: initial;
+  --font-weight-*: initial;
+  --font-sans: var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Spacing: Tailwind's default 4px step (p-3 = 12px) equals MUI spacing(3). */
+
+  --color-*: initial;
+  --color-page: var(--mui-palette-background-default);
+  --color-surface: var(--mui-palette-background-paper);
+  --color-subtle: var(--mui-palette-background-subtle);
+  --color-line: var(--mui-palette-divider);
+  --color-fg: var(--mui-palette-text-primary);
+  --color-fg-muted: var(--mui-palette-text-secondary);
+  --color-fg-disabled: var(--mui-palette-text-disabled);
+  --color-action: var(--mui-palette-primary-main);
+  --color-action-soft: var(--mui-palette-primary-soft);
+  --color-on-action: var(--mui-palette-primary-contrastText);
+  --color-nav: var(--mui-palette-secondary-main);
+  --color-nav-soft: var(--mui-palette-secondary-soft);
+  --color-on-nav: var(--mui-palette-secondary-contrastText);
+  --color-ok: var(--mui-palette-success-main);
+  --color-ok-soft: var(--mui-palette-success-soft);
+  --color-warn: var(--mui-palette-warning-main);
+  --color-warn-soft: var(--mui-palette-warning-soft);
+  --color-bad: var(--mui-palette-error-main);
+  --color-bad-soft: var(--mui-palette-error-soft);
+  --color-sidebar: var(--mui-palette-sidebar-bg);
+  --color-sidebar-fg: var(--mui-palette-sidebar-text);
+  --color-sidebar-muted: var(--mui-palette-sidebar-muted);
+  --color-sidebar-active: var(--mui-palette-sidebar-active);
+  --color-sidebar-active-fg: var(--mui-palette-sidebar-activeText);
+  --color-chart-data: var(--mui-palette-chart-data);
+  --color-chart-now: var(--mui-palette-chart-now);
+
+  /* Text size and weight come from MUI <Typography variant>, never from Tailwind. */
+  --text-*: initial;
+
+  --radius-*: initial;
+  --radius-sm: 2px; /* tags, tooltips, chart bars */
+  --radius-md: 4px; /* buttons, fields, chips, menus */
+  --radius-lg: 6px; /* cards and tiles. rounded-full for pills and avatars */
+
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --shadow-float: var(--mui-palette-floatShadow); /* tooltips, menus, dialogs only */
+
+  --container-narrow: 560px; /* max-w-narrow: forms and member pages */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background-color: var(--color-page);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem; /* the body text style, 13px */
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

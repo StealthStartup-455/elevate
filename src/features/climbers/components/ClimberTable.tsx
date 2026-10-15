@@ -9,6 +9,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import MuiLink from "@mui/material/Link";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fuzzyScore } from "@/lib/fuzzy";
@@ -67,7 +68,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
         sx={{ width: "100%", maxWidth: { sm: 320 } }}
       />
 
-      <TableContainer sx={{ mt: 1.5 }}>
+      <TableContainer sx={{ mt: 3 }}>
         <Table size="small" aria-label="Climbers">
           <TableHead>
             <TableRow>
@@ -81,9 +82,9 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
             {visible.map((row) => (
               <TableRow key={row.id} hover>
                 <TableCell>
-                  <Link href={`/desk/climbers/${row.id}`} className="font-medium hover:underline">
-                    {row.name}
-                  </Link>
+                  <MuiLink component={Link} href={`/desk/climbers/${row.id}`}>
+                      {row.name}
+                    </MuiLink>
                 </TableCell>
                 <TableCell sx={{ display: { xs: "none", sm: "table-cell" }, whiteSpace: "nowrap" }}>
                   {row.phone}
@@ -108,7 +109,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
       </TableContainer>
 
       {visible.length !== rows.length && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
           Showing {visible.length} of {rows.length}
         </Typography>
       )}

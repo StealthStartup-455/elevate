@@ -22,7 +22,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
       <AutoRefresh intervalMs={BUSYNESS_POLL_INTERVAL_MS} />
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+      <CardContent>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
             How busy is it?
@@ -32,7 +32,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 4, mt: 3 }}>
           <Typography
             component="p"
             color="primary"
@@ -48,7 +48,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
           />
         </Box>
 
-        <Typography variant="body1" sx={{ mt: 1.5, fontWeight: 600 }}>
+        <Typography variant="body1" sx={{ mt: 3, fontWeight: 600 }}>
           ~{busyness.count} climbers here
         </Typography>
         <Typography
@@ -56,7 +56,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
           color="text.secondary"
           component="p"
           title={`Updated ${formatTime(busyness.computedAt, timeZone)}`}
-          sx={{ mb: 2.5 }}
+          sx={{ mb: 5 }}
         >
           Based on check-ins in the last {formatWindow(busyness.windowMinutes)}
         </Typography>
@@ -64,7 +64,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
         {/* Today only by default; the full week is one tap away. */}
         <BusynessHeatMap gymId={gymId} view="today" />
         <ShowMore label="Show full week">
-          <Box sx={{ pt: 1 }}>
+          <Box sx={{ pt: 2 }}>
             <BusynessHeatMap gymId={gymId} legend={false} />
           </Box>
         </ShowMore>

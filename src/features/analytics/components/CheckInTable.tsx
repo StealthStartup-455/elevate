@@ -13,6 +13,7 @@ import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
+import MuiLink from "@mui/material/Link";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fuzzyScore } from "@/lib/fuzzy";
@@ -110,7 +111,7 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
         sx={{
           display: "flex",
           flexWrap: "wrap",
-          gap: 1.5,
+          gap: 3,
           alignItems: "center",
           justifyContent: "space-between",
         }}
@@ -137,7 +138,7 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
             <ToggleButton
               key={status}
               value={status}
-              sx={{ textTransform: "none", flex: { xs: 1, sm: "none" }, px: { xs: 0.5, sm: 1.5 } }}
+              sx={{ textTransform: "none", flex: { xs: 1, sm: "none" }, px: { xs: 1, sm: 3 } }}
             >
               {status === "all" ? "All" : status[0].toUpperCase() + status.slice(1)} (
               {counts[status]})
@@ -146,7 +147,7 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
         </ToggleButtonGroup>
       </Box>
 
-      <TableContainer sx={{ mt: 1.5 }}>
+      <TableContainer sx={{ mt: 3 }}>
         <Table size="small" aria-label="Recent check-ins">
           <TableHead>
             <TableRow>
@@ -179,9 +180,9 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
               <TableRow key={row.id} hover>
                 <TableCell>
                   {row.href ? (
-                    <Link href={row.href} className="hover:underline">
+                    <MuiLink component={Link} href={row.href}>
                       {row.name}
-                    </Link>
+                    </MuiLink>
                   ) : (
                     row.name
                   )}
@@ -209,7 +210,7 @@ export default function CheckInTable({ rows }: { rows: CheckInRow[] }) {
       </TableContainer>
 
       {visible.length !== rows.length && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
           Showing {visible.length} of {rows.length}
           {searching && sortBy === "relevance" && " · best matches first"}
         </Typography>
