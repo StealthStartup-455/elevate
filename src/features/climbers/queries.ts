@@ -39,9 +39,9 @@ function findRows(gymId: string, id?: string) {
         select: { signedAt: true, version: true },
       },
       passes: {
+        // All of them: a renewal bought early has not started yet, and the
+        // status comes from the one in effect today (see summarizeMembership).
         where: { kind: "MEMBERSHIP" },
-        orderBy: { startsAt: "desc" },
-        take: 1,
         select: { startsAt: true, expiresAt: true, pausedAt: true },
       },
     },
@@ -52,7 +52,7 @@ type Row = Awaited<ReturnType<typeof findRows>>[number];
 
 function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
   const waiver = summarizeWaiver(row.waivers[0], waiverVersion, now);
-  const membership = summarizeMembership(row.passes[0], now);
+  const membership = summarizeMembership(row.passes, now);
   return {
     id: row.id,
     firstName: row.firstName,

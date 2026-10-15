@@ -37,12 +37,22 @@ export function summarizeWaiver(
 
 export type MembershipSummary = { status: MembershipStatus; renewsOn?: string };
 
-/** `latest` is the climber's most recent membership pass, if they ever had one. */
+type MembershipPass = { startsAt: Date; expiresAt: Date | null; pausedAt: Date | null };
+
+/**
+ * `passes` are all of the climber's membership passes. A pass that has not
+ * started yet (a renewal bought early) is ignored, so the one in effect today
+ * decides the status. Without that, buying next month's membership early would
+ * make the climber look like they have none.
+ */
 export function summarizeMembership(
-  latest: { startsAt: Date; expiresAt: Date | null; pausedAt: Date | null } | undefined,
+  passes: MembershipPass[],
   now: Date,
 ): MembershipSummary {
-  if (!latest || latest.startsAt > now) return { status: "none" };
+  const latest = passes
+    .filter((p) => p.startsAt <= now)
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())[0];
+  if (!latest) return { status: "none" };
   const renewsOn = latest.expiresAt ? isoDay(latest.expiresAt) : undefined;
   if (latest.expiresAt && latest.expiresAt <= now) return { status: "expired", renewsOn };
   if (latest.pausedAt) return { status: "paused", renewsOn };

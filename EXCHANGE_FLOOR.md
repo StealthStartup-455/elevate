@@ -60,6 +60,21 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-15 18:00 UTC: Membership status ignores passes that have not started
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 (follow-up to #20) / no PR yet
+- **Branch:** `fix/42-membership-status-future-pass`
+- **What the agent did:**
+  - Fixed a review finding on #20: membership status was read from the pass with the newest `startsAt`, so a renewal bought early (starting in the future) made the climber show as "none" and blocked check-in.
+  - `summarizeMembership` now takes all membership passes, ignores any that have not started, and uses the newest one that has.
+- **Files touched:** `src/features/climbers/status.ts`, `src/features/climbers/queries.ts`
+- **Decisions and why:** The query now loads every membership pass for the climber instead of one, so the filter can run on the date. A climber has few passes, so this is cheap. A future pass does not change `renewsOn`; it still shows when the current pass ends.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `npx tsc --noEmit` and `npx eslint src` clean. Six cases checked with `summarizeMembership`: current + early renewal is active, only a future pass is none, no passes is none, expired + future is expired, paused + future is paused.
+
 ### 2026-10-15 00:30 UTC: Manual check in dialog on the front desk
 
 - **Developer:** @agamkamran02
