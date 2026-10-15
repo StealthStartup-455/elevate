@@ -113,6 +113,28 @@ export default function ManualCheckIn({
         fullWidth
         maxWidth="sm"
         aria-labelledby="manual-check-in-title"
+        slotProps={{
+          // Frosted glass: the page shows through, with the same rounded
+          // corners and border as the cards on the desk.
+          backdrop: {
+            sx: {
+              backgroundColor: "color-mix(in srgb, var(--mui-palette-text-primary) 25%, transparent)",
+              backdropFilter: "blur(3px)",
+            },
+          },
+          paper: {
+            sx: {
+              borderRadius: 3,
+              border: 1,
+              borderColor: "divider",
+              backgroundImage: "none",
+              backgroundColor:
+                "color-mix(in srgb, var(--mui-palette-background-paper) 78%, transparent)",
+              backdropFilter: "blur(16px) saturate(1.2)",
+              boxShadow: "0 12px 40px rgba(0, 0, 0, 0.18)",
+            },
+          },
+        }}
       >
         <DialogTitle id="manual-check-in-title">Manual check in</DialogTitle>
 
