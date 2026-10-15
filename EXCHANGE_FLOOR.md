@@ -37,7 +37,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/41-account-login` | `src/features/auth/*`, `/`, `/login`, `/me`, `src/features/climbers/*` | In review (stacked on #33/#34 branches) |
 | 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
 | 2026-10-14 | @agamkamran02 | Claude Code | `42-connect-frontend-and-backend` | `src/features/climbers/*`, `src/features/auth/*`, `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma` | In review |
-
+| 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 ## Entry template
 
 Copy this block to the top of the timeline.
@@ -367,3 +367,22 @@ Newest first.
 - **Gotchas:** an unrelated local change to `package-lock.json` was left out of this PR on purpose.
 - **Open follow-ups:** optional CI check that fails a PR touching code without an Exchange Floor change.
 - **Verification:** see the PR description.
+
+### 2026-10-15 18:40 UTC: Demo QR check-in (scan on /me, popup on /desk)
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate-docs#36 / (this PR)
+- **Branch:** `feature/36-check-in-front-desk`
+- **What the agent did:**
+  - `/me`: a "Demo Scan" button under the QR code. 3 s spinner, then a success dialog (or a warning listing a missing/expired waiver or membership), then back to the menu.
+  - The scan is remembered on the server (`recordScan`), and `/desk` checks for it every 2.5 s (`ScanWatcher`).
+  - `/desk` popup: climber name, membership and waiver. An orange warning bar on top if the waiver isn't valid or the membership isn't active; otherwise a green Check in button.
+- **Files touched:** `src/features/check-ins/{actions,scan-store}.ts`, `src/features/check-ins/components/{ScanButton,ScanWatcher}.tsx`, `src/features/climbers/components/MembershipCard.tsx`, `src/app/desk/page.tsx`
+- **Decisions and why:**
+  - The green button calls the existing `checkInClimber` from #20, so scan check-ins follow exactly the same rules as manual check in (valid waiver, active membership, not twice in 2 hours) and save a `FRONT_DESK` CheckIn row.
+  - The scan itself only shows the climber at the desk; staff confirm with the green button.
+  - The latest scan is kept in server memory (`scan-store.ts`), not the database. It is demo only, holds one scan at a time, and is lost on server restart.
+- **Gotchas:** The desk only polls while its tab is visible. Test with a normal window (desk) and a private window (climber), since one browser holds one login.
+- **Open follow-ups:** Real scanning (camera or scanner) and a real QR code; save QR check-ins with method `QR`; staff-only check on `takeLatestScan` once auth exists.
+- **Verification:** `npm run lint` ✅ / `npm run build` ✅ (change these if yours differ); tested by hand with demo-valid-active and demo-missing-expired.

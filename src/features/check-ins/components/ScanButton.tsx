@@ -10,6 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
+import { recordScan } from "../actions";
 
 // Demo only: pretends the desk scanner just read this climber's QR code.
 const PROCESSING_MS = 3000;
@@ -31,13 +32,17 @@ function problems({ waiverStatus, membershipStatus }: Props): string[] {
 }
 
 export default function ScanButton(props: Props) {
-  const [step, setStep] = useState<"idle" | "processing" | "done">("idle");
+  const [step, setStep] = useState<"idle" | "processing" | "done" | "error">("idle");
   const issues = problems(props);
 
-  // After the spinner has shown for 3 seconds, show the result dialog.
+  // After the spinner has shown for 3 seconds, tell the server about the
+  // scan, then show the result dialog.
   useEffect(() => {
     if (step !== "processing") return;
-    const timer = setTimeout(() => setStep("done"), PROCESSING_MS);
+    const timer = setTimeout(async () => {
+      const result = await recordScan();
+      setStep(result.ok ? "done" : "error");
+    }, PROCESSING_MS);
     return () => clearTimeout(timer);
   }, [step]);
 
@@ -56,6 +61,18 @@ export default function ScanButton(props: Props) {
           "Demo Scan"
         )}
       </Button>
+
+      <Dialog open={step === "error"} onClose={() => setStep("idle")}>
+        <DialogTitle>Couldn&apos;t scan</DialogTitle>
+        <DialogContent>
+          <Alert severity="error">Something went wrong. Please log in again and try once more.</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setStep("idle")}>
+            Back to menu
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={step === "done"} onClose={() => setStep("idle")}>
         <DialogTitle>{issues.length ? "Scanned, but…" : "Scanned!"}</DialogTitle>

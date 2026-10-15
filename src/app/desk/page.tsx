@@ -3,7 +3,7 @@ import FrontDeskBusyness from "@/features/analytics/components/FrontDeskBusyness
 import { DEMO_GYM_ID } from "@/features/analytics/config";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import ManualCheckInButton from "@/features/climbers/components/ManualCheckInButton";
-
+import ScanWatcher from "@/features/check-ins/components/ScanWatcher";
 export default function DeskPage() {
   return (
     <div className="flex flex-col gap-6">
@@ -16,6 +16,7 @@ export default function DeskPage() {
           <LinkButton href="/desk/climbers/new">Add climber</LinkButton>
         </div>
       </div>
+      <ScanWatcher />
       <Suspense fallback={<p>Loading busyness...</p>}>
         <FrontDeskBusyness gymId={DEMO_GYM_ID} />
       </Suspense>

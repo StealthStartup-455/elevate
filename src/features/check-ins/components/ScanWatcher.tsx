@@ -1,0 +1,159 @@
+"use client";
+
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Typography from "@mui/material/Typography";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { checkInClimber } from "@/features/climbers/actions";
+import WaiverBadge from "@/features/climbers/components/WaiverBadge";
+import { formatDate } from "@/features/climbers/format";
+import type { MembershipStatus } from "@/features/climbers/types";
+import { takeLatestScan, type ScannedClimber } from "../actions";
+
+// How often the desk asks the server for a new scan. Short, so the popup
+// shows up right after the climber taps "Demo scan".
+const POLL_MS = 2500;
+
+const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
+  none: "No membership",
+  active: "Active",
+  paused: "Paused",
+  expired: "Expired",
+};
+
+// What stops this climber from checking in, or an empty list if nothing.
+function problems(c: ScannedClimber): string[] {
+  const list: string[] = [];
+  if (c.waiverStatus !== "valid") list.push("needs a valid waiver");
+  if (c.membershipStatus !== "active") list.push("has no active membership");
+  return list;
+}
+
+// Front desk: pops up the climber who just scanned on /me, with their
+// membership and waiver. A warning when something is missing; otherwise a
+// green button that checks them in with the same rules as manual check in.
+export default function ScanWatcher() {
+  const router = useRouter();
+  const [climber, setClimber] = useState<ScannedClimber | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    // Don't look for a new scan while one is already showing.
+    if (climber) return;
+    const id = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      const scanned = await takeLatestScan();
+      if (scanned) setClimber(scanned);
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [climber]);
+
+  function close() {
+    setClimber(null);
+    setError(null);
+    setDone(false);
+  }
+
+  function checkIn(c: ScannedClimber) {
+    setError(null);
+    startTransition(async () => {
+      const result = await checkInClimber(c.id);
+      if (result.ok) {
+        setDone(true);
+        router.refresh(); // update the check-in list and count
+      } else {
+        setError(result.message ?? "Couldn't check in. Try again.");
+      }
+    });
+  }
+
+  if (!climber) return null;
+  const issues = problems(climber);
+
+  return (
+    <Dialog open onClose={close} fullWidth maxWidth="xs">
+      {issues.length ? (
+        <Alert severity="warning" variant="filled" sx={{ borderRadius: 0 }}>
+          {climber.name} {issues.join(" and ")}.
+        </Alert>
+      ) : null}
+      <DialogTitle>QR scan</DialogTitle>
+      <DialogContent>
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
+          {climber.name}
+        </Typography>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "auto 1fr",
+            columnGap: 2,
+            rowGap: 1.5,
+            alignItems: "center",
+            mt: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Membership
+          </Typography>
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {MEMBERSHIP_LABEL[climber.membershipStatus]}
+            </Typography>
+            {climber.membershipRenewsOn ? (
+              <Typography variant="caption" color="text.secondary">
+                {climber.membershipStatus === "expired" ? "Ended" : "Renews"}{" "}
+                {formatDate(climber.membershipRenewsOn, true)}
+              </Typography>
+            ) : null}
+          </Box>
+
+          <Typography variant="body2" color="text.secondary">
+            Waiver
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
+            <WaiverBadge status={climber.waiverStatus} />
+            {climber.waiverExpiresOn ? (
+              <Typography variant="caption" color="text.secondary">
+                {climber.waiverStatus === "valid" ? "Expires" : "Expired"}{" "}
+                {formatDate(climber.waiverExpiresOn, true)}
+              </Typography>
+            ) : null}
+          </Box>
+        </Box>
+
+        {done ? (
+          <Alert severity="success" sx={{ mt: 2.5 }}>
+            {climber.name} is checked in.
+          </Alert>
+        ) : null}
+        {error ? (
+          <Alert severity="error" sx={{ mt: 2.5 }}>
+            {error}
+          </Alert>
+        ) : null}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={close}>Close</Button>
+        {issues.length === 0 && !done ? (
+          <Button
+            variant="contained"
+            color="success"
+            disabled={pending}
+            onClick={() => checkIn(climber)}
+          >
+            {pending ? "Checking in…" : "Check in"}
+          </Button>
+        ) : null}
+      </DialogActions>
+    </Dialog>
+  );
+}
