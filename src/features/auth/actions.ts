@@ -1,17 +1,13 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  DESK_USERNAME,
-  findMockClimberIdByUsername,
-  MOCK_USER_COOKIE,
-} from "./mock-users";
+import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
+import { clearSession, setSession } from "./session";
 
 export type LoginState = { error?: string };
 
 // Static demo login, no real auth: the password must equal the username.
-// A climber from the mock data goes to /me, "desk" goes to /desk.
+// A climber from the database goes to /me, "desk" goes to /desk.
 // TODO(auth): replace with Supabase sign-in; this never runs in production.
 export async function mockLogin(
   _prev: LoginState,
@@ -28,27 +24,21 @@ export async function mockLogin(
     return { error: "Unknown username or password." };
   }
 
-  const jar = await cookies();
-
   if (username === DESK_USERNAME) {
-    jar.delete(MOCK_USER_COOKIE);
+    await clearSession();
     redirect("/desk");
   }
 
-  const climberId = findMockClimberIdByUsername(username);
+  const climberId = await findClimberIdByUsername(username);
   if (!climberId) return { error: "Unknown username or password." };
 
-  jar.set(MOCK_USER_COOKIE, climberId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-  });
+  await setSession(climberId);
   redirect("/me");
 }
 
 // Ends the demo session and returns to the log in page.
 // TODO(auth): also sign out of Supabase once real login exists.
 export async function logout(): Promise<void> {
-  (await cookies()).delete(MOCK_USER_COOKIE);
+  await clearSession();
   redirect("/");
 }

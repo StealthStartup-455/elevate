@@ -1,4 +1,4 @@
-import { DEMO_ACCOUNTS } from "@/features/climbers/mock-data";
+import { DEMO_ACCOUNTS } from "@/features/climbers/demo-accounts";
 import { DESK_USERNAME } from "./mock-users";
 import type { DemoLogin } from "./components/LoginForm";
 

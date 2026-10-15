@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { getSavedCheckIns } from "@/features/climbers/queries";
 import { activeWindowStart, getBusynessLevel, gymClock } from "./busyness";
 import { ACTIVE_WINDOW_MINUTES, getGymBusynessSettings } from "./config";
 import { mockCheckIns, mockClimbers, mockNow, mockWeek } from "./mock-data";
@@ -38,13 +39,35 @@ export async function getActiveCheckIns(
   const since = activeWindowStart(now, ACTIVE_WINDOW_MINUTES);
   const climbers = new Map(mockClimbers().map((c) => [c.id, c]));
 
-  return mockCheckIns()
+  const mock = mockCheckIns()
     .filter((c) => c.gymId === gymId && c.timestamp > since && c.timestamp <= now)
     .flatMap((c) => {
       const climber = climbers.get(c.climberId);
       return climber ? [{ ...c, climber }] : [];
-    })
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    });
+
+  // Visits saved by the front desk happen on the real clock, not the mock's,
+  // so they are cut off by the real active window.
+  const saved = await getSavedCheckIns(
+    activeWindowStart(new Date(), ACTIVE_WINDOW_MINUTES),
+  );
+  const live: ActiveCheckIn[] = saved.map((c) => ({
+    id: c.id,
+    climberId: c.climberId,
+    gymId,
+    timestamp: c.timestamp,
+    climber: {
+      id: c.climberId,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      phone: c.phone,
+      waiverStatus: c.waiverStatus,
+    },
+  }));
+
+  return [...live, ...mock].sort(
+    (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+  );
 }
 
 function summarize(
