@@ -7,6 +7,7 @@ import { formatDate } from "../format";
 import { getMyMembership, type Membership } from "../queries";
 import DemoQrCode from "./DemoQrCode";
 import WaiverStep from "./WaiverStep";
+import ScanButton from "@/features/check-ins/components/ScanButton";
 
 const WAIVER_TEXT = {
   valid: { label: "✓ Waiver signed", color: "success.main" },
@@ -80,6 +81,10 @@ export default async function MembershipCard() {
             <Typography variant="caption" component="p" sx={{ fontFamily: "var(--font-geist-mono)" }}>
               {membership.memberCode}
             </Typography>
+            <ScanButton
+                waiverStatus={membership.waiverStatus}
+                membershipStatus={membership.status}
+            />            
           </Box>
         </Box>
 
