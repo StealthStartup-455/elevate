@@ -18,7 +18,7 @@ Do:
 2. Use `<Typography variant="...">` with one of the six text styles: `pageTitle`, `cardTitle`, `kpi`, `body`, `secondary`, `label`.
 3. Put **one** `pageTitle` on each screen. Card titles are the only other headings.
 4. Make supporting information secondary: timestamps, descriptions, units, "member since". If you're unsure, it's secondary.
-5. Use violet (`color="primary"`, the default) only for things that **do something**: check in, save, buy, send, generate.
+5. Use teal (`color="primary"`, the default) only for things that **do something**: check in, save, buy, send, generate.
 6. Use slate blue (`color="secondary"`) only for things that **move you around or change the view**: links, tabs, filters, timeframes, toggles.
 7. Put at most **one** filled button (`variant="contained"`) in each card or area. Every other action is `variant="outlined"`, which renders as a tinted button.
 8. Show status with `<StatusPill>`, so green, amber and red always come with ✓, ! or ✕.
@@ -40,8 +40,8 @@ This section summarizes the color research behind the guide (elevate-docs#16).
 - **Fit matters more than "color meanings".** The most reliable finding is that people judge whether a color seems *right for the product* (Bottomley & Doyle, 2006), not that red means passion or blue means trust.
 - **Brightness and saturation matter as much as hue** (Valdez & Mehrabian, 1994). That's why the palette is muted and close to grey.
 - **Brand personality:** Labrecque & Milne (2012) link colors to personality traits. A business tool for gym owners has to read as *competent* first, so the base is calm granite greys, and the climbing personality comes through accents, type and content.
-- **Color carries meaning in this app.** Hold colors, waiver status and failed payments all use color, so the interface stays neutral and saves color for meaning. That's also why roles get their own colors: violet does something, slate blue takes you somewhere.
-- **Violet** keeps a brand color while staying clearly apart from the red, amber and green status colors. Teal and green were ruled out because they collide with "success".
+- **Color carries meaning in this app.** Hold colors, waiver status and failed payments all use color, so the interface stays neutral and saves color for meaning. That's also why roles get their own colors: teal does something, slate blue takes you somewhere.
+- **Teal** (`#00615F`) gives actions a confident brand color that fits the granite greys. It sits fairly close to the success green, especially for people with red-green color blindness, so success is never shown by color alone: `StatusPill` always adds ✓, and actions are always buttons, never pills.
 - **Accessibility is built in.** About 1 in 12 men has some color blindness, mostly red-green. Every text color pairing passes WCAG 2.2 AA (4.5:1) in both themes, the lowest being 4.8:1. Status always has an icon, and roles always have a distinct shape (filled button, arrow link, segmented control), so nothing depends on color alone.
 
 Further reading: Elliot & Maier (2014), *Color psychology*, Annual Review of Psychology; Labrecque & Milne (2012), *Exciting red and competent blue*, Journal of the Academy of Marketing Science; *Refactoring UI* (Wathan & Schoger), chapter on color.
@@ -52,8 +52,8 @@ Further reading: Elliot & Maier (2014), *Color psychology*, Annual Review of Psy
 
 | Role | Use for | MUI | Tailwind | Light | Dark |
 |---|---|---|---|---|---|
-| Actions (violet) | Buttons that do something | `primary.main`, `color="primary"` | `bg-action`, `text-action` | `#5F4598` | `#B5A4EA` |
-| Action tint | Tinted (outlined) buttons | `primary.soft` | `bg-action-soft` | `#F1EDFF` | `#302844` |
+| Actions (teal) | Buttons that do something | `primary.main`, `color="primary"` | `bg-action`, `text-action` | `#00615F` | `#64BCB9` |
+| Action tint | Tinted (outlined) buttons | `primary.soft` | `bg-action-soft` | `#E0F5F4` | `#163432` |
 | Navigation and settings (slate blue) | Links, tabs, filters, toggles, focus ring | `secondary.main`, `color="secondary"` | `text-nav`, `bg-nav` | `#26426C` | `#AAC6EF` |
 | Navigation tint | Segmented-control track, help icon | `secondary.soft` | `bg-nav-soft` | `#EAF1FB` | `#242E3E` |
 

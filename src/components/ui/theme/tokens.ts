@@ -4,7 +4,7 @@
 
 // ---------------------------------------------------------------------------
 // Color. "Granite" palette: near-greyscale structure, color only where it means something.
-//   action (violet):    things that do something (check in, save, buy, send)
+//   action (teal):      things that do something (check in, save, buy, send)
 //   nav (slate blue):   things that move you around or change the view (links, filters, tabs)
 //   ok / warn / bad:    state only (valid, expiring, failed), always with an icon
 // ---------------------------------------------------------------------------
@@ -59,12 +59,12 @@ export const colors: Record<ColorScheme, SchemeColors> = {
     hover: "rgb(31 35 38 / 0.05)",
     selected: "rgb(38 66 108 / 0.08)",
     action: {
-      main: "#5F4598",
-      hover: "#4E3680",
-      pressed: "#402B6D",
-      soft: "#F1EDFF",
-      softHover: "#E8E2FF",
-      border: "#C0B7E1",
+      main: "#00615F",
+      hover: "#005250",
+      pressed: "#004341",
+      soft: "#E0F5F4",
+      softHover: "#CDEEEC",
+      border: "#9DC7C5",
       on: "#FFFFFF",
     },
     nav: {
@@ -101,13 +101,13 @@ export const colors: Record<ColorScheme, SchemeColors> = {
     hover: "rgb(229 232 234 / 0.06)",
     selected: "rgb(170 198 239 / 0.12)",
     action: {
-      main: "#B5A4EA",
-      hover: "#C8BAF6",
-      pressed: "#D4C9FB",
-      soft: "#302844",
-      softHover: "#3A3156",
-      border: "#5B507B",
-      on: "#17131F",
+      main: "#64BCB9",
+      hover: "#82CECA",
+      pressed: "#9CDCD9",
+      soft: "#163432",
+      softHover: "#173F3E",
+      border: "#34615F",
+      on: "#0D1B1B",
     },
     nav: {
       main: "#AAC6EF",

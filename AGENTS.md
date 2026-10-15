@@ -85,7 +85,7 @@ Any change that touches what users see follows **`STYLE_GUIDE.md`**. Read it bef
 - Every color, size and radius comes from `src/components/ui/theme/tokens.ts`. Never write raw colors (`#fff`, `rgb()`), Tailwind arbitrary values (`p-[13px]`), Tailwind text sizes or weights (`text-2xl`, `font-semibold`) or Tailwind palette colors (`bg-green-500`). `npm run lint` rejects them.
 - MUI owns interactive components and all text. Tailwind is for layout only (flex, grid, gap, padding, width).
 - Text uses `<Typography variant="...">` with one of six styles: `pageTitle` (one per screen), `cardTitle`, `kpi`, `body`, `secondary`, `label`.
-- `color="primary"` (violet) is for actions only. `color="secondary"` (slate blue) is for navigation and settings only. At most one `variant="contained"` button per card; other actions use `variant="outlined"`.
+- `color="primary"` (teal) is for actions only. `color="secondary"` (slate blue) is for navigation and settings only. At most one `variant="contained"` button per card; other actions use `variant="outlined"`.
 - Status uses `<StatusPill>` (always with ✓, ! or ✕). Disabled controls are wrapped in `<DisabledReason>`. Links to other pages use `<LinkArrow>`.
 - Spacing is a 4px scale shared by MUI and Tailwind: `sx={{ p: 3 }}` and `p-3` are both 12px.
 - Change how a component looks or hovers in `src/components/ui/theme/theme.ts`, never per screen. New tokens or text styles need the developer's approval and an update to `STYLE_GUIDE.md` in the same pull request.

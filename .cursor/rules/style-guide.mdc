@@ -6,6 +6,6 @@ alwaysApply: false
 
 Any change that touches what users see follows `STYLE_GUIDE.md`. Read it before writing UI code.
 
-In short: values come from `src/components/ui/theme/tokens.ts`; MUI owns components and text (`<Typography variant="pageTitle | cardTitle | kpi | body | secondary | label">`); Tailwind is layout only; violet `primary` is for actions, slate `secondary` for navigation and settings; no raw colors, arbitrary values or Tailwind type and palette classes (lint rejects them).
+In short: values come from `src/components/ui/theme/tokens.ts`; MUI owns components and text (`<Typography variant="pageTitle | cardTitle | kpi | body | secondary | label">`); Tailwind is layout only; teal `primary` is for actions, slate `secondary` for navigation and settings; no raw colors, arbitrary values or Tailwind type and palette classes (lint rejects them).
 
 Full rule: "UI and styling (mandatory)" in `AGENTS.md`.

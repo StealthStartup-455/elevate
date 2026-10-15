@@ -214,7 +214,7 @@ export default function StyleGuidePage() {
         </div>
       </Section>
 
-      <Section id="actions" title="Actions" intro="Violet does something. One filled button per card; every other action is tinted.">
+      <Section id="actions" title="Actions" intro="Teal does something. One filled button per card; every other action is tinted.">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="contained">Check in member</Button>
           <Button variant="outlined">Sell day pass</Button>
