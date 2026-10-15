@@ -224,6 +224,7 @@ Use MUI's own components wherever they exist. `src/components/ui/` adds a few th
 | `StatusPill` | Any status: valid, expiring, failed. Always has its icon |
 | `KpiTile` | A big number with a label, optional detail and an optional follow-up action |
 | `ColorModeToggle` | Light / system / dark switch |
+| `Logo` | The Elevate logo. `variant="inline"` (default) in nav bars, `variant="full"` (with the tagline) on the login page. The mountain is teal as the brand color; that is not an action |
 
 ### Buttons
 

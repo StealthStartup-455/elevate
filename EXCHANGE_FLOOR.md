@@ -38,6 +38,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
 | 2026-10-14 | @agamkamran02 | Claude Code | `42-connect-frontend-and-backend` | `src/features/climbers/*`, `src/features/auth/*`, `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma` | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
+| 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` page, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
 
 ## Entry template
 
@@ -61,6 +62,25 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-15 23:00 UTC: Add the Elevate logo
+
+- **Developer:** @Scott-Squires
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#22 / no PR yet
+- **Branch:** `feature/22-logo-first-pass` (branched from `feature/16-style-guide`, which must merge first)
+- **What the agent did:**
+  - Cut the logo artwork into three transparent masks (mountain, wordmark, tagline) in `public/brand/`.
+  - Added `src/components/ui/Logo.tsx`: `variant="inline"` (mountain + wordmark) and `variant="full"` (stacked, with tagline).
+  - Full logo above the login form on `/` (replaces the "Elevate" text header); inline logo at the start of the `/desk` and `/me` nav bars, linking to each section's home.
+  - Switched the `/desk` and `/me` nav bars from `items-center` to `items-baseline` so the wordmark sits on the same line as the tab labels.
+  - Replaced `src/app/favicon.ico` and added `src/app/icon.png` and `src/app/apple-icon.png`, all from the teal mountain.
+  - Listed `Logo` in `STYLE_GUIDE.md` and `src/components/ui/README.md`.
+- **Files touched:** `src/components/ui/Logo.tsx`, `public/brand/*.png`, `src/app/{favicon.ico,icon.png,apple-icon.png}`, `src/app/page.tsx`, `src/app/desk/layout.tsx`, `src/app/me/layout.tsx`, `STYLE_GUIDE.md`, `src/components/ui/README.md`
+- **Decisions and why:** The logo parts are CSS masks painted with `primary.main` (mountain) and `text.primary` (letters), so it follows light/dark mode and needs no raw colors. The source artwork's teal is the action teal, so the mountain uses it; the style guide notes this is brand, not an action.
+- **Gotchas:** The masks were cut from a raster PNG, not vector art. If a vector (SVG) version of the logo turns up, swap the files in `public/brand/` and keep the same aspect ratios in `Logo.tsx`.
+- **Open follow-ups:** None.
+- **Verification:** `npm run lint` clean; `npm run build` succeeded; checked `/` and `/desk` screenshots in light and dark mode in headless Chrome.
 
 ### 2026-10-15 02:20 UTC: Separate pricing from FAQ section
 
