@@ -17,3 +17,4 @@ How to use all of this: [`STYLE_GUIDE.md`](../../../STYLE_GUIDE.md). Live exampl
 | `StatusPill.tsx` | Status chip that always has its icon. |
 | `KpiTile.tsx` | Big number with a label. |
 | `ColorModeToggle.tsx` | Light / system / dark switch. |
+| `Logo.tsx` | The Elevate logo, painted from the masks in `public/brand/` so it follows light and dark mode. |
