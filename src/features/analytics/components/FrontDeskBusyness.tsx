@@ -40,7 +40,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
       sx={{
         display: "grid",
         gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(340px, 420px) minmax(0, 1fr)" },
-        gap: 3,
+        gap: 6,
         alignItems: "start",
       }}
     >
@@ -49,7 +49,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
         <CardContent>
           <Stack
             direction="row"
-            spacing={2}
+            spacing={4}
             useFlexGap
             sx={{ alignItems: "center", flexWrap: "wrap" }}
           >
@@ -58,10 +58,10 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
             </Typography>
             <BusynessLevelChip level={busyness.level} />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
             Updated {formatTime(busyness.computedAt, timeZone)}
           </Typography>
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" component="h3" sx={{ mb: 2 }}>
             Typical week
           </Typography>
           <BusynessHeatMap gymId={gymId} />
@@ -70,7 +70,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
 
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent>
-          <Typography variant="h6" component="h2" sx={{ mb: 1.5 }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
             Recent check-ins
           </Typography>
           <CheckInTable rows={rows} />

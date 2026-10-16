@@ -131,7 +131,6 @@ export default function ManualCheckIn({
               backgroundColor:
                 "color-mix(in srgb, var(--mui-palette-background-paper) 78%, transparent)",
               backdropFilter: "blur(16px) saturate(1.2)",
-              boxShadow: "0 12px 40px rgba(0, 0, 0, 0.18)",
             },
           },
         }}
@@ -173,10 +172,10 @@ export default function ManualCheckIn({
                 sx={{
                   display: "grid",
                   gridTemplateColumns: "auto 1fr",
-                  columnGap: 2,
-                  rowGap: 1.5,
+                  columnGap: 4,
+                  rowGap: 3,
                   alignItems: "center",
-                  mt: 2.5,
+                  mt: 5,
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
@@ -196,7 +195,7 @@ export default function ManualCheckIn({
                 <Typography variant="body2" color="text.secondary">
                   Waiver
                 </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
                   <WaiverBadge status={selected.waiverStatus} />
                   {selected.waiverExpiresOn ? (
                     <Typography variant="caption" color="text.secondary">
@@ -208,13 +207,13 @@ export default function ManualCheckIn({
               </Box>
 
               {blocked ? (
-                <Alert severity="warning" sx={{ mt: 2.5 }}>
+                <Alert severity="warning" sx={{ mt: 5 }}>
                   {blocked}{" "}
                   <Link href={`/desk/climbers/${selected.id}`}>Open their account</Link>
                 </Alert>
               ) : null}
               {error ? (
-                <Alert severity="error" sx={{ mt: 2.5 }}>
+                <Alert severity="error" sx={{ mt: 5 }}>
                   {error}
                 </Alert>
               ) : null}
@@ -248,18 +247,18 @@ export default function ManualCheckIn({
                 placeholder="Typos are OK"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                sx={{ mt: 0.5 }}
+                sx={{ mt: 1 }}
               />
               {query.trim() === "" ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
                   Start typing to find a climber.
                 </Typography>
               ) : results.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
                   No climbers match.
                 </Typography>
               ) : (
-                <List aria-label="Matching climbers" sx={{ mt: 1 }}>
+                <List aria-label="Matching climbers" sx={{ mt: 2 }}>
                   {results.map((c) => (
                     <ListItemButton key={c.id} onClick={() => setSelectedId(c.id)}>
                       <ListItemText primary={c.name} secondary={c.phone} />

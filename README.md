@@ -4,6 +4,13 @@ Management software for climbing gyms: a front desk app for staff and a dashboar
 
 Built with Next.js, Supabase (database and authentication) and Prisma.
 
+## Product page
+
+The static product page for GitHub Pages lives in [`docs/`](docs/). In the repository's
+**Settings → Pages**, set the build and deployment source to **GitHub Actions**. The
+`Deploy product page` workflow publishes changes from `dev` and can also be run
+manually from the Actions tab on `dev`.
+
 ## Getting started
 
 ### Requirements
@@ -48,6 +55,8 @@ Open http://localhost:3000.
 
 How the database works, its tables and how to change them: [`prisma/DATABASE.md`](prisma/DATABASE.md).
 
+How the app looks and behaves (colors, type, spacing, hover rules, components): [`STYLE_GUIDE.md`](STYLE_GUIDE.md). With `npm run dev` running, open http://localhost:3000/style-guide to see it live.
+
 ## Project structure
 
 ```
@@ -58,6 +67,7 @@ src/
     login/, join/     Public pages
     desk/             Staff front desk (login required)
     me/               Member dashboard (login required)
+    style-guide/      Live style guide
   features/           Business logic, one folder per feature
     auth/             Logins, roles and permissions
     check-ins/        Scanning, check-in and green/red status
@@ -65,7 +75,7 @@ src/
     waivers/          CSV import, matching and duplicate checks
     events/           Calendar, wall resets, bookings and announcements
     analytics/        Gym busyness and session stats
-  components/ui/      Shared UI components
+  components/ui/      Shared UI components and the theme (theme/tokens.ts holds every design value)
   lib/                Database and Supabase clients, shared helpers
   proxy.ts            Redirects logged-out users away from /desk and /me
 ```

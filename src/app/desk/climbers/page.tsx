@@ -16,10 +16,10 @@ export default function ClimbersPage() {
           flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 2,
+          gap: 4,
         }}
       >
-        <h1 className="text-2xl font-semibold">Climbers</h1>
+        <Typography variant="pageTitle">Climbers</Typography>
         <LinkButton href="/desk/climbers/new">Add climber</LinkButton>
       </Box>
       <Suspense fallback={<p>Loading climbers...</p>}>
@@ -34,8 +34,8 @@ async function ClimberList() {
 
   return (
     <Card variant="outlined" sx={{ borderRadius: 3 }}>
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 1.5 }}>
+      <CardContent>
+        <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
           All climbers
         </Typography>
         <ClimberTable

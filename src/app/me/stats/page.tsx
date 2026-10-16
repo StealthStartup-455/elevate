@@ -1,3 +1,5 @@
+import Typography from "@mui/material/Typography";
+
 export default function MyStatsPage() {
-  return <h1 className="text-2xl font-semibold">My stats</h1>;
+  return <Typography variant="pageTitle">My stats</Typography>;
 }

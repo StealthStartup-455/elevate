@@ -1,3 +1,5 @@
+import Typography from "@mui/material/Typography";
+
 export default function DeskEventsPage() {
-  return <h1 className="text-2xl font-semibold">Events</h1>;
+  return <Typography variant="pageTitle">Events</Typography>;
 }
