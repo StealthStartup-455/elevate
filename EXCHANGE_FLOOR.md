@@ -29,7 +29,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
-| 2026-10-16 | @ekamgill | Copilot CLI | `feature/24-update-logo-product-page` | `docs/index.html`, `docs/styles.css`, `docs/assets/`, `EXCHANGE_FLOOR.md` | Done (local; uncommitted) |
+| 2026-10-16 | @ekamgill | Copilot CLI | `feature/24-update-logo-product-page` | `docs/index.html`, `docs/styles.css`, `docs/assets/`, `EXCHANGE_FLOOR.md` | In review (#25) |
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
@@ -68,7 +68,7 @@ Newest first.
 
 - **Developer:** @ekamgill
 - **AI tool / model:** Copilot CLI
-- **Issue / PR:** StealthStartup-455/elevate-docs#24 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / StealthStartup-455/elevate#25
 - **Branch:** `feature/24-update-logo-product-page`
 - **What the agent did:**
   - Replaced the hand-drawn product-page logo with the app's current mark and wordmark.
