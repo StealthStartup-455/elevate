@@ -29,7 +29,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
-| 2026-10-15 | @ekamgill | Copilot CLI | `feature/24-product-page` | `docs/index.html`, `docs/styles.css`, `EXCHANGE_FLOOR.md` | Done (local; uncommitted) |
+| 2026-10-16 | @ekamgill | Copilot CLI | `feature/24-update-logo-product-page` | `docs/index.html`, `docs/styles.css`, `docs/assets/`, `EXCHANGE_FLOOR.md` | In review (#25) |
 | 2026-10-11 | @agamk | Claude Code | `docs/19-exchange-floor` | `EXCHANGE_FLOOR.md`, `AGENTS.md`, agent config | In review |
 | 2026-10-11 | @sethmess | Claude Code | `feature/38-busyness-tracker` | `src/features/analytics/`, `src/features/climbers/` (membership card), `src/lib/fuzzy.ts`, `/`, `/desk` and `/me` pages, MUI setup | In review |
 | 2026-10-13 | @agamkamran02 | Claude Code | `feature/33-account-creation-customer` | `src/features/climbers/*`, `src/app/join` | In review |
@@ -63,6 +63,22 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-16 03:47 UTC: Update product page logo and app screenshots
+
+- **Developer:** @ekamgill
+- **AI tool / model:** Copilot CLI
+- **Issue / PR:** StealthStartup-455/elevate-docs#24 / StealthStartup-455/elevate#25
+- **Branch:** `feature/24-update-logo-product-page`
+- **What the agent did:**
+  - Replaced the hand-drawn product-page logo with the app's current mark and wordmark.
+  - Replaced the front-desk and member screenshots with fresh captures of the current app styling and demo data.
+  - Removed the decorative star from the bottom of the page.
+- **Files touched:** `docs/index.html`, `docs/styles.css`, `docs/assets/`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Used the same transparent logo masks and brand colors as the app; retained existing product-page layouts while updating their screenshots.
+- **Gotchas:** The screenshots are local-app captures using fictional demo data.
+- **Open follow-ups:** None.
+- **Verification:** `npm run lint`, `npm run build`, and `git diff --check` passed; local page and logo/screenshot assets returned HTTP 200; Chrome confirmed all screenshots load, no mobile horizontal overflow at 390px, and no decorative star remains; desktop and mobile page previews inspected.
 
 ### 2026-10-15 23:00 UTC: Add the Elevate logo
 
