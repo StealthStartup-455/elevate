@@ -52,8 +52,8 @@ export default async function MembershipCard() {
       variant="outlined"
       sx={{ width: "100%", maxWidth: 560, borderRadius: 3, borderWidth: 2, borderColor: "text.primary" }}
     >
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Box sx={{ display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
+      <CardContent>
+        <Box sx={{ display: "flex", gap: 4, justifyContent: "space-between", alignItems: "center" }}>
           <Box>
             <Typography variant="body2" color="text.secondary">
               Membership
@@ -61,10 +61,10 @@ export default async function MembershipCard() {
             <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
               {title}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {renewalLine(membership)}
             </Typography>
-            <Typography variant="body2" sx={{ mt: 1, fontWeight: 600, color: waiver.color }}>
+            <Typography variant="body2" sx={{ mt: 2, fontWeight: 600, color: waiver.color }}>
               {waiver.label}
             </Typography>
             {waiverExpiry ? (
@@ -89,7 +89,7 @@ export default async function MembershipCard() {
         </Box>
 
         {needsWaiver || needsRenewal || needsPurchase ? (
-          <Box sx={{ mt: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ mt: 5, display: "flex", flexDirection: "column", gap: 3 }}>
             {needsWaiver ? (
               <WaiverStep climberId={membership.climberId} />
             ) : null}

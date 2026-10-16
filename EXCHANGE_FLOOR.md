@@ -38,6 +38,9 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-14 | @TylerLeHere | Claude Code | `feature/21-build-a-mock-database` | `prisma/DATABASE.md`, `README.md` | Done (docs only) |
 | 2026-10-14 | @agamkamran02 | Claude Code | `42-connect-frontend-and-backend` | `src/features/climbers/*`, `src/features/auth/*`, `src/lib/gym.ts`, `prisma/seed.ts`, `prisma/schema.prisma` | In review |
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
+| 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
+| 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+
 ## Entry template
 
 Copy this block to the top of the timeline.
@@ -60,6 +63,39 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-15 23:00 UTC: Add the Elevate logo
+
+- **Developer:** @Scott-Squires
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#22 / no PR yet
+- **Branch:** `feature/22-logo-first-pass` (branched from `feature/16-style-guide`, which must merge first)
+- **What the agent did:**
+  - Cut the logo artwork into three transparent masks (mountain, wordmark, tagline) in `public/brand/`.
+  - Added `src/components/ui/Logo.tsx`: `variant="inline"` (mountain + wordmark) and `variant="full"` (stacked, with tagline).
+  - Full logo above the login form on `/` (replaces the "Elevate" text header) and `/login`; inline logo at the start of the `/desk` and `/me` nav bars, linking to each section's home.
+  - Switched the `/desk` and `/me` nav bars from `items-center` to `items-baseline` so the wordmark sits on the same line as the tab labels.
+  - Replaced `src/app/favicon.ico` and added `src/app/icon.png` and `src/app/apple-icon.png`, all from the teal mountain.
+  - Listed `Logo` in `STYLE_GUIDE.md` and `src/components/ui/README.md`.
+- **Files touched:** `src/components/ui/Logo.tsx`, `public/brand/*.png`, `src/app/{favicon.ico,icon.png,apple-icon.png}`, `src/app/page.tsx`, `src/app/login/page.tsx`, `src/app/desk/layout.tsx`, `src/app/me/layout.tsx`, `STYLE_GUIDE.md`, `src/components/ui/README.md`
+- **Decisions and why:** The logo parts are CSS masks painted with `primary.main` (mountain) and `text.primary` (letters), so it follows light/dark mode and needs no raw colors. The source artwork's teal is the action teal, so the mountain uses it; the style guide notes this is brand, not an action.
+- **Gotchas:** The masks were cut from a raster PNG, not vector art. If a vector (SVG) version of the logo turns up, swap the files in `public/brand/` and keep the same aspect ratios in `Logo.tsx`.
+- **Open follow-ups:** None.
+- **Verification:** `npm run lint` clean; `npm run build` succeeded; checked `/` and `/desk` screenshots in light and dark mode in headless Chrome.
+### 2026-10-15 18:00 UTC: Membership status ignores passes that have not started
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#42 (follow-up to #20) / no PR yet
+- **Branch:** `fix/42-membership-status-future-pass`
+- **What the agent did:**
+  - Fixed a review finding on #20: membership status was read from the pass with the newest `startsAt`, so a renewal bought early (starting in the future) made the climber show as "none" and blocked check-in.
+  - `summarizeMembership` now takes all membership passes, ignores any that have not started, and uses the newest one that has.
+- **Files touched:** `src/features/climbers/status.ts`, `src/features/climbers/queries.ts`
+- **Decisions and why:** The query now loads every membership pass for the climber instead of one, so the filter can run on the date. A climber has few passes, so this is cheap. A future pass does not change `renewsOn`; it still shows when the current pass ends.
+- **Gotchas:** None.
+- **Open follow-ups:** None.
+- **Verification:** `npx tsc --noEmit` and `npx eslint src` clean. Six cases checked with `summarizeMembership`: current + early renewal is active, only a future pass is none, no passes is none, expired + future is expired, paused + future is paused.
 
 ### 2026-10-15 02:20 UTC: Separate pricing from FAQ section
 
@@ -194,6 +230,36 @@ Newest first.
   - `DEV_AUTH_BYPASS="true"` is still needed to open `/desk` and `/me` locally, because the demo login does not create a Supabase session.
 - **Open follow-ups:** Real auth (Supabase) in place of the demo cookie; set `createdByStaffId` from the logged-in staff member; real `CheckIn` rows (#36); a real waiver signing flow; buying and renewing memberships.
 - **Verification:** `npx eslint .` clean, `npx tsc --noEmit` clean, `npm run build` passed, `npm run db:seed` seeds 89 climbers. Checked in a browser against local Supabase: login, waiver signing on `/me` and `/desk`, session across a new browser context, `/join` new member (no membership, Buy button), desk list and detail, check-in links.
+
+### 2026-10-14 22:02 UTC: Style guide, MUI theme and design tokens
+
+- **Developer:** @Scott-Squires
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#16 / (this PR)
+- **Branch:** `feature/16-style-guide`
+- **What the agent did:**
+  - Added `STYLE_GUIDE.md` (rules, color research summary, tokens, components, page patterns) and a live `/style-guide` page.
+  - Replaced the placeholder green theme: `src/components/ui/theme/` now holds `tokens.ts` (every color, size, radius and timing), `theme.ts` (MUI theme with hover, focus and density overrides), `mui-augment.d.ts` and `fonts.ts` (IBM Plex Sans and Mono replace Geist).
+  - Added shared components: `LinkArrow`, `HelpTip`, `DisabledReason`, `StatusPill`, `KpiTile`, `ColorModeToggle`.
+  - `globals.css` maps the tokens to Tailwind classes (`bg-surface`, `text-fg-muted`, `border-line`, `max-w-narrow`…) and removes Tailwind's own palette, type scale, radii and shadows.
+  - Lint now rejects raw colors, Tailwind arbitrary values and Tailwind text-size, font-weight and palette classes in `src/`. Added a "UI and styling (mandatory)" section to `AGENTS.md`, a Cursor rule, a Copilot line and a PR checklist item.
+- **Files touched:** `STYLE_GUIDE.md`, `src/components/ui/**`, `src/app/style-guide/*`, `src/app/{layout.tsx,globals.css,manifest.ts}`, `eslint.config.mjs`, `AGENTS.md`, `README.md`, `.cursor/rules/style-guide.mdc`, `.github/{copilot-instructions.md,pull_request_template.md}`; small edits in the existing screens listed under Gotchas.
+- **Decisions and why:**
+  - **MUI `primary` = actions (teal `#00615F`), `secondary` = navigation and settings (slate blue).** `palette.action` is MUI's own hover/disabled object, so "action" can't be a palette key. Links, tabs, toggles, checkboxes, switches and fields default to `secondary` in the theme.
+  - **MUI spacing is now 4px** (was 8px) so `sx={{ p: 3 }}` and Tailwind `p-3` are the same 12px. MUI breakpoints now match Tailwind's (640/768/1024/1280).
+  - **Built-in Typography variants are kept** (`h5`, `h6`, `body2`, `caption`…) and restyled to match the six new styles, because MUI's components and ~45 existing usages rely on them. New code uses `pageTitle`, `cardTitle`, `kpi`, `body`, `secondary`, `label`.
+  - **Touch screens get 40px controls and 16px field text automatically** (`@media (pointer: coarse)`), so member pages work on phones without per-page sizes and iOS doesn't zoom on focus.
+  - Light/dark uses MUI's `data-mui-color-scheme` attribute set by `InitColorSchemeScript` before first paint; Tailwind's `dark:` variant is wired to the same attribute. Default is the system setting.
+  - The busyness heat map now shades `chart.now` (grey) instead of the primary colour: charts are data, and the action color is reserved for actions.
+  - 2026-10-15: the action color changed from violet to teal `#00615F` at the developer's request. Teal sits close to success green for red-green color blind users, so status must keep its icon (`StatusPill`) and actions stay buttons.
+- **Gotchas:**
+  - Every existing numeric `sx` spacing value and `Stack spacing` was **doubled** to keep the old spacing under the 4px unit (for example `mb: 2.5` → `mb: 5`). The 7 `CardContent sx={{ p: { xs: 2, sm: 3 } }}` overrides were removed so cards use the 12px token. Files: `LoginForm`, `ClimberForm`, `ClimberTable`, `MembershipCard`, `WaiverStep`, `CustomerBusyness`, `FrontDeskBusyness`, `CheckInTable`, `BusynessHeatMap`, `ShowMore`, `join` and the `desk/climbers` pages. **If you add sx spacing from older code, halve-check it.**
+  - Page titles (`<h1 className="text-2xl font-semibold">`) became `<Typography variant="pageTitle">`; `max-w-[560px]` became `max-w-narrow`; check-in and climber table names are now MUI links (slate blue); `--font-geist-mono` no longer exists, use `var(--font-mono)`.
+  - `StatusPill` must stay a client component: MUI's Chip clones its icon, which breaks hydration when the icon comes from a Server Component.
+  - `DemoQrCode` keeps its black-on-white colors on purpose, with `eslint-disable` comments explaining why.
+  - 2026-10-15: merged `dev`. The new `ManualCheckIn` dialog (#42) got the same treatment: its `sx` spacing values were doubled, and its raw `rgba()` box shadow was removed so the dialog uses the theme's floating shadow. `/desk` keeps the `pageTitle` heading with the new "Manual check in" button beside "Add climber".
+- **Open follow-ups:** move older screens to the six variant names, then remove the built-in variants from the Typography types; switch `WaiverBadge`, `BusynessLevelChip` and the check-in table's waiver chips to `StatusPill` so status always has its icon; replace `features/climbers/LinkButton` (navigation shown as a filled button) with `LinkArrow` or a text link; decide whether `ColorModeToggle` goes in the app header; lint does not check `sx` values or variant names yet.
+- **Verification:** `npm run lint` passed with no warnings. `npm run build` passed with the CI placeholder env values (`/style-guide` builds as static). In `next dev` (with `DEV_AUTH_BYPASS`): `/style-guide`, `/desk`, `/me` and `/join` checked at 1280px and 375px, light and dark; measured buttons 24/28/40px, fields 28px (40px with 16px text on touch), labels centred, no horizontal overflow at 375px, no console errors after the `StatusPill` fix. Every text color pair in `tokens.ts` passes WCAG AA in both themes (lowest 4.80:1). Not checked: real devices, Safari.
 
 ### 2026-10-14 03:40 UTC: Database guide (prisma/DATABASE.md)
 

@@ -4,9 +4,9 @@ import { heatLevel } from "../busyness";
 import { getGymBusynessSettings } from "../config";
 import { getWeeklyBusyness } from "../queries";
 
-// Fill for heat levels 0 (quiet) to 4 (busy), as shades of the primary colour.
+// Fill for heat levels 0 (quiet) to 4 (busy), as shades of the chart colour (data, not an action).
 const SHADES = [0.08, 0.25, 0.45, 0.7, 1].map(
-  (opacity) => `rgba(var(--mui-palette-primary-mainChannel) / ${opacity})`,
+  (opacity) => `color-mix(in srgb, var(--mui-palette-chart-now) ${opacity * 100}%, transparent)`,
 );
 
 // 18 -> "6p", 12 -> "12p", 6 -> "6a"
@@ -101,11 +101,11 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          gap: 1,
-          mt: 1.5,
+          gap: 2,
+          mt: 3,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Typography variant="caption">Quiet</Typography>
           {SHADES.map((shade) => (
             <Swatch key={shade} shade={shade} />

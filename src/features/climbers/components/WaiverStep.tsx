@@ -45,7 +45,7 @@ export default function WaiverStep({ climberId, nextHref }: Props) {
       <Box
         role="status"
         aria-live="polite"
-        sx={{ display: "flex", alignItems: "center", gap: 2, py: 1 }}
+        sx={{ display: "flex", alignItems: "center", gap: 4, py: 2 }}
       >
         <CircularProgress size={24} aria-hidden="true" />
         <Typography>Preparing your waiver…</Typography>
@@ -55,7 +55,7 @@ export default function WaiverStep({ climberId, nextHref }: Props) {
 
   if (step === "done") {
     return (
-      <Stack spacing={2}>
+      <Stack spacing={4}>
         <Alert severity="success">Waiver signed.</Alert>
         {nextHref ? (
           <Button component={Link} href={nextHref} variant="contained" size="large">
@@ -67,7 +67,7 @@ export default function WaiverStep({ climberId, nextHref }: Props) {
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={3}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Button
         type="button"

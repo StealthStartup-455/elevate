@@ -20,7 +20,7 @@ export default function ShowMore({
         size="small"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        sx={{ textTransform: "none", px: 0, mt: 1, fontWeight: 600 }}
+        sx={{ textTransform: "none", px: 0, mt: 2, fontWeight: 600 }}
       >
         {open ? "Hide" : label} {open ? "▴" : "▾"}
       </Button>
