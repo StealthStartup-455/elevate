@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
-import { clearSession, setSession } from "./session";
+import { clearSession, setDeskSession, setSession } from "./session";
 
 export type LoginState = { error?: string };
 
@@ -26,6 +26,7 @@ export async function mockLogin(
 
   if (username === DESK_USERNAME) {
     await clearSession();
+    await setDeskSession();
     redirect("/desk");
   }
 
