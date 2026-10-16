@@ -40,6 +40,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+| 2026-10-16 | @TylerLeHere | Claude Code | `fix/33-demo-login-redirect` | `src/proxy.ts`, `src/features/auth/session.ts`, `src/features/auth/actions.ts` | In review |
 
 ## Entry template
 
@@ -63,6 +64,22 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-16 19:34 UTC: Demo login no longer loops back to /login
+
+- **Developer:** @TylerLeHere
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#33 (refs, does not close) / PR pending
+- **Branch:** `fix/33-demo-login-redirect`
+- **What the agent did:**
+  - Found why log in and "Continue" after joining sent people back to `/login`: the demo login sets its own cookie, but `proxy.ts` only accepted a Supabase user, so `/me` and `/desk` always redirected unless `DEV_AUTH_BYPASS="true"`.
+  - `proxy.ts` now lets a request through under `next dev` when it carries the matching demo cookie: `elevate_mock_user` for `/me`, the new `elevate_mock_desk` for `/desk`.
+  - The `desk` demo login now sets `elevate_mock_desk`; logging out clears both demo cookies.
+- **Files touched:** `src/proxy.ts`, `src/features/auth/session.ts`, `src/features/auth/actions.ts`
+- **Decisions and why:** Separate cookies per role so a climber session cannot open `/desk` and the desk session cannot open `/me`. The proxy check uses `NODE_ENV === "development"`, the same guard as `DEV_AUTH_BYPASS`, so it never applies to a deployed build. `DEV_AUTH_BYPASS` is kept as is.
+- **Gotchas:** `DEV_AUTH_BYPASS="true"` is no longer needed to use the demo login locally (corrects the note in the 2026-10-14 23:50 entry). Local databases created before 2026-10-14 also need the `pass_paused_at` migration (`npm run db:migrate`), or pages that read passes fail.
+- **Open follow-ups:** #33 still replaces the demo cookies with Supabase Auth; remove the demo-cookie block in `proxy.ts` then.
+- **Verification:** `npm run lint` clean, `npx tsc --noEmit` clean, `npm run build` passed. In `next dev` with `DEV_AUTH_BYPASS` unset: `/me` with no cookie → 307 `/login`; climber cookie → `/me` 200, `/desk` 307; desk cookie → `/desk` and `/desk/climbers` 200, `/me` 307. In a browser: joined as a new climber, signed the waiver, "Continue" landed on `/me`, and `/me/events` and `/me/stats` loaded. Not checked: the `desk` / `desk` log in through the form, dark mode (no UI changes).
 
 ### 2026-10-16 03:47 UTC: Update product page logo and app screenshots
 
