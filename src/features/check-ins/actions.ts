@@ -2,6 +2,7 @@
 
 import { getSessionClimberId } from "@/features/auth/session";
 import { getClimber } from "@/features/climbers/queries";
+import { getGym } from "@/lib/gym";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { saveScan, takeScan } from "./scan-store";
 
@@ -19,7 +20,8 @@ export type ScannedClimber = {
 export async function recordScan(): Promise<{ ok: boolean }> {
   const climberId = await getSessionClimberId();
   if (!climberId) return { ok: false };
-  saveScan({ climberId, scannedAt: Date.now() });
+  const gym = await getGym();
+  await saveScan(gym.id, climberId);
   return { ok: true };
 }
 
@@ -27,9 +29,10 @@ export async function recordScan(): Promise<{ ok: boolean }> {
 // scan once, then null until someone scans again.
 // TODO(auth): staff only.
 export async function takeLatestScan(): Promise<ScannedClimber | null> {
-  const scan = takeScan();
-  if (!scan) return null;
-  const climber = await getClimber(scan.climberId);
+  const gym = await getGym();
+  const climberId = await takeScan(gym.id);
+  if (!climberId) return null;
+  const climber = await getClimber(climberId);
   if (!climber) return null;
   return {
     id: climber.id,

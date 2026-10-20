@@ -172,6 +172,7 @@ async function main() {
   await db.$transaction(
     async (tx) => {
       // Children first: they reference climbers with ON DELETE RESTRICT.
+      await tx.qrScan.deleteMany({ where: { gymId: gym.id } });
       await tx.checkIn.deleteMany({ where: { gymId: gym.id } });
       await tx.waiver.deleteMany({ where: { gymId: gym.id } });
       await tx.pass.deleteMany({ where: { gymId: gym.id } });
