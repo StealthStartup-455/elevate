@@ -195,8 +195,15 @@ Run `npm install` once after cloning so the hooks are active. Any agent that doe
 
 - After editing `prisma/schema.prisma`, run `npm run db:migrate`.
 - Commit the schema change and its migration together.
-- Notify the team if a migration requires others to reset their local database.
 - Every table must include a `gymId`.
+
+Hosted databases (staging now, production for the pilot) hold data that must survive every change. So:
+
+1. **Migrations only move forward.** Never edit, rename or delete a migration once it is merged; fix a mistake with a new migration. Prisma records applied migrations and never re-runs them, so an edited one silently leaves staging different from a fresh database. CI fails a pull request that changes an existing migration (`scripts/check-migrations.sh`).
+2. **Shared databases only change through `prisma migrate deploy`** in CI (`.github/workflows/migrate-staging.yml`). No SQL run by hand, and never reset staging or production. Resetting is only for your own local database; tell the team if a migration needs that.
+3. **Every migration must work on a database that already has data.** Adding a table or a nullable column is safe. A new required column needs a default or a backfill. A rename in `schema.prisma` can come out as drop and recreate, which deletes the data: use expand and contract instead (add the new column, copy the data, switch the code, drop the old column in a later migration).
+4. **Data backfills you write by hand must be safe to run twice**, for example `UPDATE ... WHERE "newColumn" IS NULL`.
+5. **New tables turn on Row Level Security** in the same migration (`ALTER TABLE "X" ENABLE ROW LEVEL SECURITY;`), like every existing table.
 
 ## Environment variables
 

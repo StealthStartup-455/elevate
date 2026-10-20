@@ -40,6 +40,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+| 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 
 ## Entry template
 
@@ -63,6 +64,24 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-20 06:45 UTC: Ready the app for hosted staging; tests and CI release gate
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 and #43 (under #30) / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Removed three blockers to hosting: fonts are bundled (`next/font/local`) instead of fetched from Google at build time; pending QR scans are stored in a new `QrScan` table instead of server memory; the demo login works in a deployed build when `DEMO_MODE="true"` (staging only; `APP_ENV="production"` always turns it off).
+  - Brought in Tyler's demo login fix from the deleted `fix/33-demo-login-redirect` branch (separate desk and climber cookies).
+  - Added Vitest unit tests (status, validation, phone, fuzzy search, busyness), database tests for the scan store, and a Playwright end to end test of the demo flow.
+  - CI: unit tests in `check`; new `e2e` job with Postgres (migration drift check, `prisma migrate deploy`, seed, database tests, build, Playwright); a check that fails pull requests that edit existing migrations; a workflow that applies migrations to staging from `dev` once `STAGING_DIRECT_URL` exists.
+  - `DEPLOYMENT.md` runbook; migration rules in `CONTRIBUTING.md`; `QrScan` in `prisma/DATABASE.md`; `.gitattributes` forces LF.
+- **Files touched:** `src/features/check-ins/scan-store.ts`, `src/features/check-ins/actions.ts`, `src/features/auth/demo-mode.ts`, `src/features/auth/session.ts`, `src/proxy.ts`, `src/components/ui/theme/fonts.ts`, `prisma/schema.prisma`, `prisma/migrations/20261020070000_qr_scan/`, `prisma/seed.ts`, `prisma7.config.ts`, `.github/workflows/`, `vitest.config.ts`, `playwright.config.ts`, `e2e/`, `*.test.ts`
+- **Decisions and why:** Scans claimed with a conditional update (`takenAt` still empty), so two desks never show the same scan. Demo mode is an explicit environment flag rather than a `NODE_ENV` check, so staging can demo before real sign-in (#33) and production can never. Prisma CLI uses `DIRECT_URL` (direct connection) and the app `DATABASE_URL` (pooler), per Prisma's Supabase guide.
+- **Gotchas:** The `QrScan` migration SQL was written by hand in Prisma's format because the schema engine couldn't be downloaded in the agent's environment; it was applied to a fresh database and the app runs on it, and CI's `prisma migrate diff --exit-code` step confirms it matches `schema.prisma`. If that step fails, regenerate with `npm run db:migrate` locally. The seed now deletes `QrScan` rows before climbers.
+- **Open follow-ups:** Create the Vercel and Supabase projects and secrets (team decision in #30). Sound-alike name search (jeff finds Geoff) and a desk day pass are recorded as known gaps in the tests (proposal #55, D1 and D2). Remove `demo-mode.ts` when #33 lands.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 46 passed, 2 todo; `npm run test:db` 6 passed; `npm run build` passed with no network access to Google Fonts; `npm run test:e2e` 4 passed against `next start` with `DEMO_MODE="true"`; a production build without `DEMO_MODE`, and with `APP_ENV="production"`, refuses the demo login.
 
 ### 2026-10-16 03:47 UTC: Update product page logo and app screenshots
 

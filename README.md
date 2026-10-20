@@ -47,13 +47,20 @@ Open http://localhost:3000.
 | `npm run dev` | Start the development server |
 | `npm run lint` | Check code style |
 | `npm run build` | Create a production build (also run by CI) |
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:db` | Database tests; needs the local database running |
+| `npm run test:e2e` | End to end test of the demo flow (Playwright); needs `npm run build` and `npm run db:seed` first |
 | `npm run db:start` | Start local Supabase |
 | `npm run db:stop` | Stop local Supabase |
 | `npm run db:migrate` | Create and apply a migration after editing `schema.prisma` |
 | `npm run db:seed` | Load sample data from `prisma/seed.ts` |
 | `npm run db:studio` | Browse the database in the browser |
 
+Before the first `npm run test:e2e`, install the test browser once: `npx playwright install chromium`. CI runs all three test suites on every pull request.
+
 How the database works, its tables and how to change them: [`prisma/DATABASE.md`](prisma/DATABASE.md).
+
+How the hosted staging demo is deployed, migrated, reseeded and rolled back: [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 How the app looks and behaves (colors, type, spacing, hover rules, components): [`STYLE_GUIDE.md`](STYLE_GUIDE.md). With `npm run dev` running, open http://localhost:3000/style-guide to see it live.
 
