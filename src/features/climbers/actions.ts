@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { setSession } from "@/features/auth/session";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
+import { logEvent } from "@/lib/log";
 import { getClimber } from "./queries";
 import { toStoredPhone } from "./phone";
 import type { ClimberInput, FormState } from "./types";
@@ -17,9 +18,13 @@ import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Logs which fields failed (names only, never what was typed), so we can see
+// which parts of the form trip people up.
 function invalid(
   parsed: Extract<ParsedClimberInput, { ok: false }>,
+  form: "join" | "desk_add" | "desk_edit",
 ): FormState {
+  logEvent("climber_form_invalid", { form, fields: Object.keys(parsed.errors).sort().join(",") });
   return {
     status: "error",
     message: "Please fix the highlighted fields.",
@@ -53,13 +58,14 @@ export async function joinAsCustomer(
   formData: FormData,
 ): Promise<FormState> {
   const parsed = parseClimberInput(formData);
-  if (!parsed.ok) return invalid(parsed);
+  if (!parsed.ok) return invalid(parsed, "join");
 
   const gym = await getGym();
   const climber = await db.climber.create({
     data: { gymId: gym.id, ...toColumns(parsed.value) },
     select: { id: true },
   });
+  logEvent("climber_created", { gymId: gym.id, climberId: climber.id, source: "self" });
   // Demo only: "sign in" as the new climber so /me shows their account.
   await setSession(climber.id);
   refreshClimberPages();
@@ -76,11 +82,15 @@ export async function createClimberAtDesk(
   formData: FormData,
 ): Promise<FormState> {
   const parsed = parseClimberInput(formData);
-  if (!parsed.ok) return invalid(parsed);
+  if (!parsed.ok) return invalid(parsed, "desk_add");
 
   const gym = await getGym();
   // TODO(auth): set createdByStaffId from the logged-in staff member.
-  await db.climber.create({ data: { gymId: gym.id, ...toColumns(parsed.value) } });
+  const climber = await db.climber.create({
+    data: { gymId: gym.id, ...toColumns(parsed.value) },
+    select: { id: true },
+  });
+  logEvent("climber_created", { gymId: gym.id, climberId: climber.id, source: "desk" });
   refreshClimberPages();
   redirect("/desk/climbers");
 }
@@ -92,7 +102,7 @@ export async function updateClimber(
   formData: FormData,
 ): Promise<FormState> {
   const parsed = parseClimberInput(formData);
-  if (!parsed.ok) return invalid(parsed);
+  if (!parsed.ok) return invalid(parsed, "desk_edit");
   if (!UUID.test(climberId)) return { status: "error", message: "Climber not found." };
 
   const gym = await getGym();
@@ -102,6 +112,7 @@ export async function updateClimber(
   });
   if (count === 0) return { status: "error", message: "Climber not found." };
 
+  logEvent("climber_updated", { gymId: gym.id, climberId });
   refreshClimberPages(climberId);
   return { status: "success", message: "Saved." };
 }
@@ -129,6 +140,7 @@ export async function signWaiver(
       signedByName: `${climber.firstName} ${climber.lastName}`,
     },
   });
+  logEvent("waiver_signed", { gymId: gym.id, climberId, version: gym.waiverVersion ?? "v1" });
   refreshClimberPages(climberId);
   return { ok: true };
 }
@@ -141,15 +153,21 @@ export async function checkInClimber(
   climberId: string,
 ): Promise<{ ok: boolean; message?: string }> {
   // TODO(auth): staff only; set staffId from the logged-in staff member.
-  if (!UUID.test(climberId)) return { ok: false, message: "Climber not found." };
+  // Every refusal is logged with a reason code: which rule turns people away
+  // (missing waiver, no membership, already in) is evidence for the pilot.
+  const refuse = (reason: string, message: string) => {
+    logEvent("check_in_refused", { climberId, reason });
+    return { ok: false, message };
+  };
+  if (!UUID.test(climberId)) return refuse("invalid_id", "Climber not found.");
 
   const climber = await getClimber(climberId);
-  if (!climber) return { ok: false, message: "Climber not found." };
+  if (!climber) return refuse("not_found", "Climber not found.");
   if (climber.waiverStatus !== "valid") {
-    return { ok: false, message: "Waiver is not valid. Sign a waiver first." };
+    return refuse(`waiver_${climber.waiverStatus}`, "Waiver is not valid. Sign a waiver first.");
   }
   if (climber.membershipStatus !== "active") {
-    return { ok: false, message: "No active membership." };
+    return refuse(`membership_${climber.membershipStatus}`, "No active membership.");
   }
 
   const gym = await getGym();
@@ -162,11 +180,12 @@ export async function checkInClimber(
     },
     select: { id: true },
   });
-  if (recent) return { ok: false, message: "Already checked in in the last 2 hours." };
+  if (recent) return refuse("already_checked_in", "Already checked in in the last 2 hours.");
 
   await db.checkIn.create({
     data: { gymId: gym.id, climberId, method: "FRONT_DESK" },
   });
+  logEvent("check_in_saved", { gymId: gym.id, climberId, method: "FRONT_DESK" });
   revalidatePath("/desk");
   revalidatePath("/me");
   return { ok: true };

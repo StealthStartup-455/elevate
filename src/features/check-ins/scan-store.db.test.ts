@@ -48,15 +48,23 @@ describe("scan store", () => {
     await saveScan(gymId, alex);
     await new Promise((r) => setTimeout(r, 5));
     await saveScan(gymId, sam);
-    expect(await takeScan(gymId)).toBe(alex);
-    expect(await takeScan(gymId)).toBe(sam);
+    expect((await takeScan(gymId))?.climberId).toBe(alex);
+    expect((await takeScan(gymId))?.climberId).toBe(sam);
     expect(await takeScan(gymId)).toBeUndefined();
   });
 
   it("gives a scan to only one of two desks polling at the same moment", async () => {
     await saveScan(gymId, alex);
     const results = await Promise.all([takeScan(gymId), takeScan(gymId), takeScan(gymId)]);
-    expect(results.filter(Boolean)).toEqual([alex]);
+    expect(results.filter(Boolean).map((r) => r?.climberId)).toEqual([alex]);
+  });
+
+  it("says when the climber scanned, for the scan-to-desk time", async () => {
+    const before = Date.now();
+    await saveScan(gymId, alex);
+    const taken = await takeScan(gymId);
+    expect(taken?.scannedAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(taken?.scannedAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
 
   it("ignores scans older than the time limit", async () => {
@@ -68,7 +76,7 @@ describe("scan store", () => {
   it("never shows another gym's scan", async () => {
     await saveScan(gymId, alex);
     expect(await takeScan(otherGymId)).toBeUndefined();
-    expect(await takeScan(gymId)).toBe(alex);
+    expect((await takeScan(gymId))?.climberId).toBe(alex);
   });
 
   it("refuses a scan for a climber from another gym", async () => {

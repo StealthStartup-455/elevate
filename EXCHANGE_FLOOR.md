@@ -65,6 +65,23 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-20 14:30 UTC: Error pages, server error logging and event logs
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Added `src/app/error.tsx` and `src/app/global-error.tsx`: a "Something went wrong" page with Try again and the error code (digest), using the style guide components.
+  - Added `src/instrumentation.ts`: `onRequestError` logs every server error as one JSON line, without the query string.
+  - Added `src/lib/log.ts` and event logs for login, climber created or updated, invalid forms (field names only), waiver signed, scan saved and taken (with `waitMs`), and check in saved or refused (with a reason code).
+  - `takeScan` now also returns `scannedAt`, for `waitMs`.
+- **Files touched:** `src/app/error.tsx`, `src/app/global-error.tsx`, `src/instrumentation.ts`, `src/lib/log.ts`, `src/features/climbers/actions.ts`, `src/features/check-ins/actions.ts`, `src/features/check-ins/scan-store.ts`, `src/features/auth/actions.ts`, `DEPLOYMENT.md`
+- **Decisions and why:** Plain JSON lines on stdout, no logging library or account, so Vercel's log viewer can search them now and a monitoring service can be added in `instrumentation.ts` later. Log lines carry ids and reason codes only, never personal data.
+- **Gotchas:** None known.
+- **Open follow-ups:** Error monitoring service and uptime check, with the staging accounts (#30).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 52 passed, 2 todo; `npm run test:db` 7 passed; `npm run build` passed; `npm run test:e2e` 4 passed, and the server output had the expected events with no names, phones or emails; stopping Postgres while the desk was open showed the error page, its error code matched the `digest` of the `server_error` log line, and Try again recovered once Postgres was back; checked in light and dark mode.
+
 ### 2026-10-20 06:45 UTC: Ready the app for hosted staging; tests and CI release gate
 
 - **Developer:** @guerrerj

@@ -74,6 +74,26 @@ The Milestone 3 release candidate follows the release steps in `CONTRIBUTING.md`
 - **Database:** migrations are never rolled back by hand. Fix forward with a new migration. Because every migration keeps working with the previous code, rolling back the code alone is safe.
 - **Data on staging:** reseed.
 
+## Logs and errors
+
+The server writes one JSON line per event to standard output (`src/lib/log.ts`). On Vercel, open the deployment, then Logs, and search by `event` or any field. The free plan keeps one hour of runtime logs; an error monitoring service can be added later in `src/instrumentation.ts`.
+
+| Event | When | Fields |
+|---|---|---|
+| `server_error` | Any error Next.js catches on the server (`src/instrumentation.ts`) | `path` (no query string), `method`, `routePath`, `routeType`, `errorName`, `errorMessage`, `digest`, `stack` |
+| `login_succeeded` / `login_failed` | Demo login | `role`, `climberId`; or `reason`: `demo_mode_off`, `wrong_password`, `unknown_user` |
+| `climber_created` / `climber_updated` | Join, desk add, desk edit | `climberId`, `source`: `self` or `desk` |
+| `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
+| `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
+| `scan_saved` / `scan_taken` | Phone scan saved; the desk showed it | `climberId`; `waitMs` (time from tap to desk), `waiverStatus`, `membershipStatus` |
+| `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |
+
+**When someone reports an error**, ask for the error code on the "Something went wrong" page. It is the `digest` of the matching `server_error` line.
+
+**Privacy:** log lines carry ids and reason codes only, never names, phone numbers, emails or anything typed into a form. Keep it that way when adding events.
+
+**Useful numbers from the logs during a pilot:** `waitMs` on `scan_taken` (how fast the desk sees a scan), and `check_in_refused` by `reason` (which rule turns people away).
+
 ## If something breaks
 
 | Symptom | Likely cause | Fix |

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
+import { logEvent } from "@/lib/log";
 import { isDemoMode } from "./demo-mode";
 import { clearSession, setDeskSession, setSession } from "./session";
 
@@ -15,6 +16,7 @@ export async function mockLogin(
   formData: FormData,
 ): Promise<LoginState> {
   if (!isDemoMode()) {
+    logEvent("login_failed", { reason: "demo_mode_off" });
     return { error: "Log in isn't available yet." };
   }
 
@@ -22,17 +24,23 @@ export async function mockLogin(
   const password = String(formData.get("password") ?? "").trim().toLowerCase();
 
   if (!username || password !== username) {
+    logEvent("login_failed", { reason: "wrong_password" });
     return { error: "Unknown username or password." };
   }
 
   if (username === DESK_USERNAME) {
+    logEvent("login_succeeded", { role: "desk" });
     await clearSession();
     await setDeskSession();
     redirect("/desk");
   }
 
   const climberId = await findClimberIdByUsername(username);
-  if (!climberId) return { error: "Unknown username or password." };
+  if (!climberId) {
+    logEvent("login_failed", { reason: "unknown_user" });
+    return { error: "Unknown username or password." };
+  }
+  logEvent("login_succeeded", { role: "climber", climberId });
 
   await setSession(climberId);
   redirect("/me");
