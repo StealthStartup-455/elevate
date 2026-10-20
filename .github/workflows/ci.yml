@@ -25,6 +25,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: scripts/check-migrations.sh "origin/${{ github.base_ref }}"
       - run: npm run lint
+      - name: No critical vulnerabilities in dependencies
+        run: npm audit --audit-level=critical
       - name: Unit tests
         run: npm test
       - run: npm run build

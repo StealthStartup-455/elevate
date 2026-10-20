@@ -65,6 +65,22 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-20 21:45 UTC: Accessibility tests, dependency audit in CI, Vitest 4.1
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 (under #30) / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Upgraded Vitest from 3.2 to 4.1.12; 3.2 brought in a critical (tinypool) and a moderate (@vitest/mocker) advisory.
+  - Added `e2e/accessibility.spec.ts`: axe (WCAG 2.1 A and AA) on login, join, the climber screens and the desk screens, in light and dark mode, with phone and laptop sizes.
+  - CI fails on any critical advisory (`npm audit --audit-level=critical`).
+- **Files touched:** `package.json`, `package-lock.json`, `e2e/accessibility.spec.ts`, `.github/workflows/ci.yml`, `README.md`
+- **Decisions and why:** The audit gate is set at critical, not high, because `dev` already has 9 high advisories, all in build and CLI tooling (Prisma CLI, eslint-config-next); a high gate would fail every PR until those packages are upgraded in their own PR.
+- **Gotchas:** Axe finds roughly a third of accessibility problems; keyboard use and screen readers still need a manual check.
+- **Open follow-ups:** Upgrade Prisma CLI and eslint-config-next to clear the 9 high advisories, then raise the gate to high.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 52 passed, 2 todo; `npm run test:db` 7 passed; `npm run build` passed; `npm run test:e2e` 10 passed (4 demo flow, 6 accessibility, no violations on 9 screens in either mode); `npm audit`: 0 critical, 0 moderate, 9 high (same as `dev`).
+
 ### 2026-10-20 14:30 UTC: Error pages, server error logging and event logs
 
 - **Developer:** @guerrerj

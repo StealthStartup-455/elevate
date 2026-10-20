@@ -49,7 +49,7 @@ Open http://localhost:3000.
 | `npm run build` | Create a production build (also run by CI) |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:db` | Database tests; needs the local database running |
-| `npm run test:e2e` | End to end test of the demo flow (Playwright); needs `npm run build` and `npm run db:seed` first |
+| `npm run test:e2e` | End to end tests (Playwright): the demo flow, and automated accessibility checks (axe, WCAG 2.1 AA) on every main screen in light and dark mode; needs `npm run build` and `npm run db:seed` first |
 | `npm run db:start` | Start local Supabase |
 | `npm run db:stop` | Stop local Supabase |
 | `npm run db:migrate` | Create and apply a migration after editing `schema.prisma` |
