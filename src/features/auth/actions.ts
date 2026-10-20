@@ -2,18 +2,19 @@
 
 import { redirect } from "next/navigation";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
-import { clearSession, setSession } from "./session";
+import { isDemoMode } from "./demo-mode";
+import { clearSession, setDeskSession, setSession } from "./session";
 
 export type LoginState = { error?: string };
 
 // Static demo login, no real auth: the password must equal the username.
 // A climber from the database goes to /me, "desk" goes to /desk.
-// TODO(auth): replace with Supabase sign-in; this never runs in production.
+// TODO(auth): replace with Supabase sign-in. Only works in demo mode (demo-mode.ts).
 export async function mockLogin(
   _prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  if (process.env.NODE_ENV === "production") {
+  if (!isDemoMode()) {
     return { error: "Log in isn't available yet." };
   }
 
@@ -26,6 +27,7 @@ export async function mockLogin(
 
   if (username === DESK_USERNAME) {
     await clearSession();
+    await setDeskSession();
     redirect("/desk");
   }
 

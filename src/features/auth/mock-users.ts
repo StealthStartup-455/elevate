@@ -1,6 +1,7 @@
 // Static stand-in for real accounts until auth exists: every climber in the
 // database can "log in" with their username as both username and password.
-// Nothing here is a secret, and none of it works in a production build.
+// Nothing here is a secret. It only works in demo mode (demo-mode.ts): under
+// `next dev`, or on the hosted staging demo, never in production.
 import { DEMO_USERNAME_PREFIX } from "@/features/climbers/demo-accounts";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
