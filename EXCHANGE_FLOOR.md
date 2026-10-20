@@ -65,6 +65,25 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-20 22:40 UTC: Server action permission test; scan load and burst measurements
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 (under #30); findings for #34 and #38 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Added `e2e/server-actions-auth.spec.ts`: calls `checkInClimber` and `signWaiver` through the public `/join` page with no login. Both run today, so the tests are marked `test.fail` and point at #34.
+  - Measured the QR scan path locally (not committed; numbers below).
+- **Files touched:** `e2e/server-actions-auth.spec.ts`
+- **Decisions and why:** Recorded the gap as an expected failure instead of adding permission checks, because roles belong to #34 and sign in to #33. When the checks land, CI goes red on these tests until the `test.fail` marker is removed.
+- **Gotchas:**
+  - Next.js bundles every export of a `"use server"` file into each page that imports it. `/join` imports `features/climbers/actions.ts`, so `checkInClimber`, `signWaiver`, `createClimberAtDesk` and `updateClimber` can all be called through `/join`, which the proxy does not guard. Permission checks must live inside each action, not only in `proxy.ts`.
+  - In demo mode the session cookies hold plain values (`elevate_mock_desk`, the climber id in `elevate_mock_user`), so anyone can set them by hand. Acceptable on staging with fictional data only.
+  - A desk shows one scan at a time and stops polling while the popup is open. Scans older than `SCAN_TTL_MS` (2 minutes) are dropped without a log line. Burst runs, one desk: a group of 4 at 10 s each waited 7 to 40 s; 8 at 20 s each, 2 never shown; 12 at 15 s each, 5 never shown. Two desks showed all 12, longest wait 90 s.
+  - Polling capacity on a 2 CPU container: 364 polls a second at 50 concurrent callers, p95 173 ms, no errors; one desk polls every 2.5 s, so capacity is not the limit.
+- **Open follow-ups:** #34: permission check in every server action. #38: show how many scans are waiting, take the next scan as soon as the popup closes, log expired scans, and tell the climber if the desk hasn't seen them.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm run test:e2e` 12 passed (the two new tests fail as expected; with the marker removed they fail because the action ran).
+
 ### 2026-10-20 21:45 UTC: Accessibility tests, dependency audit in CI, Vitest 4.1
 
 - **Developer:** @guerrerj
