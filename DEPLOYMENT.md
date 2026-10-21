@@ -113,6 +113,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| Deploy fails: Node.js version discontinued | Vercel project set to an old Node | `package.json` `engines` pins Node 24; make sure it is committed, then deploy again |
 | Every page errors, logs mention connections | Paused Supabase project, or a wrong `DATABASE_URL` | Resume the project; check the pooler URL and `?pgbouncer=true` |
 | Log in says "Log in isn't available yet" | `DEMO_MODE` not `true`, or `APP_ENV` set to `production` | Fix the variables and redeploy |
 | Phone scans but the desk shows nothing | The `QrScan` migration isn't applied | Run the migrate workflow (Actions, Migrate staging database, Run workflow) |
