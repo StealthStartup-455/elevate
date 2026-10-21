@@ -113,6 +113,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| Every page is Vercel's "404: NOT_FOUND" after a successful deploy | The Vercel project's framework isn't Next.js (projects made with `vercel project add` have none) | `vercel.json` sets it; deploy again from a checkout that has it |
 | Deploy fails: Node.js version discontinued | Vercel project set to an old Node | `package.json` `engines` pins Node 24; make sure it is committed, then deploy again |
 | Every page errors, logs mention connections | Paused Supabase project, or a wrong `DATABASE_URL` | Resume the project; check the pooler URL and `?pgbouncer=true` |
 | Log in says "Log in isn't available yet" | `DEMO_MODE` not `true`, or `APP_ENV` set to `production` | Fix the variables and redeploy |
