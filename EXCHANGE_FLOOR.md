@@ -65,6 +65,19 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-21 05:30 UTC: Deployment docs fixed for Supabase's IPv4 limits; .vercelignore
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** `DEPLOYMENT.md` and `.env.example` now use Supabase's session pooler (port 5432) for migrations and seeding instead of the direct connection; added PowerShell syntax and a "Trial deploy from your machine" section; added `.vercelignore` so the Vercel CLI doesn't upload `.env`.
+- **Files touched:** `DEPLOYMENT.md`, `.env.example`, `.vercelignore`
+- **Decisions and why:** Supabase's direct connection is IPv6 only (IPv4 needs the paid add-on), and GitHub Actions is IPv4 only, so `STAGING_DIRECT_URL` as written would have failed in `migrate-staging.yml`. The Vercel CLI's default ignore list skips `.env.local` but not `.env`.
+- **Gotchas:** The app's `DATABASE_URL` stays the transaction pooler (port 6543). The pg adapter uses unnamed statements by default, which the transaction pooler supports.
+- **Open follow-ups:** Trial deploy following the new section, before the PR merges.
+- **Verification:** Docs only; checked against Supabase's IPv4 and IPv6 compatibility guide and Vercel's ignored files list.
+
 ### 2026-10-20 22:40 UTC: Server action permission test; scan load and burst measurements
 
 - **Developer:** @guerrerj

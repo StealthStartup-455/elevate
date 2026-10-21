@@ -35,19 +35,30 @@ GitHub (Settings, Environments, `staging`) holds one secret:
 
 | Secret | Value | Used by |
 |---|---|---|
-| `STAGING_DIRECT_URL` | Supabase **direct** connection URL, port 5432 | `.github/workflows/migrate-staging.yml`, to apply migrations |
+| `STAGING_DIRECT_URL` | Supabase **session pooler** URL (Connect, Session pooler: the pooler host, port 5432) | `.github/workflows/migrate-staging.yml`, to apply migrations |
 
-Migrations need the direct connection; the Prisma CLI reads `DIRECT_URL` first and falls back to `DATABASE_URL` (`prisma7.config.ts`).
+Migrations need a session connection, not the transaction pooler; the Prisma CLI reads `DIRECT_URL` first and falls back to `DATABASE_URL` (`prisma7.config.ts`). Use the **session pooler**, not Supabase's "direct connection": the direct connection is IPv6 only, and GitHub Actions and many home networks are IPv4 only. In this document, "the session URL" means the session pooler URL.
 
 ## Setting up staging (once)
 
-1. Create a Supabase project, region Canada (Central). Note the pooler URL (port 6543) and the direct URL (port 5432).
-2. Apply the migrations: from your machine, once, `DIRECT_URL="<direct url>" npx prisma migrate deploy`. After this, CI does it.
-3. Seed fictional data once: `DATABASE_URL="<direct url>" npm run db:seed`.
+1. Create a Supabase project, region Canada (Central). From Connect, note the transaction pooler URL (port 6543) and the session pooler URL (port 5432).
+2. Apply the migrations: from your machine, once, `DIRECT_URL="<session url>" npx prisma migrate deploy`. After this, CI does it.
+3. Seed fictional data once: `DATABASE_URL="<session url>" npm run db:seed`.
+
+On Windows PowerShell, set the variable on its own line first, for example `$env:DIRECT_URL="<session url>"`, then run the command; `Remove-Item Env:DIRECT_URL` afterwards so later commands use your local database again.
 4. Create the Vercel project from this repository; set the production branch for this project to `dev`; add the variables above.
 5. Add the `staging` environment and `STAGING_DIRECT_URL` secret in GitHub.
 6. Open the Vercel URL, log in as `desk` / `desk` on a laptop and as `demo-valid-active` on a phone, and run the demo: scan on the phone, check in at the desk.
 7. Run the end to end test against it: `E2E_BASE_URL="https://<staging url>" npm run test:e2e`.
+
+### Trial deploy from your machine
+
+To try a branch on real hosting before it merges, without connecting the repository to Vercel:
+
+1. Steps 1 to 3 above, on a Supabase project used only for trials.
+2. `npx vercel link` in the repository, creating a new Vercel project; add the variables above under Project Settings, Environment Variables (Preview and Production).
+3. `npx vercel deploy`. `.vercelignore` keeps your local `.env` out of the upload.
+4. Steps 6 and 7 above against the URL it prints. Note anything in this document that was wrong or missing, and fix it in the same pull request.
 
 ## Releasing
 
@@ -63,7 +74,7 @@ The Milestone 3 release candidate follows the release steps in `CONTRIBUTING.md`
 ## Before a demo
 
 - Resume the Supabase project if it was paused (Dashboard, Resume project). Nothing is lost.
-- Reseed so the demo starts clean, because the two hour check-in rule remembers earlier runs: `DATABASE_URL="<direct url>" npm run db:seed`.
+- Reseed so the demo starts clean, because the two hour check-in rule remembers earlier runs: `DATABASE_URL="<session url>" npm run db:seed`.
 - Run `E2E_BASE_URL="https://<staging url>" npm run test:e2e`, then reseed again.
 - Use two browser windows or devices: the climber's phone and the desk.
 - Code freeze the day before; demo from the tagged release.
