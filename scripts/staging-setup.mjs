@@ -33,15 +33,25 @@ function fail(text) {
 
 // Runs a command through the shell (needed for npx on Windows). `env` adds
 // variables for this command only; `input` is sent on stdin.
+// `capture: "all"` also collects stderr (printed afterwards), because the
+// Vercel CLI writes some of its result lines there.
 function run(command, { env = {}, input, capture = false } = {}) {
   const result = spawnSync(command, {
     shell: true,
     env: { ...process.env, ...env },
     input,
     encoding: "utf8",
-    stdio: [input === undefined ? "inherit" : "pipe", capture ? "pipe" : "inherit", "inherit"],
+    stdio: [
+      input === undefined ? "inherit" : "pipe",
+      capture ? "pipe" : "inherit",
+      capture === "all" ? "pipe" : "inherit",
+    ],
   });
-  return { ok: result.status === 0, stdout: (result.stdout ?? "").trim() };
+  if (capture === "all") process.stdout.write(`${result.stderr ?? ""}${result.stdout ?? ""}`);
+  return {
+    ok: result.status === 0,
+    stdout: `${result.stdout ?? ""}\n${capture === "all" ? (result.stderr ?? "") : ""}`.trim(),
+  };
 }
 
 function parseUrl(value, label) {
@@ -148,8 +158,15 @@ for (const [name, value] of Object.entries(settings)) {
 }
 
 step("Deploying (vercel deploy --prod)");
-const deployed = run(`${VERCEL} deploy --prod --yes`, { capture: true });
-const url = deployed.stdout.split(/\s+/).find((word) => /^https?:\/\//.test(word));
+console.log("Building on Vercel, about a minute; the log prints when it finishes.");
+const deployed = run(`${VERCEL} deploy --prod --yes`, { capture: "all" });
+// Vercel prints the deployment's own URL (behind Vercel's login by default)
+// and, for --prod, the project's public alias. Test the alias when there is one.
+const words = deployed.stdout.split(/\s+/);
+const urls = words.filter((word) => /^https?:\/\//.test(word));
+const aliasAt = words.indexOf("Aliased");
+const alias = aliasAt >= 0 ? words.slice(aliasAt).find((word) => /^https?:\/\//.test(word)) : undefined;
+const url = alias ?? urls.at(-1);
 if (!deployed.ok || !url) fail("the deploy failed. The build log is above.");
 
 step(`Checking ${url}/login`);
@@ -157,6 +174,14 @@ let healthy = false;
 for (let attempt = 0; attempt < 10 && !healthy; attempt++) {
   try {
     const response = await fetch(`${url}/login`);
+    // Elevate's login form, not Vercel's own login page in front of it.
+    const page = await response.text();
+    if (response.ok && !page.includes('name="username"')) {
+      fail(
+        `${url} shows a different page, probably Vercel's login (Deployment Protection). ` +
+          "In Vercel, Settings, Deployment Protection, use Standard Protection so the production address is public.",
+      );
+    }
     healthy = response.ok;
     if (!healthy) console.log(`status ${response.status}, retrying`);
   } catch {
