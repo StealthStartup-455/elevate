@@ -197,6 +197,8 @@ if (!args.has("--skip-e2e")) {
     "\nRun the end to end tests against it now? Takes about 2 minutes. [y/N] ",
   );
   if (/^y/i.test(answer)) {
+    // Quick when the browser is already there; downloads it on first use.
+    if (!run("npx playwright install chromium").ok) fail("could not install the test browser.");
     const passed = run("npx playwright test", { env: { E2E_BASE_URL: url } }).ok;
     step("Reseeding, so the demo starts clean");
     run("npx tsx prisma/seed.ts", { env: { DATABASE_URL: sessionUrl } });
