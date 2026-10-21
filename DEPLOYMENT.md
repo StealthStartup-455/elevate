@@ -51,6 +51,10 @@ On Windows PowerShell, set the variable on its own line first, for example `$env
 6. Open the Vercel URL, log in as `desk` / `desk` on a laptop and as `demo-valid-active` on a phone, and run the demo: scan on the phone, check in at the desk.
 7. Run the end to end test against it: `E2E_BASE_URL="https://<staging url>" npm run test:e2e`.
 
+### Setup script
+
+`npm run staging:setup` does steps 2 to 7 in one run, and repeats safely: it asks for the two pooler URLs, the project URL and the publishable key (or reads `STAGING_TRANSACTION_URL`, `STAGING_SESSION_URL`, `STAGING_SUPABASE_URL`, `STAGING_PUBLISHABLE_KEY`), applies the migrations, seeds, logs in to and links Vercel if needed, sets the variables above on the Vercel project, deploys with `--prod`, checks that `/login` answers, and offers to run the end to end tests and reseed. It stops on the usual mistakes: the IPv6 only direct connection, `[YOUR-PASSWORD]` left in a URL, or `APP_ENV=production`. `--skip-db` redeploys without touching the database. It deploys from your machine; connecting the repository to Vercel (step 4) is the team's decision in #30.
+
 ### Trial deploy from your machine
 
 To try a branch on real hosting before it merges, without connecting the repository to Vercel:

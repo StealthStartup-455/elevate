@@ -55,6 +55,7 @@ Open http://localhost:3000.
 | `npm run db:migrate` | Create and apply a migration after editing `schema.prisma` |
 | `npm run db:seed` | Load sample data from `prisma/seed.ts` |
 | `npm run db:studio` | Browse the database in the browser |
+| `npm run staging:setup` | Set up or refresh a hosted demo on Supabase and Vercel (see `DEPLOYMENT.md`) |
 
 Before the first `npm run test:e2e`, install the test browser once: `npx playwright install chromium`. CI runs all three test suites on every pull request.
 

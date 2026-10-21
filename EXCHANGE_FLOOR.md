@@ -65,6 +65,19 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-21 06:15 UTC: Staging setup script
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** Added `scripts/staging-setup.mjs` (`npm run staging:setup`): migrate, seed, Vercel login and link, set the six variables, `vercel deploy --prod`, health check of `/login`, optional end to end run against the URL and reseed. Documented in `DEPLOYMENT.md` and the README.
+- **Files touched:** `scripts/staging-setup.mjs`, `package.json`, `DEPLOYMENT.md`, `README.md`
+- **Decisions and why:** Vercel CLI pinned to 63.1.2. Secrets reach child processes through their environment or stdin, never the command line, and are never printed. One prompt reader per question, closed before any Vercel command runs, so it doesn't compete with the CLI's own prompts. Deploys with `--prod` because preview links sit behind Vercel's login by default.
+- **Gotchas:** `VERCEL_CLI` overrides the Vercel command, which is how the script was tested without an account.
+- **Open follow-ups:** First real run against Supabase and Vercel.
+- **Verification:** `npx eslint` clean on the script. Dry run with a stand in Vercel CLI and a local production build: six variables set (password only through stdin, `?pgbouncer=true` appended), deploy, health check, end to end 10 passed and 2 skipped, reseed, exit 0. Refusals checked: direct connection URL, `[YOUR-PASSWORD]`, `APP_ENV=production`, missing answer, failed migration. The migration step itself could not run here (Prisma's engine download is blocked in this sandbox).
+
 ### 2026-10-21 05:30 UTC: Deployment docs fixed for Supabase's IPv4 limits; .vercelignore
 
 - **Developer:** @guerrerj
