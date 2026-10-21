@@ -65,6 +65,19 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-21 08:00 UTC: Trial deploy on Supabase and Vercel; fixes it found
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** Guided a trial deploy with `npm run staging:setup` to a Supabase project in Canada (Central) and a Vercel project on @guerrerj's own free accounts, fictional data only. Fixed what the trial found: `engines.node` 24.x (Vercel builds refused Node 20); `vercel.json` with `framework: nextjs` (a project made by `vercel project add` built as a static site, every page 404); the script now tests the public production alias, checks `/login` is Elevate's form, and installs the test browser.
+- **Files touched:** `package.json`, `package-lock.json`, `vercel.json`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md`
+- **Decisions and why:** The trial lives on personal accounts; the team decides in #30 whether it becomes staging or is rebuilt on shared accounts.
+- **Gotchas:** `vercel link` appends `.vercel` and `.env*` to `.gitignore`; discard that, since `.env*` would hide `.env.example`. Vercel puts each deployment's own URL behind its login; the production alias is public. On Windows PowerShell, use `npm.cmd` and `npx.cmd` if script execution is blocked.
+- **Open follow-ups:** Reset the trial database password (it was shared in a chat). Hosting decision and shared accounts (#30).
+- **Verification:** Migrations applied to the hosted database (3 of 3); seed 89 climbers; Vercel build with Next.js 16.4 on Node 24; `E2E_BASE_URL=https://elevate-trial.vercel.app npm run test:e2e`: 10 passed, 2 skipped (the permission tests need a local build).
+
 ### 2026-10-21 06:15 UTC: Staging setup script
 
 - **Developer:** @guerrerj
