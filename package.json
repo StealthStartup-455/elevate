@@ -2,11 +2,17 @@
   "name": "elevate",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run --exclude \"**/*.db.test.ts\"",
+    "test:db": "vitest run db.test",
+    "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "prepare": "node scripts/install-hooks.mjs",
     "db:start": "supabase start",
@@ -14,6 +20,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "staging:setup": "node scripts/staging-setup.mjs",
     "mock:busyness": "tsx scripts/generate-busyness-mock.ts"
   },
   "dependencies": {
@@ -30,6 +37,8 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -41,6 +50,7 @@
     "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }

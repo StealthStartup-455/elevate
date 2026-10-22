@@ -14,10 +14,66 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Migrations only move forward
+        if: github.event_name == 'pull_request'
+        run: scripts/check-migrations.sh "origin/${{ github.base_ref }}"
       - run: npm run lint
+      - name: No critical vulnerabilities in dependencies
+        run: npm audit --audit-level=critical
+      - name: Unit tests
+        run: npm test
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shadow
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      MOCK_BUSYNESS_SCENARIO: moderate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Create the shadow database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE shadow"
+      - name: Migrations match schema.prisma
+        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
+      - name: Apply migrations the way staging does
+        run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - name: Database tests
+        run: npm run test:db
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: End to end tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

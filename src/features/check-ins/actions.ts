@@ -2,6 +2,8 @@
 
 import { getSessionClimberId } from "@/features/auth/session";
 import { getClimber } from "@/features/climbers/queries";
+import { getGym } from "@/lib/gym";
+import { logEvent, logWarning } from "@/lib/log";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { saveScan, takeScan } from "./scan-store";
 
@@ -19,7 +21,9 @@ export type ScannedClimber = {
 export async function recordScan(): Promise<{ ok: boolean }> {
   const climberId = await getSessionClimberId();
   if (!climberId) return { ok: false };
-  saveScan({ climberId, scannedAt: Date.now() });
+  const gym = await getGym();
+  await saveScan(gym.id, climberId);
+  logEvent("scan_saved", { gymId: gym.id, climberId });
   return { ok: true };
 }
 
@@ -27,10 +31,23 @@ export async function recordScan(): Promise<{ ok: boolean }> {
 // scan once, then null until someone scans again.
 // TODO(auth): staff only.
 export async function takeLatestScan(): Promise<ScannedClimber | null> {
-  const scan = takeScan();
+  const gym = await getGym();
+  const scan = await takeScan(gym.id);
   if (!scan) return null;
   const climber = await getClimber(scan.climberId);
-  if (!climber) return null;
+  if (!climber) {
+    logWarning("scan_climber_missing", { gymId: gym.id, climberId: scan.climberId });
+    return null;
+  }
+  // Time from the climber's tap to the desk showing them: the number behind
+  // any "faster check-in" claim.
+  logEvent("scan_taken", {
+    gymId: gym.id,
+    climberId: climber.id,
+    waitMs: Date.now() - scan.scannedAt.getTime(),
+    waiverStatus: climber.waiverStatus,
+    membershipStatus: climber.membershipStatus,
+  });
   return {
     id: climber.id,
     name: `${climber.firstName} ${climber.lastName}`,

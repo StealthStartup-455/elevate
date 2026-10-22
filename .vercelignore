@@ -1,0 +1,6 @@
+# The Vercel CLI uploads everything not listed here. Its defaults skip
+# .env.local but not .env, which holds local database settings. Hosted
+# settings live in the Vercel project, never in files.
+.env
+.env.*
+!.env.example

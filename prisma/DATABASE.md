@@ -18,6 +18,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Pass` | Whatever gets them in | 10-punch card, 7 left |
 | `Waiver` | One signed waiver | `v2`, signed by Kim's dad |
 | `CheckIn` | One visit | Kim, 4:12 pm, scanned QR |
+| `QrScan` | A QR scan waiting for the desk | Kim tapped scan at 4:11 pm |
 
 ```text
 Gym
@@ -25,7 +26,8 @@ Gym
  └── Climber
       ├── Pass
       ├── Waiver
-      └── CheckIn ── Staff
+      ├── CheckIn ── Staff
+      └── QrScan
 ```
 
 ### Intentional design choices
@@ -148,7 +150,17 @@ Nothing stores a status. `src/features/climbers/status.ts` works it out from the
 
 Searchable by gym and time (busyness) and by climber and time (visit history).
 
-The full SQL is in [`migrations/20261013220515_init/migration.sql`](migrations/20261013220515_init/migration.sql).
+### QrScan
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `climberId` | text | yes | |
+| `scannedAt` | timestamp | yes | Set automatically |
+| `takenAt` | timestamp | no | Set when the desk shows it. Empty means still waiting |
+
+The climber's phone saves one per scan; the desk takes the oldest waiting scan for its gym, once (a conditional update, so two desks never show the same scan). Scans older than two minutes are ignored. Kept in the database rather than server memory so it works when the app runs on several servers.
+
+The full SQL is in [`migrations/`](migrations/), one folder per change, applied in order.
 
 ## Code example
 
@@ -244,7 +256,7 @@ Table and column names have capital letters, so raw SQL needs double quotes: `"C
 3. Commit the schema and the new migration folder in the same PR.
 4. Update this guide if a table or rule changed.
 
-Never edit a migration after it's merged. Make a new one instead.
+Never edit a migration after it's merged. Make a new one instead. CI fails a pull request that changes an existing migration, and checks that the migrations match `schema.prisma`. The full rules for changing a database that already has data are in [CONTRIBUTING.md](../CONTRIBUTING.md#database-changes).
 
 ### Other files
 

@@ -1,2 +1,12 @@
+# Every text file is stored and checked out with LF line endings, on every OS.
+# Without this, Windows clones with core.autocrlf show every file as modified.
+* text=auto eol=lf
+
 .githooks/* text eol=lf
 *.sh text eol=lf
+
+# Binary assets
+*.png binary
+*.ico binary
+*.woff2 binary
+*.pdf binary

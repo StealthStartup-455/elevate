@@ -40,6 +40,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+| 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 
 ## Entry template
 
@@ -63,6 +64,115 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-21 08:00 UTC: Trial deploy on Supabase and Vercel; fixes it found
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** Guided a trial deploy with `npm run staging:setup` to a Supabase project in Canada (Central) and a Vercel project on @guerrerj's own free accounts, fictional data only. Fixed what the trial found: `engines.node` 24.x (Vercel builds refused Node 20); `vercel.json` with `framework: nextjs` (a project made by `vercel project add` built as a static site, every page 404); the script now tests the public production alias, checks `/login` is Elevate's form, and installs the test browser.
+- **Files touched:** `package.json`, `package-lock.json`, `vercel.json`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md`
+- **Decisions and why:** The trial lives on personal accounts; the team decides in #30 whether it becomes staging or is rebuilt on shared accounts.
+- **Gotchas:** `vercel link` appends `.vercel` and `.env*` to `.gitignore`; discard that, since `.env*` would hide `.env.example`. Vercel puts each deployment's own URL behind its login; the production alias is public. On Windows PowerShell, use `npm.cmd` and `npx.cmd` if script execution is blocked.
+- **Open follow-ups:** Reset the trial database password (it was shared in a chat). Hosting decision and shared accounts (#30).
+- **Verification:** Migrations applied to the hosted database (3 of 3); seed 89 climbers; Vercel build with Next.js 16.4 on Node 24; `E2E_BASE_URL=https://elevate-trial.vercel.app npm run test:e2e`: 10 passed, 2 skipped (the permission tests need a local build).
+
+### 2026-10-21 06:15 UTC: Staging setup script
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** Added `scripts/staging-setup.mjs` (`npm run staging:setup`): migrate, seed, Vercel login and link, set the six variables, `vercel deploy --prod`, health check of `/login`, optional end to end run against the URL and reseed. Documented in `DEPLOYMENT.md` and the README.
+- **Files touched:** `scripts/staging-setup.mjs`, `package.json`, `DEPLOYMENT.md`, `README.md`
+- **Decisions and why:** Vercel CLI pinned to 63.1.2. Secrets reach child processes through their environment or stdin, never the command line, and are never printed. One prompt reader per question, closed before any Vercel command runs, so it doesn't compete with the CLI's own prompts. Deploys with `--prod` because preview links sit behind Vercel's login by default.
+- **Gotchas:** `VERCEL_CLI` overrides the Vercel command, which is how the script was tested without an account.
+- **Open follow-ups:** First real run against Supabase and Vercel.
+- **Verification:** `npx eslint` clean on the script. Dry run with a stand in Vercel CLI and a local production build: six variables set (password only through stdin, `?pgbouncer=true` appended), deploy, health check, end to end 10 passed and 2 skipped, reseed, exit 0. Refusals checked: direct connection URL, `[YOUR-PASSWORD]`, `APP_ENV=production`, missing answer, failed migration. The migration step itself could not run here (Prisma's engine download is blocked in this sandbox).
+
+### 2026-10-21 05:30 UTC: Deployment docs fixed for Supabase's IPv4 limits; .vercelignore
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:** `DEPLOYMENT.md` and `.env.example` now use Supabase's session pooler (port 5432) for migrations and seeding instead of the direct connection; added PowerShell syntax and a "Trial deploy from your machine" section; added `.vercelignore` so the Vercel CLI doesn't upload `.env`.
+- **Files touched:** `DEPLOYMENT.md`, `.env.example`, `.vercelignore`
+- **Decisions and why:** Supabase's direct connection is IPv6 only (IPv4 needs the paid add-on), and GitHub Actions is IPv4 only, so `STAGING_DIRECT_URL` as written would have failed in `migrate-staging.yml`. The Vercel CLI's default ignore list skips `.env.local` but not `.env`.
+- **Gotchas:** The app's `DATABASE_URL` stays the transaction pooler (port 6543). The pg adapter uses unnamed statements by default, which the transaction pooler supports.
+- **Open follow-ups:** Trial deploy following the new section, before the PR merges.
+- **Verification:** Docs only; checked against Supabase's IPv4 and IPv6 compatibility guide and Vercel's ignored files list.
+
+### 2026-10-20 22:40 UTC: Server action permission test; scan load and burst measurements
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 (under #30); findings for #34 and #38 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Added `e2e/server-actions-auth.spec.ts`: calls `checkInClimber` and `signWaiver` through the public `/join` page with no login. Both run today, so the tests are marked `test.fail` and point at #34.
+  - Measured the QR scan path locally (not committed; numbers below).
+- **Files touched:** `e2e/server-actions-auth.spec.ts`
+- **Decisions and why:** Recorded the gap as an expected failure instead of adding permission checks, because roles belong to #34 and sign in to #33. When the checks land, CI goes red on these tests until the `test.fail` marker is removed.
+- **Gotchas:**
+  - Next.js bundles every export of a `"use server"` file into each page that imports it. `/join` imports `features/climbers/actions.ts`, so `checkInClimber`, `signWaiver`, `createClimberAtDesk` and `updateClimber` can all be called through `/join`, which the proxy does not guard. Permission checks must live inside each action, not only in `proxy.ts`.
+  - In demo mode the session cookies hold plain values (`elevate_mock_desk`, the climber id in `elevate_mock_user`), so anyone can set them by hand. Acceptable on staging with fictional data only.
+  - A desk shows one scan at a time and stops polling while the popup is open. Scans older than `SCAN_TTL_MS` (2 minutes) are dropped without a log line. Burst runs, one desk: a group of 4 at 10 s each waited 7 to 40 s; 8 at 20 s each, 2 never shown; 12 at 15 s each, 5 never shown. Two desks showed all 12, longest wait 90 s.
+  - Polling capacity on a 2 CPU container: 364 polls a second at 50 concurrent callers, p95 173 ms, no errors; one desk polls every 2.5 s, so capacity is not the limit.
+- **Open follow-ups:** #34: permission check in every server action. #38: show how many scans are waiting, take the next scan as soon as the popup closes, log expired scans, and tell the climber if the desk hasn't seen them.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm run test:e2e` 12 passed (the two new tests fail as expected; with the marker removed they fail because the action ran).
+
+### 2026-10-20 21:45 UTC: Accessibility tests, dependency audit in CI, Vitest 4.1
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 (under #30) / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Upgraded Vitest from 3.2 to 4.1.12; 3.2 brought in a critical (tinypool) and a moderate (@vitest/mocker) advisory.
+  - Added `e2e/accessibility.spec.ts`: axe (WCAG 2.1 A and AA) on login, join, the climber screens and the desk screens, in light and dark mode, with phone and laptop sizes.
+  - CI fails on any critical advisory (`npm audit --audit-level=critical`).
+- **Files touched:** `package.json`, `package-lock.json`, `e2e/accessibility.spec.ts`, `.github/workflows/ci.yml`, `README.md`
+- **Decisions and why:** The audit gate is set at critical, not high, because `dev` already has 9 high advisories, all in build and CLI tooling (Prisma CLI, eslint-config-next); a high gate would fail every PR until those packages are upgraded in their own PR.
+- **Gotchas:** Axe finds roughly a third of accessibility problems; keyboard use and screen readers still need a manual check.
+- **Open follow-ups:** Upgrade Prisma CLI and eslint-config-next to clear the 9 high advisories, then raise the gate to high.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 52 passed, 2 todo; `npm run test:db` 7 passed; `npm run build` passed; `npm run test:e2e` 10 passed (4 demo flow, 6 accessibility, no violations on 9 screens in either mode); `npm audit`: 0 critical, 0 moderate, 9 high (same as `dev`).
+
+### 2026-10-20 14:30 UTC: Error pages, server error logging and event logs
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Added `src/app/error.tsx` and `src/app/global-error.tsx`: a "Something went wrong" page with Try again and the error code (digest), using the style guide components.
+  - Added `src/instrumentation.ts`: `onRequestError` logs every server error as one JSON line, without the query string.
+  - Added `src/lib/log.ts` and event logs for login, climber created or updated, invalid forms (field names only), waiver signed, scan saved and taken (with `waitMs`), and check in saved or refused (with a reason code).
+  - `takeScan` now also returns `scannedAt`, for `waitMs`.
+- **Files touched:** `src/app/error.tsx`, `src/app/global-error.tsx`, `src/instrumentation.ts`, `src/lib/log.ts`, `src/features/climbers/actions.ts`, `src/features/check-ins/actions.ts`, `src/features/check-ins/scan-store.ts`, `src/features/auth/actions.ts`, `DEPLOYMENT.md`
+- **Decisions and why:** Plain JSON lines on stdout, no logging library or account, so Vercel's log viewer can search them now and a monitoring service can be added in `instrumentation.ts` later. Log lines carry ids and reason codes only, never personal data.
+- **Gotchas:** None known.
+- **Open follow-ups:** Error monitoring service and uptime check, with the staging accounts (#30).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 52 passed, 2 todo; `npm run test:db` 7 passed; `npm run build` passed; `npm run test:e2e` 4 passed, and the server output had the expected events with no names, phones or emails; stopping Postgres while the desk was open showed the error page, its error code matched the `digest` of the `server_error` log line, and Try again recovered once Postgres was back; checked in light and dark mode.
+
+### 2026-10-20 06:45 UTC: Ready the app for hosted staging; tests and CI release gate
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#42 and #43 (under #30) / PR pending
+- **Branch:** `feature/42-staging-deployment`
+- **What the agent did:**
+  - Removed three blockers to hosting: fonts are bundled (`next/font/local`) instead of fetched from Google at build time; pending QR scans are stored in a new `QrScan` table instead of server memory; the demo login works in a deployed build when `DEMO_MODE="true"` (staging only; `APP_ENV="production"` always turns it off).
+  - Brought in Tyler's demo login fix from the deleted `fix/33-demo-login-redirect` branch (separate desk and climber cookies).
+  - Added Vitest unit tests (status, validation, phone, fuzzy search, busyness), database tests for the scan store, and a Playwright end to end test of the demo flow.
+  - CI: unit tests in `check`; new `e2e` job with Postgres (migration drift check, `prisma migrate deploy`, seed, database tests, build, Playwright); a check that fails pull requests that edit existing migrations; a workflow that applies migrations to staging from `dev` once `STAGING_DIRECT_URL` exists.
+  - `DEPLOYMENT.md` runbook; migration rules in `CONTRIBUTING.md`; `QrScan` in `prisma/DATABASE.md`; `.gitattributes` forces LF.
+- **Files touched:** `src/features/check-ins/scan-store.ts`, `src/features/check-ins/actions.ts`, `src/features/auth/demo-mode.ts`, `src/features/auth/session.ts`, `src/proxy.ts`, `src/components/ui/theme/fonts.ts`, `prisma/schema.prisma`, `prisma/migrations/20261020070000_qr_scan/`, `prisma/seed.ts`, `prisma7.config.ts`, `.github/workflows/`, `vitest.config.ts`, `playwright.config.ts`, `e2e/`, `*.test.ts`
+- **Decisions and why:** Scans claimed with a conditional update (`takenAt` still empty), so two desks never show the same scan. Demo mode is an explicit environment flag rather than a `NODE_ENV` check, so staging can demo before real sign-in (#33) and production can never. Prisma CLI uses `DIRECT_URL` (direct connection) and the app `DATABASE_URL` (pooler), per Prisma's Supabase guide.
+- **Gotchas:** The native Prisma schema engine couldn't be downloaded in the agent's environment, so the `QrScan` migration was checked with Prisma's own WebAssembly schema engine (`@prisma/schema-engine-wasm`, the same engine commit as the installed CLI): its diff from the previous `schema.prisma` to the new one is identical to `migration.sql`, apart from the row level security line added by hand as in the init migration. CI's `prisma migrate diff --exit-code` step checks it again with the native engine. All app, seed and test database access goes through the Prisma client; the only `psql` call creates CI's empty shadow database. The seed now deletes `QrScan` rows before climbers.
+- **Open follow-ups:** Create the Vercel and Supabase projects and secrets (team decision in #30). Sound-alike name search (jeff finds Geoff) and a desk day pass are recorded as known gaps in the tests (proposal #55, D1 and D2). Remove `demo-mode.ts` when #33 lands.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 46 passed, 2 todo; `npm run test:db` 6 passed; `npm run build` passed with no network access to Google Fonts; `npm run test:e2e` 4 passed against `next start` with `DEMO_MODE="true"`; a production build without `DEMO_MODE`, and with `APP_ENV="production"`, refuses the demo login.
 
 ### 2026-10-16 03:47 UTC: Update product page logo and app screenshots
 

@@ -1,4 +1,4 @@
-// Elevate database. Six tables.
+// Elevate database. Seven tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -33,6 +33,7 @@ model Gym {
   passes   Pass[]
   waivers  Waiver[]
   checkIns CheckIn[]
+  qrScans  QrScan[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
@@ -75,6 +76,7 @@ model Climber {
   passes         Pass[]
   waivers        Waiver[]
   checkIns       CheckIn[]
+  qrScans        QrScan[]
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
@@ -139,6 +141,23 @@ model CheckIn {
 
   @@index([gymId, checkedInAt]) // busyness
   @@index([climberId, checkedInAt]) // a climber's history
+}
+
+// A QR scan waiting for the front desk. The climber's phone saves one; the
+// desk takes it once and shows the popup. Kept in the database (not server
+// memory) so it works when the app runs on several servers, and so two
+// climbers scanning at once both reach the desk. Taken scans are kept.
+model QrScan {
+  id        String    @id @default(uuid())
+  gymId     String
+  climberId String
+  scannedAt DateTime  @default(now())
+  takenAt   DateTime? // set when the desk shows it; empty means still waiting
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@index([gymId, takenAt, scannedAt]) // the desk's "next waiting scan"
 }
 
 enum GymSystem {
