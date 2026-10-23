@@ -6,10 +6,7 @@ Built with Next.js, Supabase (database and authentication) and Prisma.
 
 ## Product page
 
-The static product page for GitHub Pages lives in [`docs/`](docs/). In the repository's
-**Settings → Pages**, set the build and deployment source to **GitHub Actions**. The
-`Deploy product page` workflow publishes changes from `dev` and can also be run
-manually from the Actions tab on `dev`.
+The product page is live at: https://stealthstartup-455.github.io/elevate/.
 
 ## Getting started
 
@@ -42,20 +39,20 @@ Open http://localhost:3000.
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the development server |
-| `npm run lint` | Check code style |
-| `npm run build` | Create a production build (also run by CI) |
-| `npm test` | Unit tests (Vitest) |
-| `npm run test:db` | Database tests; needs the local database running |
-| `npm run test:e2e` | End to end tests (Playwright): the demo flow, and automated accessibility checks (axe, WCAG 2.1 AA) on every main screen in light and dark mode; needs `npm run build` and `npm run db:seed` first |
-| `npm run db:start` | Start local Supabase |
-| `npm run db:stop` | Stop local Supabase |
-| `npm run db:migrate` | Create and apply a migration after editing `schema.prisma` |
-| `npm run db:seed` | Load sample data from `prisma/seed.ts` |
-| `npm run db:studio` | Browse the database in the browser |
-| `npm run staging:setup` | Set up or refresh a hosted demo on Supabase and Vercel (see `DEPLOYMENT.md`) |
+| Command                 | Description                                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`           | Start the development server                                                                                                                                                                       |
+| `npm run lint`          | Check code style                                                                                                                                                                                   |
+| `npm run build`         | Create a production build (also run by CI)                                                                                                                                                         |
+| `npm test`              | Unit tests (Vitest)                                                                                                                                                                                |
+| `npm run test:db`       | Database tests; needs the local database running                                                                                                                                                   |
+| `npm run test:e2e`      | End to end tests (Playwright): the demo flow, and automated accessibility checks (axe, WCAG 2.1 AA) on every main screen in light and dark mode; needs `npm run build` and `npm run db:seed` first |
+| `npm run db:start`      | Start local Supabase                                                                                                                                                                               |
+| `npm run db:stop`       | Stop local Supabase                                                                                                                                                                                |
+| `npm run db:migrate`    | Create and apply a migration after editing `schema.prisma`                                                                                                                                         |
+| `npm run db:seed`       | Load sample data from `prisma/seed.ts`                                                                                                                                                             |
+| `npm run db:studio`     | Browse the database in the browser                                                                                                                                                                 |
+| `npm run staging:setup` | Set up or refresh a hosted demo on Supabase and Vercel (see `DEPLOYMENT.md`)                                                                                                                       |
 
 Before the first `npm run test:e2e`, install the test browser once: `npx playwright install chromium`. CI runs all three test suites on every pull request.
 
@@ -64,6 +61,11 @@ How the database works, its tables and how to change them: [`prisma/DATABASE.md`
 How the hosted staging demo is deployed, migrated, reseeded and rolled back: [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 How the app looks and behaves (colors, type, spacing, hover rules, components): [`STYLE_GUIDE.md`](STYLE_GUIDE.md). With `npm run dev` running, open http://localhost:3000/style-guide to see it live.
+
+## License
+
+This repository does not currently include a `LICENSE` file or a declared license.
+Contact the project maintainers before reusing or redistributing the code.
 
 ## Project structure
 
