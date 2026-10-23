@@ -28,10 +28,13 @@ npm run db:start
 
 The first `db:start` downloads Docker images and can take several minutes. When it finishes, it prints the local Supabase details. Copy the **publishable key** (called the **anon key** in older CLI versions) into `.env` as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
+For real Supabase logins, also copy the **secret key** into `.env` as `SUPABASE_SECRET_KEY` and set `SEED_LOGIN_PASSWORD` to anything 6+ characters. The seed then creates two logins with that password: `desk@elevate.test` (front desk) and `climber@elevate.test` (a member). These live only in your local Supabase. Leave both unset and the seed skips them; the demo login still works under `npm run dev`.
+
 Then start the app:
 
 ```bash
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 

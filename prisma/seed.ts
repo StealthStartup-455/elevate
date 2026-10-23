@@ -10,6 +10,8 @@
 //   a check-in to the real climber
 // - one demo account for every waiver and membership state, which log in with
 //   their username as the password (src/features/climbers/demo-accounts.ts)
+// - two real Supabase logins, desk@elevate.test and climber@elevate.test, if
+//   the keys are set (seed-logins.ts)
 
 import "dotenv/config";
 import { readFileSync } from "node:fs";
@@ -18,6 +20,7 @@ import { DEFAULT_GYM_SLUG } from "../src/lib/gym";
 import { db } from "../src/lib/db";
 import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
 import { toStoredPhone } from "../src/features/climbers/phone";
+import { seedLogins } from "./seed-logins";
 import type {
   MembershipStatus,
   WaiverStatus,
@@ -207,6 +210,8 @@ async function main() {
     `Seeded ${all.length} climbers into ${gym.name} ` +
       `(${CLIMBERS.length} team, ${all.length - CLIMBERS.length - DEMO_ACCOUNTS.length} busyness, ${DEMO_ACCOUNTS.length} demo).`,
   );
+
+  await seedLogins(gym.id);
 }
 
 main()
