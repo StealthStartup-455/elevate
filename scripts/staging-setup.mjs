@@ -16,7 +16,7 @@
 // Fictional data only: this script refuses to run with APP_ENV=production.
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 
 const args = new Set(process.argv.slice(2));
@@ -206,8 +206,25 @@ if (!args.has("--skip-e2e")) {
   }
 }
 
+// The ids GitHub Actions needs to deploy this project (DEPLOYMENT.md).
+let ids = "";
+try {
+  const linked = JSON.parse(readFileSync(".vercel/project.json", "utf8"));
+  ids = `
+To deploy automatically on every merge to dev, add these to the GitHub
+repository's "staging" environment (Settings, Environments, staging):
+  secret VERCEL_ORG_ID      = ${linked.orgId}
+  secret VERCEL_PROJECT_ID  = ${linked.projectId}
+  secret VERCEL_TOKEN       = a token from Vercel (Account Settings, Tokens)
+  secret STAGING_DIRECT_URL = the session pooler URL
+  variable STAGING_URL      = ${url}`;
+} catch {
+  // Not linked through this folder; the ids are in the Vercel project settings.
+}
+
 console.log(`
 Done: ${url}
+${ids}
 
 Try it by hand: log in as desk / desk on a laptop and as
 demo-valid-active / demo-valid-active on a phone, tap Demo scan, check in
