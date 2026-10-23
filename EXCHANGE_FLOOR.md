@@ -80,7 +80,7 @@ Newest first.
 - **Decisions and why:** Kept discovery claims anonymized and qualified; did not imply customer adoption or present unbuilt roadmap items as available features.
 - **Gotchas:** The hosted URL is a trial preview, not an approved production service; payment processing and paid plans are not available.
 - **Open follow-ups:** None.
-- **Verification:** `npm run lint` passed; `npm run build` passed; `git diff --check` passed; responsive checks passed at 320, 390, 800, and 1440px in light and dark modes.
+- **Verification:** `npm run lint`, `npm test` (52 passed, 2 todo), and `npm run build` passed. After CI found a critical Next.js advisory, upgraded Next.js and its ESLint config to 16.4.2 and updated patched Prisma transitive dependencies; `npm audit --audit-level=critical` passed (0 critical; 5 high remain in the ESLint dependency chain). `git diff --check` passed; responsive checks passed at 320, 390, 800, and 1440px in light and dark modes.
 
 ### 2026-10-21 08:00 UTC: Trial deploy on Supabase and Vercel; fixes it found
 
