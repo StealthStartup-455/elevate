@@ -6,7 +6,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 async function logIn(page: Page, username: string, landsOn: RegExp) {
   await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Email").fill(username);
   await page.getByLabel("Password").fill(username);
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).toHaveURL(landsOn);

@@ -1,6 +1,6 @@
 "use server";
 
-import { getSessionClimberId } from "@/features/auth/session";
+import { getSessionClimberId } from "@/features/auth/queries";
 import { getClimber } from "@/features/climbers/queries";
 import { getGym } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
