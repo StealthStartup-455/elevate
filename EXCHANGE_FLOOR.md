@@ -41,6 +41,8 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+| 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | Merged (#72) |
+| 2026-10-22 | @guerrerj | Claude Code | `feature/30-deploy-staging-on-merge` | `.github/workflows/deploy-staging.yml`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md` | In review |
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 
@@ -95,6 +97,19 @@ Newest first.
 - **Gotchas:** The hosted URL is a trial preview, not an approved production service; payment processing and paid plans are not available.
 - **Open follow-ups:** None.
 - **Verification:** `npm run lint`, `npm test` (52 passed, 2 todo), and `npm run build` passed. After CI found a critical Next.js advisory, upgraded Next.js and its ESLint config to 16.4.2 and updated patched Prisma transitive dependencies; `npm audit --audit-level=critical` passed (0 critical; 5 high remain in the ESLint dependency chain). `git diff --check` passed; responsive checks passed at 320, 390, 800, and 1440px in light and dark modes.
+
+### 2026-10-22 UTC: Deploy staging automatically on every merge to dev
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#30 / PR pending
+- **Branch:** `feature/30-deploy-staging-on-merge`
+- **What the agent did:** Added `.github/workflows/deploy-staging.yml`: on every push to `dev` (or by hand), it applies migrations, deploys to Vercel with a token (`vercel deploy --prod`), then checks `STAGING_URL/login` shows Elevate's login form. Removed `migrate-staging.yml`, which it replaces. `npm run staging:setup` now prints the GitHub secrets to add. Updated `DEPLOYMENT.md` and `CONTRIBUTING.md`.
+- **Files touched:** `.github/workflows/deploy-staging.yml`, `.github/workflows/migrate-staging.yml` (removed), `scripts/staging-setup.mjs`, `DEPLOYMENT.md`, `CONTRIBUTING.md`
+- **Decisions and why:** Deploy from GitHub Actions with a Vercel token rather than Vercel's GitHub integration: no organization app to approve, it keeps working on Vercel's free plan if the repo goes private (#71), and migrations run before the new code is deployed instead of racing Vercel's build.
+- **Gotchas:** Until the `staging` environment has all four secrets, the workflow prints which are missing and deploys nothing. The Vercel project must not also be connected to the repository, or every merge deploys twice.
+- **Open follow-ups:** Add the secrets once the team-owned Vercel and Supabase accounts exist; the first merge after that is the workflow's real test.
+- **Verification:** `npm run lint` clean; workflow YAML parses; the skip step tested with none, some and all secrets set; the login check tested against Elevate's login (passes) and a stand in for Vercel's login page (fails with the protection hint); setup script dry run with a stand in Vercel CLI prints the ids from `.vercel/project.json`. The deploy step itself needs a real token and could not run here.
 
 ### 2026-10-21 08:00 UTC: Trial deploy on Supabase and Vercel; fixes it found
 
