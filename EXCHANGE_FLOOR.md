@@ -42,6 +42,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
+| 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 
 ## Entry template
 
@@ -65,6 +66,19 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-24 UTC: All rights reserved licence; repo stays public for now
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#71 / PR pending
+- **Branch:** `chore/71-add-license`
+- **What the agent did:** Added a `LICENSE` file (copyright the Elevate team, all rights reserved), pointed the README's License section to it, and set `"license": "UNLICENSED"` in `package.json` (npm's marker for code that isn't open source).
+- **Files touched:** `LICENSE`, `README.md`, `package.json`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** No open source licence, since the team hasn't decided to give the code away. The repository stays public for now: on GitHub's free organization plan a private repo loses GitHub Pages (the product page), enforced branch rules, and unlimited Actions minutes. Reasons are in the #71 comment.
+- **Gotchas:** The licence names the team, not individuals; ownership among members is for the team's agreement.
+- **Open follow-ups:** Check whether the course requires a public repo; settle ownership; move the product page before going private; rename the seed gym (#67).
+- **Verification:** `npm run lint` clean; `package.json` parses; no code changes.
 
 ### 2026-10-23 06:43 UTC: Owner-focused product page and project documentation
 
