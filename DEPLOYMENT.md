@@ -7,7 +7,8 @@ How the hosted Elevate demo runs, and how to release, migrate, reseed and roll i
 | Environment | Deploys from | Data | Login | Purpose |
 |---|---|---|---|---|
 | Local | your machine | `npm run db:seed` | demo login (`next dev`) | Development |
-| **Staging** | `dev` | fictional, seeded | demo login (`DEMO_MODE="true"`) | The live demo the product page links to; Milestone 3 |
+| **Hosted trial preview** | Trial deployment | fictional, seeded | demo login (`DEMO_MODE="true"`) | [Public application preview](https://elevate-trial.vercel.app/login); evaluation only, not production |
+| Staging (planned) | `dev` | fictional, seeded | demo login (`DEMO_MODE="true"`) | Intended team staging environment; the shared hosting decision remains open in #30 |
 | Production | `main` | a real gym's data | real sign-in only (#33) | The pilot. Not set up yet |
 
 Staging never holds real member data. Production never runs the demo login: `APP_ENV="production"` switches it off even if `DEMO_MODE` is set by mistake (`src/features/auth/demo-mode.ts`).
