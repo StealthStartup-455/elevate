@@ -15,7 +15,7 @@ Staging never holds real member data. Production never runs the demo login: `APP
 
 ## Hosting (proposed in #30)
 
-- **App:** Vercel, connected to this repository. Staging is the Vercel deployment of `dev`.
+- **App:** Vercel. Staging is the Vercel deployment of `dev`, made by GitHub Actions (`deploy-staging.yml`) on every merge; the Vercel project is not connected to the repository, so merges don't deploy twice.
 - **Database:** a hosted Supabase project in the Canada (Central) region, one per environment.
 - **Accounts:** owned by the team, not one person. On the free tiers, Vercel's Hobby plan is for non-commercial use and Supabase's free plan has no backups and pauses after a week without activity; both need their paid plans before a pilot with a real gym.
 
