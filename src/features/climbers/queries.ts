@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { usernameFor } from "@/features/auth/mock-users";
-import { getSessionClimberId } from "@/features/auth/session";
+import { getSessionClimberId } from "@/features/auth/queries";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { formatPhone } from "./phone";
@@ -69,7 +69,7 @@ function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
 }
 
 /**
- * The signed-in climber's membership. Reads the demo session (features/auth);
+ * The signed-in climber's membership. Reads the session (features/auth);
  * with nobody signed in, the person is sent to the log in page, so /me is only
  * ever someone's own account.
  */

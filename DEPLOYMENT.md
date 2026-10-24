@@ -65,6 +65,29 @@ To try a branch on real hosting before it merges, without connecting the reposit
 3. `npx vercel deploy`. `.vercelignore` keeps your local `.env` out of the upload.
 4. Steps 6 and 7 above against the URL it prints. Note anything in this document that was wrong or missing, and fix it in the same pull request.
 
+## Real logins on a hosted project
+
+Sign in is Supabase email and password (`src/features/auth/actions.ts`). A login only gets in if it has a `Staff` row (goes to `/desk`) or a linked `Climber` (goes to `/me`). Production runs with `DEMO_MODE` unset and `APP_ENV="production"`, so this is the only way in.
+
+In the Supabase dashboard:
+
+1. Authentication, Sign In / Providers: Email is on. Leave "Confirm email" off until a real email sender is set up (#30).
+2. Authentication, URL Configuration: set Site URL to the app's URL. Password sign in works without it; email links (confirm, reset) don't.
+3. Authentication, Users, Add user, Create new user, with "Auto Confirm User" ticked. Copy the new user's UID.
+4. SQL Editor, to make them staff:
+
+   ```sql
+   insert into "Staff" (id, "gymId", "authUserId", name, "updatedAt")
+   select gen_random_uuid()::text, id, '<user uid>', '<their name>', now()
+   from "Gym" where slug = 'boulderhouse-victoria';
+   ```
+
+   Or, for a climber who already exists: `update "Climber" set "authUserId" = '<user uid>' where id = '<climber id>';`
+
+To switch someone off, set `active = false` on their `Staff` row.
+
+**Staging only:** the seed can make the two test logins (`desk@elevate.test` and `climber@elevate.test`) on a hosted project too. Run it with that project's values: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY` (Project Settings, API Keys), `SEED_LOGIN_PASSWORD` and `DATABASE_URL="<session url>"`. Never on production: everyone on the team would know the password.
+
 ## Releasing
 
 Every pull request runs lint, unit tests and the build (`check`), and the database tests, a migration check and the Playwright demo flow (`e2e`). A merge to `dev`:
@@ -97,7 +120,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | Event | When | Fields |
 |---|---|---|
 | `server_error` | Any error Next.js catches on the server (`src/instrumentation.ts`) | `path` (no query string), `method`, `routePath`, `routeType`, `errorName`, `errorMessage`, `digest`, `stack` |
-| `login_succeeded` / `login_failed` | Demo login | `role`, `climberId`; or `reason`: `demo_mode_off`, `wrong_password`, `unknown_user` |
+| `login_succeeded` / `login_failed` | Log in (Supabase or demo) | `role`, `staffId` or `climberId`; or `reason`: `missing_fields`, `no_account`, a Supabase error code such as `invalid_credentials`, or for the demo login `wrong_password`, `unknown_user` |
 | `climber_created` / `climber_updated` | Join, desk add, desk edit | `climberId`, `source`: `self` or `desk` |
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
@@ -117,7 +140,8 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | Every page is Vercel's "404: NOT_FOUND" after a successful deploy | The Vercel project's framework isn't Next.js (projects made with `vercel project add` have none) | `vercel.json` sets it; deploy again from a checkout that has it |
 | Deploy fails: Node.js version discontinued | Vercel project set to an old Node | `package.json` `engines` pins Node 24; make sure it is committed, then deploy again |
 | Every page errors, logs mention connections | Paused Supabase project, or a wrong `DATABASE_URL` | Resume the project; check the pooler URL and `?pgbouncer=true` |
-| Log in says "Log in isn't available yet" | `DEMO_MODE` not `true`, or `APP_ENV` set to `production` | Fix the variables and redeploy |
+| `desk` / `desk` says "Unknown email or password" | Demo login is off: `DEMO_MODE` not `true`, or `APP_ENV` set to `production` | On staging, fix the variables and redeploy. Elsewhere use a real login |
+| A real login says "This login isn't set up for the gym yet" | The Supabase user has no `Staff` row and no linked `Climber` | Add the row (see "Real logins on a hosted project") |
 | Phone scans but the desk shows nothing | The `QrScan` migration isn't applied | Run the migrate workflow (Actions, Migrate staging database, Run workflow) |
 | `prisma migrate deploy` warns that migrations were modified | Someone edited a merged migration | Restore the original file; never reset staging |
 | Check in refused, "Already checked in" | The two hour rule from an earlier run | Reseed |
