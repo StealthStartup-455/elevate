@@ -64,8 +64,7 @@ How the app looks and behaves (colors, type, spacing, hover rules, components): 
 
 ## License
 
-This repository does not currently include a `LICENSE` file or a declared license.
-Contact the project maintainers before reusing or redistributing the code.
+All rights reserved; see [`LICENSE`](LICENSE). The repository is public so the team and course staff can review it, but that grants no right to copy or reuse the code. Contact the team before reusing anything.
 
 ## Project structure
 
