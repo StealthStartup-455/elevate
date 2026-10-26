@@ -35,6 +35,13 @@ export async function clearSession(): Promise<void> {
   jar.delete(MOCK_DESK_COOKIE);
 }
 
+// The "desk" demo login. Use isStaff (staff.ts) instead, which also checks
+// the real login.
+export async function hasDemoDeskSession(): Promise<boolean> {
+  if (!isDemoMode()) return false;
+  return (await cookies()).has(MOCK_DESK_COOKIE);
+}
+
 // Use getSessionClimberId (queries.ts) instead,
 // which also checks the real login.
 export async function getDemoClimberId(): Promise<string | undefined> {
