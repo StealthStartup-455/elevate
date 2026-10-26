@@ -11,7 +11,7 @@ How the hosted Elevate demo runs, and how to release, migrate, reseed and roll i
 | Staging (planned) | `dev` | fictional, seeded | demo login (`DEMO_MODE="true"`) | Intended team staging environment; the shared hosting decision remains open in #30 |
 | Production | `main` | a real gym's data | real sign-in only (#33) | The pilot. Not set up yet |
 
-Staging never holds real member data. Production never runs the demo login: `APP_ENV="production"` switches it off even if `DEMO_MODE` is set by mistake (`src/features/auth/demo-mode.ts`).
+Staging never holds real member data: the demo login is a plain cookie anyone can set, including the one that opens the front desk. Production never runs the demo login: `APP_ENV="production"` switches it off even if `DEMO_MODE` is set by mistake (`src/features/auth/demo-mode.ts`).
 
 ## Hosting (proposed in #30)
 
@@ -72,9 +72,10 @@ Sign in is Supabase email and password (`src/features/auth/actions.ts`). A login
 In the Supabase dashboard:
 
 1. Authentication, Sign In / Providers: Email is on. Leave "Confirm email" off until a real email sender is set up (#30).
-2. Authentication, URL Configuration: set Site URL to the app's URL. Password sign in works without it; email links (confirm, reset) don't.
-3. Authentication, Users, Add user, Create new user, with "Auto Confirm User" ticked. Copy the new user's UID.
-4. SQL Editor, to make them staff:
+2. Same page: turn off **Allow new users to sign up**. The publishable key is in every page, so with sign ups on anyone can make a Supabase login without our form. The app only lets staff into `/desk` (`src/features/auth/staff.ts`), but nobody should get a login we didn't create.
+3. Authentication, URL Configuration: set Site URL to the app's URL. Password sign in works without it; email links (confirm, reset) don't.
+4. Authentication, Users, Add user, Create new user, with "Auto Confirm User" ticked. Copy the new user's UID.
+5. SQL Editor, to make them staff:
 
    ```sql
    insert into "Staff" (id, "gymId", "authUserId", name, "updatedAt")
