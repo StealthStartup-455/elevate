@@ -2,7 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { getSessionClimberId } from "@/features/auth/queries";
 import { setSession } from "@/features/auth/session";
+import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
@@ -11,10 +13,10 @@ import { toStoredPhone } from "./phone";
 import type { ClimberInput, FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
-// TODO(auth): createClimberAtDesk and updateClimber are staff-only, and
-// signWaiver must only accept the caller's own id (or staff). Check the
-// caller's role here once features/auth exists; a page guard is not enough.
-// joinAsCustomer is intentionally public: it only creates a new record.
+// Server actions are public POST endpoints, so each one checks the caller
+// itself; a page guard is not enough. createClimberAtDesk, updateClimber and
+// checkInClimber are staff only, and signWaiver takes the caller's own id (or
+// staff). joinAsCustomer is intentionally public: it only creates a new record.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,6 +83,7 @@ export async function createClimberAtDesk(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireStaff();
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed, "desk_add");
 
@@ -101,6 +104,7 @@ export async function updateClimber(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireStaff();
   const parsed = parseClimberInput(formData);
   if (!parsed.ok) return invalid(parsed, "desk_edit");
   if (!UUID.test(climberId)) return { status: "error", message: "Climber not found." };
@@ -124,6 +128,10 @@ export async function signWaiver(
   climberId: string,
 ): Promise<{ ok: boolean; message?: string }> {
   if (!UUID.test(climberId)) return { ok: false, message: "Climber not found." };
+  // The climber signs on /join or /me, staff sign for them on the desk.
+  if (climberId !== (await getSessionClimberId()) && !(await isStaff())) {
+    return { ok: false, message: "Log in to sign the waiver." };
+  }
 
   const gym = await getGym();
   const climber = await db.climber.findFirst({
@@ -152,7 +160,8 @@ export async function signWaiver(
 export async function checkInClimber(
   climberId: string,
 ): Promise<{ ok: boolean; message?: string }> {
-  // TODO(auth): staff only; set staffId from the logged-in staff member.
+  await requireStaff();
+  // TODO(auth): set staffId from the logged-in staff member.
   // Every refusal is logged with a reason code: which rule turns people away
   // (missing waiver, no membership, already in) is evidence for the pilot.
   const refuse = (reason: string, message: string) => {

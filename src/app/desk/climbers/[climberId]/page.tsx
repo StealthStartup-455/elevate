@@ -4,7 +4,9 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
+import { requireStaff } from "@/features/auth/staff";
 import { updateClimber } from "@/features/climbers/actions";
 import ClimberForm from "@/features/climbers/components/ClimberForm";
 import LinkButton from "@/features/climbers/components/LinkButton";
@@ -34,6 +36,10 @@ async function ClimberDetails({
   params,
 }: Pick<PageProps<"/desk/climbers/[climberId]">, "params">) {
   const { climberId } = await params;
+  // getClimber is shared with /me, so it doesn't check for staff itself.
+  // connection() first: the Supabase check reads the clock.
+  await connection();
+  await requireStaff();
   const climber = await getClimber(climberId);
   if (!climber) notFound();
 

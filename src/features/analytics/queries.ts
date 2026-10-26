@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { requireStaff } from "@/features/auth/staff";
 import { getSavedCheckIns } from "@/features/climbers/queries";
 import { activeWindowStart, getBusynessLevel, gymClock } from "./busyness";
 import { ACTIVE_WINDOW_MINUTES, getGymBusynessSettings } from "./config";
@@ -90,6 +91,8 @@ export async function getFrontDeskBusyness(
   gymId: string,
 ): Promise<FrontDeskBusyness> {
   const now = await busynessNow();
+  // Names and phone numbers: staff only.
+  await requireStaff();
   const checkIns = await getActiveCheckIns(gymId, now);
   return { ...summarize(gymId, checkIns.length, now), checkIns };
 }
