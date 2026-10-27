@@ -47,6 +47,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
 ## Entry template
 
@@ -70,6 +71,21 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-27 UTC: Placeholder waiver signs in under a second
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#66 / PR pending
+- **Branch:** `fix/66-shorten-placeholder-waiver`
+- **What the agent did:**
+  - `WaiverStep`: the placeholder spinner waits 300 ms instead of 5 seconds, marked as a stopgap until #35 / #36.
+  - `e2e/smoke.spec.ts`: the join test expects "Waiver signed." within 3 seconds of tapping "Sign a waiver now".
+- **Files touched:** `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts`
+- **Decisions and why:** Kept a short spinner rather than none so the step doesn't flash past; 300 ms plus the server action stays under the 1 second in #66. The test allows 3 seconds so a slow CI runner doesn't fail it, which still catches the old 5 second wait.
+- **Gotchas:** None.
+- **Open follow-ups:** Replace the whole component with the real waiver flow (#35, #36).
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` passed; `npm run build` passed; `npx playwright test e2e/smoke.spec.ts` 4 passed (the join test went from about 11 s to 6 s). With the old 5000 ms value the new assertion failed, as intended.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 

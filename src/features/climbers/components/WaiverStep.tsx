@@ -10,9 +10,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signWaiver } from "../actions";
 
-// Placeholder for the real waiver signing flow (waivers feature): a fixed
-// spinner, then the climber's waiver is marked as signed.
-const SPINNER_MS = 5000;
+// STOPGAP until the real waiver flow (#35, #36) replaces this component: a
+// short spinner, then the climber's waiver is marked as signed. It was 5
+// seconds; now under one second in total, because the pitch is speed (#66).
+// The spinner stays only so the step doesn't flash past.
+const SPINNER_MS = 300;
 
 type Props = {
   climberId: string;

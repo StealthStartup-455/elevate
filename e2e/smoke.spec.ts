@@ -69,7 +69,10 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await phone.getByLabel("Date of birth").fill("1995-03-03");
   await phone.getByRole("button", { name: "Create account" }).click();
   await phone.getByRole("button", { name: /sign a waiver/i }).click();
-  await phone.getByRole("link", { name: "Continue" }).click({ timeout: 20_000 });
+  // The placeholder waiver is a stopgap, but it shouldn't make anyone wait
+  // (#66). A generous bound, so a slow CI machine doesn't fail it.
+  await expect(phone.getByText("Waiver signed.")).toBeVisible({ timeout: 3_000 });
+  await phone.getByRole("link", { name: "Continue" }).click();
   await expect(phone).toHaveURL(/\/me/);
 
   // Known gap (proposal item D1): a new climber has no membership yet, so the
