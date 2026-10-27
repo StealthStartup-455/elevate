@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Automated WCAG 2.1 A and AA checks (axe-core) on every main screen, in
 // light and dark mode. Axe finds roughly a third of accessibility problems
 // (contrast, labels, roles, names); keyboard and screen reader checks are
-// still done by hand. Needs DEMO_MODE and seeded data, like demo-flow.
+// still done by hand. Needs DEMO_MODE and seeded data, like smoke.spec.ts.
 
 const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { paths: ["/login", "/join"], phone: true },
@@ -18,7 +18,7 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
 
 async function logIn(page: Page, username: string) {
   await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Email").fill(username);
   await page.getByLabel("Password").fill(username);
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).not.toHaveURL(/\/login/);

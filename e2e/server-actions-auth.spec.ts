@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import path from "node:path";
 import { expect, test, type Browser } from "@playwright/test";
+import { actionId, manifestPath } from "./action-id";
 
 // Server actions are public POST endpoints. The proxy only guards /desk and
 // /me, but Next.js bundles every export of a "use server" file into each page
@@ -8,21 +8,9 @@ import { expect, test, type Browser } from "@playwright/test";
 // also be called through the public /join page with no login at all.
 //
 // These tests call staff actions as a logged-out visitor, against a climber
-// they create, and expect the action not to run. They fail today: the actions
-// have no permission check of their own (the TODO(auth) comments). Marked
-// test.fail so CI stays green and goes red the day the checks land, as a
-// reminder to remove the marker (#34).
-
-const manifestPath = path.join(process.cwd(), ".next/server/server-reference-manifest.json");
-
-function actionId(name: string): string {
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
-    node: Record<string, { exportedName?: string }>;
-  };
-  const entry = Object.entries(manifest.node).find(([, v]) => v.exportedName === name);
-  if (!entry) throw new Error(`No server action named ${name} in the build`);
-  return entry[0];
-}
+// they create, and expect the action not to run: each action checks the
+// caller itself (requireStaff in features/auth/staff.ts). A signed-in
+// climber calling them is in real-login.spec.ts.
 
 // Joins as a new climber through /join and returns their id (the demo
 // session cookie holds it).
@@ -55,7 +43,6 @@ test.describe("staff actions refuse logged-out callers", () => {
 
   for (const name of ["checkInClimber", "signWaiver"]) {
     test(`${name} through /join`, async ({ browser, playwright, baseURL }) => {
-      test.fail(true, "No permission check in server actions yet (#34)");
       const climberId = await newClimberId(browser);
       const anonymous = await playwright.request.newContext({ baseURL });
       const response = await anonymous.post("/join", {

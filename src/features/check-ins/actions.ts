@@ -1,6 +1,7 @@
 "use server";
 
-import { getSessionClimberId } from "@/features/auth/session";
+import { getSessionClimberId } from "@/features/auth/queries";
+import { requireStaff } from "@/features/auth/staff";
 import { getClimber } from "@/features/climbers/queries";
 import { getGym } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
@@ -28,9 +29,9 @@ export async function recordScan(): Promise<{ ok: boolean }> {
 }
 
 // The climber from the latest scan, for the front desk popup. Returns each
-// scan once, then null until someone scans again.
-// TODO(auth): staff only.
+// scan once, then null until someone scans again. Staff only.
 export async function takeLatestScan(): Promise<ScannedClimber | null> {
+  await requireStaff();
   const gym = await getGym();
   const scan = await takeScan(gym.id);
   if (!scan) return null;

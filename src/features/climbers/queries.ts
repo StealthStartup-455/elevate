@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { usernameFor } from "@/features/auth/mock-users";
-import { getSessionClimberId } from "@/features/auth/session";
+import { getSessionClimberId } from "@/features/auth/queries";
+import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { formatPhone } from "./phone";
@@ -69,7 +70,7 @@ function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
 }
 
 /**
- * The signed-in climber's membership. Reads the demo session (features/auth);
+ * The signed-in climber's membership. Reads the session (features/auth);
  * with nobody signed in, the person is sent to the log in page, so /me is only
  * ever someone's own account.
  */
@@ -77,7 +78,8 @@ export async function getMyMembership(): Promise<Membership> {
   // Per-user data: render per request, never at build time.
   await connection();
   const id = await getSessionClimberId();
-  if (!id) redirect("/");
+  // Staff with no climber of their own belong on the desk, not at log in.
+  if (!id) redirect((await isStaff()) ? "/desk" : "/");
   const climber = await getClimber(id);
   // A session for a climber that no longer exists (for example after the
   // database was reseeded): back to log in.
@@ -99,6 +101,7 @@ export async function getMyMembership(): Promise<Membership> {
 // Every climber, A to Z by last name. Staff only.
 export async function listClimbers(): Promise<Climber[]> {
   await connection();
+  await requireStaff();
   const gym = await getGym();
   const now = new Date();
   const rows = await findRows(gym.id);
@@ -111,6 +114,8 @@ export async function listClimbers(): Promise<Climber[]> {
     );
 }
 
+// No staff check here: /me reads the climber's own record through this. Desk
+// callers check first.
 export async function getClimber(id: string): Promise<Climber | null> {
   await connection();
   // Not a UUID: no such climber, and Postgres would reject the query.
@@ -126,6 +131,7 @@ export type CheckInClimber = { id: string; waiverStatus: WaiverStatus };
 
 export async function getCheckInClimbers(): Promise<Map<string, CheckInClimber>> {
   await connection();
+  await requireStaff();
   const gym = await getGym();
   const now = new Date();
   const rows = await findRows(gym.id);
@@ -146,6 +152,7 @@ export async function getCheckInClimbers(): Promise<Map<string, CheckInClimber>>
 
 // Visits saved in the CheckIn table inside the active window, newest first.
 // Only front desk check-ins are saved so far (see checkInClimber).
+// No staff check: the busyness count on /me reads this too.
 export async function getSavedCheckIns(since: Date): Promise<
   {
     id: string;

@@ -3,7 +3,7 @@ import { isDemoMode } from "./demo-mode";
 
 // The demo session: a cookie holding the signed-in climber's id. It is not
 // real auth, so it is only read and written in demo mode (demo-mode.ts).
-// TODO(auth): replace with the Supabase session.
+// The real Supabase login lives in queries.ts.
 export const MOCK_USER_COOKIE = "elevate_mock_user";
 // Set by the "desk" demo login so the proxy lets staff into /desk.
 export const MOCK_DESK_COOKIE = "elevate_mock_desk";
@@ -35,8 +35,16 @@ export async function clearSession(): Promise<void> {
   jar.delete(MOCK_DESK_COOKIE);
 }
 
-/** The signed-in climber's id, or undefined when nobody is signed in. */
-export async function getSessionClimberId(): Promise<string | undefined> {
+// The "desk" demo login. Use isStaff (staff.ts) instead, which also checks
+// the real login.
+export async function hasDemoDeskSession(): Promise<boolean> {
+  if (!isDemoMode()) return false;
+  return (await cookies()).has(MOCK_DESK_COOKIE);
+}
+
+// Use getSessionClimberId (queries.ts) instead,
+// which also checks the real login.
+export async function getDemoClimberId(): Promise<string | undefined> {
   if (!isDemoMode()) return undefined;
   return (await cookies()).get(MOCK_USER_COOKIE)?.value;
 }

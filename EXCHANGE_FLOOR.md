@@ -44,6 +44,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | Merged (#72) |
 | 2026-10-22 | @guerrerj | Claude Code | `feature/30-deploy-staging-on-merge` | `.github/workflows/deploy-staging.yml`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md` | In review |
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
+| 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
 
@@ -86,6 +87,32 @@ Newest first.
 - **Open follow-ups:** Move back to `ubuntu-latest` once a Playwright release supports Ubuntu 26.04, upgrading `@playwright/test` at the same time.
 - **Verification:** Not reproducible locally (the failure depends on the runner image). The workflow file parses; the real check is this PR's own CI run.
 
+### 2026-10-25 05:36 UTC: Supabase email sign in, staff-only desk
+
+- **Developer:** @TylerLeHere
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#33 / PR pending
+- **Branch:** `feature/33-supabase-auth-sign-in-out`
+- **What the agent did:**
+  - Real sign in and out with Supabase email and password; staff go to `/desk`, climbers to `/me`. The demo login still works in demo mode.
+  - The seed makes two local test logins, `desk@elevate.test` and `climber@elevate.test`, when `SUPABASE_SECRET_KEY` and `SEED_LOGIN_PASSWORD` are set.
+  - After review: `/desk` is staff only. `requireStaff()` / `isStaff()` (`src/features/auth/staff.ts`) are called in the desk layout, the desk-only queries (`listClimbers`, `getCheckInClimbers`), the climber detail page, and the staff actions (`createClimberAtDesk`, `updateClimber`, `checkInClimber`, `takeLatestScan`). `signWaiver` takes the caller's own id or staff.
+  - Staff opening `/me` with no climber of their own go to `/desk` instead of log in.
+  - `getFrontDeskBusyness` (names and phones) checks for staff itself too.
+  - Tests: the login action with Supabase faked (`actions.test.ts`, runs in CI); real climber and desk logins against `/desk`, `/me` and a staff action (`e2e/real-login.spec.ts`, local only).
+  - DEPLOYMENT.md: turn off "Allow new users to sign up" in Supabase; why staging must never hold real data (the demo desk cookie can be forged).
+- **Files touched:** `src/features/auth/{staff,staff.test,actions.test,session,queries,actions}.ts`, `src/app/desk/layout.tsx`, `src/app/desk/climbers/[climberId]/page.tsx`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `src/features/analytics/{queries,queries.test}.ts`, `prisma/seed-logins.ts`, `e2e/{real-login.spec,server-actions-auth.spec,action-id}.ts`, `DEPLOYMENT.md`, `README.md`
+- **Decisions and why:**
+  - The staff check sits next to the data, not only in the desk layout: a layout doesn't re-run on navigation and a page can render without it (Next.js auth guide, "Layouts and auth checks"). The layout gate only hides the desk UI.
+  - `getClimber` and `getSavedCheckIns` have no staff check on purpose: `/me` (own record, busyness count) reads them. Desk callers check first.
+  - The proxy still only checks "signed in"; it stays off the database.
+- **Gotchas:**
+  - With Cache Components, call `await connection()` before `requireStaff()` in a component: the Supabase check reads the clock, and without it the server logs "unstable value `Date.now()` while prerendering".
+  - `e2e/server-actions-auth.spec.ts` no longer has `test.fail`; the checks it waited for (#34) are in.
+  - `next build` sometimes stops once on a Next.js security advisory reminder; running it again continues.
+  - In production the waiver step right after `/join` now says "Log in to sign the waiver": `signWaiver` takes only the caller's own climber or staff, and `/join` doesn't sign anyone in yet. Before, anyone could sign a waiver for any climber.
+- **Open follow-ups:** `/join` creates a climber with no Supabase login, so a new member can't sign in (or sign the waiver) in production; with public sign ups off it needs a server-side account or invite (own issue). Real login end to end in CI needs a CI job with local Supabase. `signWaiver` matches only the login's first climber; check all of `climberIds` once parents can switch kids. Set `staffId` / `createdByStaffId` from the signed-in staff member. Upgrade Next.js for the advisory `next build` reports.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 65 passed (2 todo); `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 15 passed locally with the seeded real logins. With `SEED_LOGIN_PASSWORD` unset (as in CI) the 3 tests in `e2e/real-login.spec.ts` skip. Each new test was seen failing: the staff and server-action tests against the code before the fix, the login action tests by breaking `login` on purpose.
 ### 2026-10-24 UTC: All rights reserved licence; repo stays public for now
 
 - **Developer:** @guerrerj

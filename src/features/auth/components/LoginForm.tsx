@@ -11,7 +11,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useActionState } from "react";
-import { type LoginState, mockLogin } from "../actions";
+import { type LoginState, login } from "../actions";
 
 export type DemoLogin = {
   username: string;
@@ -28,7 +28,7 @@ function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
         Demo accounts
       </Typography>
       <Typography variant="caption" component="p" sx={{ mb: 2 }}>
-        Use the username as the password too.
+        Type the username in the Email box and use it as the password too.
       </Typography>
       <Box component="table" sx={{ borderCollapse: "collapse", fontSize: "0.75rem" }}>
         <thead>
@@ -78,12 +78,13 @@ function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
   );
 }
 
-// Log in fields with "Join the gym" right under them. Static demo login: the
-// password is the same as the username (see actions.ts). The "i" next to the
-// title lists demo accounts for every waiver and membership state.
+// Log in fields with "Join the gym" right under them. The label always says
+// Email because this page is built ahead of time, but in demo mode a demo
+// username works there too (see actions.ts). The "i" next to the title lists
+// demo accounts for every waiver and membership state.
 export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
-    mockLogin,
+    login,
     {},
   );
 
@@ -131,8 +132,9 @@ export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] 
         <Box component="form" action={formAction} noValidate>
           <Stack spacing={4}>
             <TextField
-              name="username"
-              label="Username"
+              name="email"
+              label="Email"
+              type="email"
               required
               fullWidth
               autoComplete="username"
