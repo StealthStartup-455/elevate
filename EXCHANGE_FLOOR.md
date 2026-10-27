@@ -47,6 +47,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In progress |
 
 ## Entry template
 
@@ -70,6 +71,26 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-27 UTC: No-charge day pass so desk staff can check in a new climber (stopgap)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / PR pending
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - New staff-only action `giveDayPass` saves a `DAY` `Pass` row that ends at midnight in the gym's time zone. It needs a valid waiver and no active membership, and does nothing if today's pass already exists.
+  - `checkInClimber` accepts an active membership **or** a current day pass.
+  - "Give free day pass" (outlined) button in the manual check-in dialog and the QR scan popup; `/me` shows "Free day pass for today" and the demo scan stops warning about the membership.
+  - Pure helpers `hasDayPass` and `endOfGymDay` in `status.ts`, with tests (summer time, standard time, late evening).
+- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`
+- **Decisions and why:**
+  - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
+  - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
+  - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
+- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC.
+- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No DB or e2e test for `giveDayPass` yet.
+- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including the 6 new ones; `npm run lint` clean; `npm run build` passed. `npm run test:db` not run: the local Supabase (Docker) wasn't running. Not yet clicked through in the browser.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 

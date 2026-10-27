@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarizeMembership, summarizeWaiver } from "./status";
+import { endOfGymDay, hasDayPass, summarizeMembership, summarizeWaiver } from "./status";
 
 const NOW = new Date("2026-10-20T18:00:00Z");
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -73,5 +73,38 @@ describe("summarizeMembership", () => {
 
   it("is none when the only pass starts later", () => {
     expect(summarizeMembership([pass("2026-11-01", "2026-12-01")], NOW).status).toBe("none");
+  });
+});
+
+describe("hasDayPass", () => {
+  it("is false with no day passes", () => {
+    expect(hasDayPass([], NOW)).toBe(false);
+  });
+
+  it("is true while today's pass runs", () => {
+    const pass = { startsAt: new Date("2026-10-20T16:00:00Z"), expiresAt: new Date("2026-10-21T07:00:00Z") };
+    expect(hasDayPass([pass], NOW)).toBe(true);
+  });
+
+  it("is false once the pass has expired", () => {
+    const pass = { startsAt: new Date("2026-10-19T16:00:00Z"), expiresAt: new Date("2026-10-20T07:00:00Z") };
+    expect(hasDayPass([pass], NOW)).toBe(false);
+  });
+});
+
+describe("endOfGymDay", () => {
+  it("is local midnight in summer time", () => {
+    // 11am in Victoria (UTC-7); the day ends at 07:00 UTC the next day.
+    expect(endOfGymDay(NOW, "America/Vancouver")).toEqual(new Date("2026-10-21T07:00:00Z"));
+  });
+
+  it("is local midnight in standard time", () => {
+    const winter = new Date("2026-12-05T20:00:00Z"); // noon in Victoria (UTC-8)
+    expect(endOfGymDay(winter, "America/Vancouver")).toEqual(new Date("2026-12-06T08:00:00Z"));
+  });
+
+  it("uses the gym's day, not the UTC day, late in the evening", () => {
+    const lateEvening = new Date("2026-10-21T05:30:00Z"); // 10:30pm Oct 20 in Victoria
+    expect(endOfGymDay(lateEvening, "America/Vancouver")).toEqual(new Date("2026-10-21T07:00:00Z"));
   });
 });
