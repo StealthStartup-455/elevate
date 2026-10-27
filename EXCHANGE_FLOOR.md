@@ -47,6 +47,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `feature/65-hide-empty-pages` | `src/app/desk/layout.tsx`, `src/app/me/layout.tsx`, `e2e/navigation.spec.ts` | In review |
 
 ## Entry template
 
@@ -70,6 +71,21 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-27 UTC: Empty pages hidden from the desk and climber menus
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#65 / PR pending
+- **Branch:** `feature/65-hide-empty-pages`
+- **What the agent did:**
+  - Desk menu: Events and Waivers links removed. Climber menu: Events and Stats links removed. A comment in each layout says to add a link back in the PR that fills its page.
+  - `e2e/navigation.spec.ts`: each menu shows its working links, leaves out the empty pages, and the empty routes still load.
+- **Files touched:** `src/app/desk/layout.tsx`, `src/app/me/layout.tsx`, `e2e/navigation.spec.ts`
+- **Decisions and why:** Removed the links rather than adding a feature flag: four links, and a flag would outlive the pages it hides. The routes and pages are untouched (#65 asks for that), and `accessibility.spec.ts` still checks them.
+- **Gotchas:** Whoever builds Events, Waivers or Stats must add the menu link back and update `e2e/navigation.spec.ts`, which otherwise fails.
+- **Open follow-ups:** None.
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm run build` passed; `npx playwright test` 14 passed, 3 skipped (real-login needs seeded Supabase logins). The two new tests failed against the old menus, as intended.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 
