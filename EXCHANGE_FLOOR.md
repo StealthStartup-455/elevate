@@ -46,7 +46,8 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
-| 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | Merged (#78) |
+| 2026-10-27 | @guerrerj | Claude Code | `feature/43-show-app-version` | `scripts/app-version.mjs`, `next.config.ts`, `src/lib/version.ts`, `src/components/ui/AppVersion.tsx`, root layout, `src/app/api/version`, `src/lib/log.ts`, `deploy-staging.yml`, `scripts/staging-setup.mjs`, docs | In review |
 
 ## Entry template
 
@@ -70,6 +71,29 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-27 UTC: App version from git, shown in the footer and at /api/version
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 / PR pending
+- **Branch:** `feature/43-show-app-version`
+- **What the agent did:**
+  - `scripts/app-version.mjs` works out the version from git with no spaces or brackets: `v1.0.0+def5678` on a release tag, `v1.0.1-dev.23+abc1234` 23 commits later, `v0.1.0-dev.121+abc1234` before the first tag (base from `package.json`), `.local` when not deployed.
+  - `next.config.ts` puts it in the build (`NEXT_PUBLIC_APP_VERSION`, `NEXT_PUBLIC_COMMIT_SHA`, `NEXT_PUBLIC_BUILD_TIME`); `src/lib/version.ts` reads it.
+  - Footer on every page (`AppVersion`, root layout) showing the version, linked to the commit on GitHub; `GET /api/version` returns version, commit, build time and environment; every log line gets a `version` field.
+  - Deploy staging: full-history checkout, version passed to Vercel with `--build-env`, written to the run summary; the live check now waits for `/api/version` to report the deployed commit and for `/login` to show the password field; warns when `STAGING_URL` is empty. `staging-setup.mjs` passes and checks the version the same way.
+- **Files touched:** `scripts/app-version.mjs`, `next.config.ts`, `src/lib/{version,version.test,app-version.test,log}.ts`, `src/components/ui/AppVersion.tsx`, `src/app/layout.tsx`, `src/app/api/version/route.ts`, `e2e/version.spec.ts`, `.github/workflows/deploy-staging.yml`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md`, `CONTRIBUTING.md`
+- **Decisions and why:**
+  - Builds after a release count toward the next patch (`v1.0.1-dev.N`), not `v1.0.0-dev.N`: in Semantic Versioning a pre-release sorts before its release, so this keeps versions in order.
+  - The version is computed in GitHub Actions, not on Vercel: `vercel deploy` uploads files without `.git`, so a build there can't see the commit.
+  - Commit count from `git describe` against `v*.*.*` tags; no tags exist yet, so it counts every commit until the first release tag (`v0.3.0` for M3 per DEPLOYMENT.md). Tags stay with the release manager (CONTRIBUTING).
+- **Gotchas:**
+  - The old live check looked for `name="username"`, which PR #75 removed (the form now has Email). It would have failed every deploy once `STAGING_URL` was read; replaced by `/api/version` plus `name="password"`.
+  - `STAGING_URL` saved as a secret is invisible to `vars.STAGING_URL`, which is why the live check was skipped on the #75 deploy.
+  - CI's shallow checkout gives a count of 1 (`v0.1.0-dev.1+...local`); harmless, CI builds aren't deployed.
+- **Open follow-ups:** Create the first release tag when cutting M3. Optional later: release-please for version bumps and a changelog once commit messages follow `feat:` / `fix:`.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 77 passed (2 todo), including 11 new version tests; `npm run build` passed (`/api/version` static); `npx playwright test` 13 passed, 3 skipped (real-login needs seeded Supabase logins), including the new footer test and axe on every screen in light and dark. A first run failed one smoke test on "Already checked in" from an earlier run on the same database; passed after reseeding. Footer checked by eye in light, dark and at phone width. The workflow's deploy and live check can only be proven by the first run after merge.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 

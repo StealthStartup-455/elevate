@@ -127,7 +127,7 @@ git push -u origin HEAD
 
 3. **Back-merge:** open a PR from `main` into `dev` and **merge it with a merge commit**, so fixes made on `release` are not lost.
 
-Use semantic versioning: `MAJOR.MINOR.PATCH`.
+Use semantic versioning: `MAJOR.MINOR.PATCH`. The tag is what the app's version is counted from: every build after `v1.0.0` shows as `v1.0.1-dev.N+<commit>` in the footer and at `/api/version` until the next tag (`scripts/app-version.mjs`; see "Which version is live" in `DEPLOYMENT.md`). Never type a version into the code.
 
 ## Hotfixes
 
