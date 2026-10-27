@@ -46,6 +46,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
 
 ## Entry template
 
@@ -69,6 +70,22 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#77 / PR pending
+- **Branch:** `fix/77-pin-ci-runner`
+- **What the agent did:**
+  - `ci.yml`: both jobs (`check` and `e2e`) run on `ubuntu-24.04` instead of `ubuntu-latest`.
+- **Files touched:** `.github/workflows/ci.yml`
+- **Decisions and why:**
+  - GitHub moved `ubuntu-latest` to Ubuntu 26.04, and Playwright 1.56.1 can't install Chromium there ("Playwright does not support chromium on ubuntu26.04-x64"), so every PR's e2e job failed at `npx playwright install --with-deps chromium`. Pinning the runner is the smallest safe fix; upgrading Playwright was not chosen because 26.04 support in a newer version wasn't confirmed.
+  - `check` is pinned too, so both jobs run on the same OS. `deploy-staging.yml`, `deploy-pages.yml` and `branch-policy.yml` install no browsers and stay on `ubuntu-latest`.
+- **Gotchas:** Open PRs (for example #75) keep failing e2e until they merge `dev` after this lands.
+- **Open follow-ups:** Move back to `ubuntu-latest` once a Playwright release supports Ubuntu 26.04, upgrading `@playwright/test` at the same time.
+- **Verification:** Not reproducible locally (the failure depends on the runner image). The workflow file parses; the real check is this PR's own CI run.
 
 ### 2026-10-25 05:36 UTC: Supabase email sign in, staff-only desk
 
