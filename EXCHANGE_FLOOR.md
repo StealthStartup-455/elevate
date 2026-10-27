@@ -41,8 +41,11 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-15 | @Khanh150104 | Claude Code | `feature/36-check-in-front-desk` | `src/features/check-ins/*`, `MembershipCard.tsx`, `/desk` page | In review |
 | 2026-10-14 | @Scott-Squires | Claude Code | `feature/16-style-guide` | `STYLE_GUIDE.md`, `src/components/ui/` (theme, shared components), `globals.css`, root layout, lint rules, small edits across existing screens | In review |
 | 2026-10-15 | @Scott-Squires | Claude Code | `feature/22-logo-first-pass` | `src/components/ui/Logo.tsx`, `public/brand/`, app icons (`src/app/favicon.ico`, `icon.png`, `apple-icon.png`), `/` and `/login` pages, `/desk` and `/me` nav bars | In progress (stacked on `feature/16-style-guide`) |
+| 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | Merged (#72) |
+| 2026-10-22 | @guerrerj | Claude Code | `feature/30-deploy-staging-on-merge` | `.github/workflows/deploy-staging.yml`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md` | In review |
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
+| 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 
 ## Entry template
 
@@ -93,6 +96,18 @@ Newest first.
   - In production the waiver step right after `/join` now says "Log in to sign the waiver": `signWaiver` takes only the caller's own climber or staff, and `/join` doesn't sign anyone in yet. Before, anyone could sign a waiver for any climber.
 - **Open follow-ups:** `/join` creates a climber with no Supabase login, so a new member can't sign in (or sign the waiver) in production; with public sign ups off it needs a server-side account or invite (own issue). Real login end to end in CI needs a CI job with local Supabase. `signWaiver` matches only the login's first climber; check all of `climberIds` once parents can switch kids. Set `staffId` / `createdByStaffId` from the signed-in staff member. Upgrade Next.js for the advisory `next build` reports.
 - **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 65 passed (2 todo); `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 15 passed locally with the seeded real logins. With `SEED_LOGIN_PASSWORD` unset (as in CI) the 3 tests in `e2e/real-login.spec.ts` skip. Each new test was seen failing: the staff and server-action tests against the code before the fix, the login action tests by breaking `login` on purpose.
+### 2026-10-24 UTC: All rights reserved licence; repo stays public for now
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#71 / PR pending
+- **Branch:** `chore/71-add-license`
+- **What the agent did:** Added a `LICENSE` file (copyright the Elevate team, all rights reserved), pointed the README's License section to it, and set `"license": "UNLICENSED"` in `package.json` (npm's marker for code that isn't open source).
+- **Files touched:** `LICENSE`, `README.md`, `package.json`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** No open source licence, since the team hasn't decided to give the code away. The repository stays public for now: on GitHub's free organization plan a private repo loses GitHub Pages (the product page), enforced branch rules, and unlimited Actions minutes. Reasons are in the #71 comment.
+- **Gotchas:** The licence names the team, not individuals; ownership among members is for the team's agreement.
+- **Open follow-ups:** Check whether the course requires a public repo; settle ownership; move the product page before going private; rename the seed gym (#67).
+- **Verification:** `npm run lint` clean; `package.json` parses; no code changes.
 
 ### 2026-10-23 06:43 UTC: Owner-focused product page and project documentation
 
@@ -109,6 +124,19 @@ Newest first.
 - **Gotchas:** The hosted URL is a trial preview, not an approved production service; payment processing and paid plans are not available.
 - **Open follow-ups:** None.
 - **Verification:** `npm run lint`, `npm test` (52 passed, 2 todo), and `npm run build` passed. After CI found a critical Next.js advisory, upgraded Next.js and its ESLint config to 16.4.2 and updated patched Prisma transitive dependencies; `npm audit --audit-level=critical` passed (0 critical; 5 high remain in the ESLint dependency chain). `git diff --check` passed; responsive checks passed at 320, 390, 800, and 1440px in light and dark modes.
+
+### 2026-10-22 UTC: Deploy staging automatically on every merge to dev
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#30 / PR pending
+- **Branch:** `feature/30-deploy-staging-on-merge`
+- **What the agent did:** Added `.github/workflows/deploy-staging.yml`: on every push to `dev` (or by hand), it applies migrations, deploys to Vercel with a token (`vercel deploy --prod`), then checks `STAGING_URL/login` shows Elevate's login form. Removed `migrate-staging.yml`, which it replaces. `npm run staging:setup` now prints the GitHub secrets to add. Updated `DEPLOYMENT.md` and `CONTRIBUTING.md`.
+- **Files touched:** `.github/workflows/deploy-staging.yml`, `.github/workflows/migrate-staging.yml` (removed), `scripts/staging-setup.mjs`, `DEPLOYMENT.md`, `CONTRIBUTING.md`
+- **Decisions and why:** Deploy from GitHub Actions with a Vercel token rather than Vercel's GitHub integration: no organization app to approve, it keeps working on Vercel's free plan if the repo goes private (#71), and migrations run before the new code is deployed instead of racing Vercel's build.
+- **Gotchas:** Until the `staging` environment has all four secrets, the workflow prints which are missing and deploys nothing. The Vercel project must not also be connected to the repository, or every merge deploys twice.
+- **Open follow-ups:** Add the secrets once the team-owned Vercel and Supabase accounts exist; the first merge after that is the workflow's real test.
+- **Verification:** `npm run lint` clean; workflow YAML parses; the skip step tested with none, some and all secrets set; the login check tested against Elevate's login (passes) and a stand in for Vercel's login page (fails with the protection hint); setup script dry run with a stand in Vercel CLI prints the ids from `.vercel/project.json`. The deploy step itself needs a real token and could not run here.
 
 ### 2026-10-21 08:00 UTC: Trial deploy on Supabase and Vercel; fixes it found
 

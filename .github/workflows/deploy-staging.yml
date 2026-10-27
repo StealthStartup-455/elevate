@@ -1,0 +1,80 @@
+name: Deploy staging
+
+# Deploys dev to the hosted staging demo after every merge, in order:
+# 1. apply new migrations to the staging database (prisma migrate deploy),
+# 2. build and deploy the app on Vercel,
+# 3. check the public address shows Elevate's login.
+# Migrations run first, so new code never meets an old database.
+#
+# Needs these in the repository's "staging" environment (Settings,
+# Environments, staging); without them this workflow does nothing:
+#   secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, STAGING_DIRECT_URL
+#   variable (optional): STAGING_URL, e.g. https://elevate-staging.vercel.app
+# The Vercel project's own settings hold the app's variables (DATABASE_URL and
+# the rest); `npm run staging:setup` sets them. See DEPLOYMENT.md.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      STAGING_URL: ${{ vars.STAGING_URL }}
+    steps:
+      - name: Skip when staging isn't set up yet
+        id: ready
+        run: |
+          missing=""
+          for name in DIRECT_URL VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Staging is not set up (missing:$missing); nothing deployed. See DEPLOYMENT.md."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.ready.outputs.ok == 'true'
+
+      - name: Apply pending migrations
+        if: steps.ready.outputs.ok == 'true'
+        run: npx prisma migrate deploy
+
+      - name: Deploy to Vercel
+        if: steps.ready.outputs.ok == 'true'
+        run: npx -y vercel@63.1.2 deploy --prod --yes --token="$VERCEL_TOKEN"
+
+      - name: Check the public address shows Elevate's login
+        if: steps.ready.outputs.ok == 'true' && env.STAGING_URL != ''
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            page=$(curl -fsS "$STAGING_URL/login" || true)
+            if echo "$page" | grep -q 'name="username"'; then
+              echo "$STAGING_URL/login shows Elevate's login."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "$STAGING_URL/login did not show Elevate's login form. Check Vercel's Deployment Protection (Standard) and the deployment's logs."
+          exit 1
