@@ -30,7 +30,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the project's publishable key | Public by design |
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
-| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39) |
+| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39). Generated check-ins are labelled on screen (#64); `none` shows real check-ins only |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
 

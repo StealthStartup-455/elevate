@@ -44,7 +44,7 @@ export async function getActiveCheckIns(
     .filter((c) => c.gymId === gymId && c.timestamp > since && c.timestamp <= now)
     .flatMap((c) => {
       const climber = climbers.get(c.climberId);
-      return climber ? [{ ...c, climber }] : [];
+      return climber ? [{ ...c, climber, sample: true }] : [];
     });
 
   // Visits saved by the front desk happen on the real clock, not the mock's,
@@ -64,6 +64,7 @@ export async function getActiveCheckIns(
       phone: c.phone,
       waiverStatus: c.waiverStatus,
     },
+    sample: false,
   }));
 
   return [...live, ...mock].sort(
@@ -73,16 +74,17 @@ export async function getActiveCheckIns(
 
 function summarize(
   gymId: string,
-  activeCount: number,
+  checkIns: ActiveCheckIn[],
   now: Date,
 ): BusynessSummary {
   const { thresholds } = getGymBusynessSettings(gymId);
   return {
     gymId,
-    count: activeCount,
-    level: getBusynessLevel(activeCount, thresholds),
+    count: checkIns.length,
+    level: getBusynessLevel(checkIns.length, thresholds),
     windowMinutes: ACTIVE_WINDOW_MINUTES,
     computedAt: now,
+    sampleCount: checkIns.filter((c) => c.sample).length,
   };
 }
 
@@ -94,7 +96,7 @@ export async function getFrontDeskBusyness(
   // Names and phone numbers: staff only.
   await requireStaff();
   const checkIns = await getActiveCheckIns(gymId, now);
-  return { ...summarize(gymId, checkIns.length, now), checkIns };
+  return { ...summarize(gymId, checkIns, now), checkIns };
 }
 
 // Climber view: the same numbers with no personal data, so nothing about
@@ -104,7 +106,7 @@ export async function getBusynessSummary(
 ): Promise<BusynessSummary> {
   const now = await busynessNow();
   const checkIns = await getActiveCheckIns(gymId, now);
-  return summarize(gymId, checkIns.length, now);
+  return summarize(gymId, checkIns, now);
 }
 
 /**
@@ -117,5 +119,6 @@ export async function getWeeklyBusyness(gymId: string): Promise<WeeklyBusyness> 
   const now = await busynessNow();
   const { timeZone } = getGymBusynessSettings(gymId);
   const { startHour, endHour, days, values } = mockWeek();
-  return { gymId, startHour, endHour, days, values, now: gymClock(now, timeZone) };
+  // Always generated for now, so always labelled (#64); real once #39 lands.
+  return { gymId, startHour, endHour, days, values, now: gymClock(now, timeZone), sample: true };
 }
