@@ -99,8 +99,10 @@ describe("endOfGymDay", () => {
   });
 
   it("is local midnight in standard time", () => {
-    const winter = new Date("2026-12-05T20:00:00Z"); // noon in Victoria (UTC-8)
-    expect(endOfGymDay(winter, "America/Vancouver")).toEqual(new Date("2026-12-06T08:00:00Z"));
+    // Not Vancouver: tzdata 2026b keeps BC on UTC-7 all year from November
+    // 2026, while older Node versions still switch it to UTC-8.
+    const winter = new Date("2026-12-05T20:00:00Z"); // noon in Los Angeles (UTC-8)
+    expect(endOfGymDay(winter, "America/Los_Angeles")).toEqual(new Date("2026-12-06T08:00:00Z"));
   });
 
   it("uses the gym's day, not the UTC day, late in the evening", () => {

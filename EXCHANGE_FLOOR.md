@@ -88,7 +88,7 @@ Newest first.
   - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
   - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
   - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
-- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC.
+- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC. tzdata 2026b (Node 24 in CI) keeps `America/Vancouver` on UTC-7 all year from November 2026, while older tzdata (e.g. 2026a in Node 26.12) still switches to UTC-8 in winter. Don't hard-code a Vancouver winter offset in tests.
 - **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
 - **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
 
