@@ -83,14 +83,14 @@ Newest first.
   - `checkInClimber` accepts an active membership **or** a current day pass.
   - "Give free day pass" (outlined) button in the manual check-in dialog and the QR scan popup; `/me` shows "Free day pass for today" and the demo scan stops warning about the membership.
   - Pure helpers `hasDayPass` and `endOfGymDay` in `status.ts`, with tests (summer time, standard time, late evening).
-- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`
+- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`, `src/features/climbers/day-pass.db.test.ts`
 - **Decisions and why:**
   - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
   - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
   - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
 - **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC.
-- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No DB or e2e test for `giveDayPass` yet.
-- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including the 6 new ones; `npm run lint` clean; `npm run build` passed. `npm run test:db` not run: the local Supabase (Docker) wasn't running. Not yet clicked through in the browser.
+- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
+- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 
