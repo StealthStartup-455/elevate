@@ -3,7 +3,7 @@
 // removed.
 //
 // What it creates:
-// - the demo gym
+// - the demo gym, and its waiver wording (version v1, placeholder text)
 // - the team's own climbers (CLIMBERS below)
 // - the climbers the busyness mock check-ins refer to (src/features/analytics/mock),
 //   saved with the mock's id (climber-12) as externalId so the desk can link
@@ -19,6 +19,8 @@ import { join } from "node:path";
 import { DEFAULT_GYM_SLUG } from "../src/lib/gym";
 import { db } from "../src/lib/db";
 import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
+import { hashWaiver } from "../src/features/waivers/hash";
+import { SAMPLE_WAIVER } from "../src/features/waivers/sample-waiver";
 import { toStoredPhone } from "../src/features/climbers/phone";
 import { seedLogins } from "./seed-logins";
 import type {
@@ -121,6 +123,10 @@ function demoClimbers(): SeedClimber[] {
   }));
 }
 
+// The waiver version climbers must sign. The seeded waivers below are this
+// version, so their status doesn't change.
+const WAIVER_VERSION = "v1";
+
 const DAY = 24 * 60 * 60 * 1000;
 
 function daysFromNow(days: number): Date {
@@ -134,7 +140,7 @@ function waiversFor(c: SeedClimber, gymId: string, n: number) {
   return [
     {
       gymId,
-      version: "v1",
+      version: WAIVER_VERSION,
       signedAt: daysFromNow(-ago),
       signedByName: `${c.firstName} ${c.lastName}`,
     },
@@ -166,8 +172,24 @@ function passesFor(c: SeedClimber, gymId: string, n: number) {
 async function main() {
   const gym = await db.gym.upsert({
     where: { slug: DEFAULT_GYM_SLUG },
-    update: { name: "BoulderHouse Climbing Victoria" },
-    create: { name: "BoulderHouse Climbing Victoria", slug: DEFAULT_GYM_SLUG },
+    update: { name: "BoulderHouse Climbing Victoria", waiverVersion: WAIVER_VERSION },
+    create: {
+      name: "BoulderHouse Climbing Victoria",
+      slug: DEFAULT_GYM_SLUG,
+      waiverVersion: WAIVER_VERSION,
+    },
+  });
+
+  // Published wording is never edited, so an existing v1 is left as it is.
+  await db.waiverTemplate.upsert({
+    where: { gymId_version: { gymId: gym.id, version: WAIVER_VERSION } },
+    update: {},
+    create: {
+      gymId: gym.id,
+      version: WAIVER_VERSION,
+      ...SAMPLE_WAIVER,
+      bodyHash: hashWaiver(SAMPLE_WAIVER),
+    },
   });
 
   const all: SeedClimber[] = [...CLIMBERS, ...busynessClimbers(), ...demoClimbers()];
