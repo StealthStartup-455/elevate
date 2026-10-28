@@ -47,6 +47,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-28 | @guerrerj | Claude Code | `feature/84-server-timing` | `src/lib/{timing,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
 ## Entry template
@@ -71,6 +72,28 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-28 UTC: Timing logs for slow requests (PERF_LOG)
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#84 / PR pending
+- **Branch:** `feature/84-server-timing`
+- **What the agent did:**
+  - `src/lib/timing.ts`: `timed(event, fields, work)` logs how long a step took, only when `PERF_LOG="true"`.
+  - `src/lib/db.ts`: a Prisma query extension times every query (`perf_db`: model, operation, ms; never the data).
+  - `perf_auth` around Supabase `getUser()` in the proxy and in `getCurrentUser`; `perf_action` around the desk's `takeLatestScan` poll.
+  - DEPLOYMENT.md: "Finding slow requests" (turn on, read in Vercel Logs, turn off); `PERF_LOG` in the variables table; the new events in the log table.
+- **Files touched:** `src/lib/{timing,timing.test,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md`
+- **Decisions and why:**
+  - Log lines rather than a `Server-Timing` header: server components and server actions can't set response headers, and Vercel already groups a request's log lines under it.
+  - Off by default: the desk polls every 2.5 s, so always-on timing would flood the one hour of logs the free plan keeps.
+  - `db` is now Prisma's extended client type; call sites are unchanged.
+- **Gotchas:**
+  - Local run with `PERF_LOG=true` (local Postgres, demo desk): the scan check takes 4 to 7 ms in total, but on `/desk` each `Climber.findMany` (every climber with waivers and passes) takes about 250 ms and the first query of a page 150 to 250 ms, because `/desk` runs four queries at once, two of them that same full climber list (#85).
+  - A query's `ms` includes waiting for a free pool connection, so parallel queries look slower than they are alone.
+- **Open follow-ups:** Turn `PERF_LOG` on for one staging deploy, read the breakdown, then fix #85 and #86 with numbers in hand. Remove the timing once those are done if it's no longer useful.
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` 68 passed (2 todo), 3 new; `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 12 passed, 3 skipped (real-login needs seeded Supabase logins); ran `next start` with `PERF_LOG=true`, logged in as the demo desk, loaded `/desk` twice and let it poll: the expected `perf_db` and `perf_action` lines appeared. The unit tests cover the off case.
 
 ### 2026-10-27 UTC: Placeholder waiver signs in under a second
 

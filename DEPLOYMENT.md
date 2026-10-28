@@ -30,6 +30,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the project's publishable key | Public by design |
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
+| `PERF_LOG` | unset | `true` only while looking for slow requests: logs each query's and step's time (see "Finding slow requests") |
 | `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39) |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
@@ -130,11 +131,27 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
 | `scan_saved` / `scan_taken` | Phone scan saved; the desk showed it | `climberId`; `waitMs` (time from tap to desk), `waiverStatus`, `membershipStatus` |
+| `perf_db` / `perf_auth` / `perf_action` | Only when `PERF_LOG="true"` (see "Finding slow requests") | `model` and `operation`, or `where` (`proxy`, `page`), or `name`; `ms` |
 | `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |
 
 **When someone reports an error**, ask for the error code on the "Something went wrong" page. It is the `digest` of the matching `server_error` line.
 
 **Privacy:** log lines carry ids and reason codes only, never names, phone numbers, emails or anything typed into a form. Keep it that way when adding events.
+
+### Finding slow requests
+
+Timing logs are off by default (#84). To see where a slow page spends its time:
+
+1. In Vercel, Settings, Environment Variables, add `PERF_LOG` = `true` for Production (the staging project deploys with `--prod`), then redeploy (Actions, Deploy staging, Run workflow).
+2. Use the slow screens for a minute.
+3. In Vercel, Logs, open a slow request and search `perf_`. Every line that request wrote is grouped under it:
+   - `perf_db`: one line per database query, with `model`, `operation` and `ms`.
+   - `perf_auth`: asking Supabase who is signed in, in the proxy and in the page.
+   - `perf_action`: the desk's scan check (`takeLatestScan`) end to end.
+4. Compare the request's total time (shown by Vercel) with the sum of the `perf_` lines: if the queries add up to most of it, fix the queries; if not, the time is elsewhere (startup, rendering, the network).
+5. Remove `PERF_LOG` and redeploy when done, so the logs stay readable.
+
+Queries on one page can run at the same time, so their times overlap; a query's `ms` includes waiting for a free database connection.
 
 **Useful numbers from the logs during a pilot:** `waitMs` on `scan_taken` (how fast the desk sees a scan), and `check_in_refused` by `reason` (which rule turns people away).
 
