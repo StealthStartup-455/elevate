@@ -42,10 +42,13 @@ function findRows(gymId: string, id?: string) {
         select: { signedAt: true, version: true },
       },
       passes: {
-        // All of them: a renewal bought early has not started yet, and the
+        // Every membership: a renewal bought early has not started yet, and the
         // status comes from the one in effect today (see summarizeMembership).
-        // DAY passes are the #62 stopgap; they expire the same day.
-        where: { kind: { in: ["MEMBERSHIP", "DAY"] } },
+        // DAY passes are the #62 stopgap. They end at midnight and pile up
+        // daily, so only unexpired ones are loaded.
+        where: {
+          OR: [{ kind: "MEMBERSHIP" }, { kind: "DAY", expiresAt: { gt: new Date() } }],
+        },
         select: { kind: true, startsAt: true, expiresAt: true, pausedAt: true },
       },
     },

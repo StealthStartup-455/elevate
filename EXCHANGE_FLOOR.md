@@ -73,6 +73,21 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-28 UTC: Desk loads only today's day passes (review fix on #83)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - `findRows` now loads every `MEMBERSHIP` pass but only `DAY` passes that haven't expired, instead of every day pass a climber ever had (review by @guerrerj on #83).
+  - Added `day_pass_given` / `day_pass_refused` to the log table in `DEPLOYMENT.md`.
+- **Files touched:** `src/features/climbers/queries.ts`, `DEPLOYMENT.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Day passes end at midnight and pile up daily, and the desk loads every climber on each load and 30 second refresh (#85). `hasDayPass` already ignored expired passes, so behaviour is unchanged.
+- **Gotchas:** none.
+- **Open follow-ups:** From the same review, left for later: #97 moves the new labels to the style guide's text styles; whoever picks up #90 should build on the "Give free day pass" button; say it's a stopgap in demos (#44 to #46).
+- **Verification:** `npx tsc --noEmit` clean; `npm run lint` clean; `npm test` 71 passed (2 todo). `npm run test:db`, build and e2e not run locally (Docker wasn't running); left to CI on #83.
+
 ### 2026-10-27 UTC: No-charge day pass so desk staff can check in a new climber (stopgap)
 
 - **Developer:** @SethMess
