@@ -16,6 +16,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Staff` | Someone who works the desk | Sam, closing shift |
 | `Climber` | A customer | Kim Lee, 12, youth team |
 | `Pass` | Whatever gets them in | 10-punch card, 7 left |
+| `WaiverTemplate` | One version of a gym's waiver wording | `v2`, published 1 March |
 | `Waiver` | One signed waiver | `v2`, signed by Kim's dad |
 | `CheckIn` | One visit | Kim, 4:12 pm, scanned QR |
 | `QrScan` | A QR scan waiting for the desk | Kim tapped scan at 4:11 pm |
@@ -23,9 +24,10 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 ```text
 Gym
  ├── Staff
+ ├── WaiverTemplate
  └── Climber
       ├── Pass
-      ├── Waiver
+      ├── Waiver ── WaiverTemplate
       ├── CheckIn ── Staff
       └── QrScan
 ```
@@ -34,7 +36,7 @@ Gym
 
 - Phone and email are not unique. Families often share one, so a phone search can return several climbers. One login can also manage several climbers.
 - Prices are not stored. Payments happen in the gym's own POS; a `Pass` only records what the climber has.
-- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row.
 
 ## Gym isolation
 
@@ -138,6 +140,26 @@ Nothing stores a status. `src/features/climbers/status.ts` works it out from the
 | `signedByName` | text | yes | |
 | `signerRelation` | `SignerRelation` | yes | `SELF` (default), `PARENT`, `GUARDIAN` |
 | `externalId` | text | no | Its id in Smartwaiver or similar. Unique per gym |
+| `templateId` | text | no | The `WaiverTemplate` they agreed to. Empty for imported and older placeholder rows |
+| `bodyHash` | text | no | The template's `bodyHash` at signing, to prove the wording didn't change |
+| `signatureText` | text | no | The name they typed as their signature |
+| `signatureImage` | text | no | A drawn signature, as a PNG data URL |
+| `signedByAuthUserId` | text | no | The login that signed (a parent's, for a child) |
+| `ipAddress`, `userAgent` | text | no | The signer's device, as evidence |
+
+### WaiverTemplate
+
+The waiver wording a gym asks climbers to sign. One row per version, never edited after publishing. `Gym.waiverVersion` names the current one.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `version` | text | yes | `v1`, `v2`... Unique per gym |
+| `title` | text | yes | |
+| `body` | text | yes | The waiver text. Blank lines separate paragraphs |
+| `clauses` | text[] | yes | Short rules the climber ticks one by one |
+| `bodyHash` | text | yes | SHA-256 of title, body and clauses (`src/features/waivers/hash.ts`) |
+| `publishedAt` | timestamp | yes | Set automatically |
 
 ### CheckIn
 
