@@ -10,8 +10,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signWaiver } from "../actions";
 
-// STOPGAP until the real waiver flow (#35, #36) replaces this component: a
-// short spinner, then the climber's waiver is marked as signed. It was 5
+// STOPGAP, now used only on the desk climber page: climbers sign on
+// /me/waiver (features/waivers). Staff "signing for" a climber goes once the
+// desk has its own waiver flow (#35, #36). A short spinner, then the
+// climber's waiver is marked as signed. It was 5
 // seconds; now under one second in total, because the pitch is speed (#66).
 // The spinner stays only so the step doesn't flash past.
 const SPINNER_MS = 300;

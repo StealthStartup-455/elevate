@@ -68,12 +68,18 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await phone.getByLabel("Phone number").fill(`250555${unique.slice(-4)}`);
   await phone.getByLabel("Date of birth").fill("1995-03-03");
   await phone.getByRole("button", { name: "Create account" }).click();
-  await phone.getByRole("button", { name: /sign a waiver/i }).click();
-  // The placeholder waiver is a stopgap, but it shouldn't make anyone wait
-  // (#66). A generous bound, so a slow CI machine doesn't fail it.
-  await expect(phone.getByText("Waiver signed.")).toBeVisible({ timeout: 3_000 });
+  await phone.getByRole("link", { name: /sign the waiver/i }).click();
+  await expect(phone).toHaveURL(/\/me\/waiver/);
+  for (const box of await phone.getByRole("checkbox", { name: /^I (?!agree that typing)/ }).all()) {
+    await box.check();
+  }
+  await phone.getByLabel(/type your full name/i).fill(`Taylor Test${unique}`);
+  await phone.getByLabel(/electronic signature/i).check();
+  await phone.getByRole("button", { name: "Sign waiver" }).click();
+  await expect(phone.getByText(/You.re all set/)).toBeVisible();
   await phone.getByRole("link", { name: "Continue" }).click();
-  await expect(phone).toHaveURL(/\/me/);
+  await expect(phone).toHaveURL(/\/me$/);
+  await expect(phone.getByText("✓ Waiver signed")).toBeVisible();
 
   // Known gap (proposal item D1): a new climber has no membership yet, so the
   // desk is told why it can't check them in instead of offering Check in.

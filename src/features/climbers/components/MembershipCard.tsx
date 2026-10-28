@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { formatDate } from "../format";
 import { getMyMembership, type Membership } from "../queries";
 import DemoQrCode from "./DemoQrCode";
-import WaiverStep from "./WaiverStep";
+import LinkButton from "./LinkButton";
 import ScanButton from "@/features/check-ins/components/ScanButton";
 
 const WAIVER_TEXT = {
@@ -91,7 +91,9 @@ export default async function MembershipCard() {
         {needsWaiver || needsRenewal || needsPurchase ? (
           <Box sx={{ mt: 5, display: "flex", flexDirection: "column", gap: 3 }}>
             {needsWaiver ? (
-              <WaiverStep climberId={membership.climberId} />
+              <LinkButton href="/me/waiver?next=/me">
+                {membership.waiverStatus === "expired" ? "Sign the waiver again" : "Sign the waiver"}
+              </LinkButton>
             ) : null}
             {needsPurchase ? (
               // Placeholder until memberships and payments exist.
