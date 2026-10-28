@@ -9,6 +9,8 @@ import { expect, test, type Page } from "@playwright/test";
 const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { paths: ["/login", "/join"], phone: true },
   { user: "demo-valid-active", paths: ["/me", "/me/stats", "/me/events"], phone: true },
+  // Never signs in these tests, so /me/waiver always shows the signing form.
+  { user: "demo-missing-none", paths: ["/me/waiver"], phone: true },
   {
     user: "desk",
     paths: ["/desk", "/desk/climbers", "/desk/climbers/new", "/desk/waivers"],
