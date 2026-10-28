@@ -48,6 +48,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
 | 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
 ## Entry template
 
@@ -91,6 +92,20 @@ Newest first.
 - **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC. tzdata 2026b (Node 24 in CI) keeps `America/Vancouver` on UTC-7 all year from November 2026, while older tzdata (e.g. 2026a in Node 26.12) still switches to UTC-8 in winter. Don't hard-code a Vancouver winter offset in tests.
 - **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
 - **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
+### 2026-10-27 UTC: Placeholder waiver signs in under a second
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#66 / PR pending
+- **Branch:** `fix/66-shorten-placeholder-waiver`
+- **What the agent did:**
+  - `WaiverStep`: the placeholder spinner waits 300 ms instead of 5 seconds, marked as a stopgap until #35 / #36.
+  - `e2e/smoke.spec.ts`: the join test expects "Waiver signed." within 3 seconds of tapping "Sign a waiver now".
+- **Files touched:** `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts`
+- **Decisions and why:** Kept a short spinner rather than none so the step doesn't flash past; 300 ms plus the server action stays under the 1 second in #66. The test allows 3 seconds so a slow CI runner doesn't fail it, which still catches the old 5 second wait.
+- **Gotchas:** None.
+- **Open follow-ups:** Replace the whole component with the real waiver flow (#35, #36).
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` passed; `npm run build` passed; `npx playwright test e2e/smoke.spec.ts` 4 passed (the join test went from about 11 s to 6 s). With the old 5000 ms value the new assertion failed, as intended.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 
