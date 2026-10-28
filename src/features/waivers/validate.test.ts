@@ -27,6 +27,10 @@ describe("sameName", () => {
     expect(sameName("  josé  DE la Cruz ", "Jose de la Cruz")).toBe(true);
   });
 
+  it("treats a hyphen like a space", () => {
+    expect(sameName("Mary Jane Lee", "Mary-Jane Lee")).toBe(true);
+  });
+
   it("tells different names apart", () => {
     expect(sameName("Rob Smith", "Robert Smith")).toBe(false);
   });

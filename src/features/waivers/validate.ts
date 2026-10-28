@@ -35,14 +35,15 @@ export function ageOn(dateOfBirth: string, now: Date): number {
   return ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
 }
 
-// "  josé  DE la Cruz " and "Jose de la Cruz" are the same name.
+// "  josé  DE la Cruz " and "Jose de la Cruz" are the same name, and so are
+// "Mary-Jane" and "Mary Jane".
 export function sameName(a: string, b: string): boolean {
   const norm = (s: string) =>
     s
       .normalize("NFD")
       .replace(/\p{Diacritic}/gu, "")
       .toLowerCase()
-      .replace(/\s+/g, " ")
+      .replace(/[\s-]+/g, " ")
       .trim();
   return norm(a) === norm(b);
 }
