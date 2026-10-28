@@ -21,9 +21,30 @@ export type WaiverFormState = {
   status: "idle" | "error" | "success";
   message?: string;
   errors?: WaiverFieldErrors;
+  /** Echoed back after an error so the form keeps what was typed and ticked. */
+  values?: WaiverFormValues;
   /** Set once signed, for the "View your waiver" link. */
   waiverId?: string;
 };
+
+export type WaiverFormValues = {
+  clauses: string[];
+  guardianName: string;
+  signerRelation: string;
+  signatureText: string;
+  agree: boolean;
+};
+
+function valuesOf(formData: FormData): WaiverFormValues {
+  const text = (name: string) => String(formData.get(name) ?? "");
+  return {
+    clauses: formData.getAll("clause").map(String),
+    guardianName: text("guardianName"),
+    signerRelation: text("signerRelation"),
+    signatureText: text("signatureText"),
+    agree: formData.get("agree") === "on",
+  };
+}
 
 // The first address in x-forwarded-for is the browser's; the rest are proxies.
 function clientIp(list: Headers): string | null {
@@ -84,7 +105,12 @@ export async function signWaiver(
       gymId: gym.id,
       fields: Object.keys(parsed.errors).sort().join(","),
     });
-    return { status: "error", message: "Check the highlighted fields.", errors: parsed.errors };
+    return {
+      status: "error",
+      message: "Check the highlighted fields.",
+      errors: parsed.errors,
+      values: valuesOf(formData),
+    };
   }
 
   const list = await headers();
