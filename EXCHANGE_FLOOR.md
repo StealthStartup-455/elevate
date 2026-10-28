@@ -47,7 +47,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
-| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In progress |
+| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
 
 ## Entry template
 
@@ -76,7 +76,7 @@ Newest first.
 
 - **Developer:** @SethMess
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#62 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
 - **Branch:** `feature/62-no-charge-day-pass`
 - **What the agent did:**
   - New staff-only action `giveDayPass` saves a `DAY` `Pass` row that ends at midnight in the gym's time zone. It needs a valid waiver and no active membership, and does nothing if today's pass already exists.
