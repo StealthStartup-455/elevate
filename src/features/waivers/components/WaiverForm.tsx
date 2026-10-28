@@ -17,7 +17,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useActionState } from "react";
 import { formatDate } from "@/features/climbers/format";
-import { signWaiver, type WaiverFormState } from "../actions";
+import { submitWaiver, type WaiverFormState } from "../actions";
 import type { WaiverTemplateView } from "../queries";
 
 type Props = {
@@ -31,7 +31,7 @@ type Props = {
 // guardian for a minor), type their name, agree it's their signature. One
 // form, so it works without JavaScript and on any phone.
 export default function WaiverForm({ template, climber, expired }: Props) {
-  const [state, formAction, pending] = useActionState<WaiverFormState, FormData>(signWaiver, {
+  const [state, formAction, pending] = useActionState<WaiverFormState, FormData>(submitWaiver, {
     status: "idle",
   });
   const errors = state.errors ?? {};

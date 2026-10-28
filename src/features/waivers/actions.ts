@@ -10,7 +10,7 @@ import { canActForClimber } from "./access";
 import { hashWaiver } from "./hash";
 import { parseWaiverSignature, type WaiverFieldErrors } from "./validate";
 
-// Server actions are public POST endpoints, so signWaiver checks the caller
+// Server actions are public POST endpoints, so submitWaiver checks the caller
 // itself, and reads the climber and the wording from the database rather than
 // trusting anything the browser sends except what the person typed or ticked.
 
@@ -52,7 +52,7 @@ function clientIp(list: Headers): string | null {
   return forwarded || list.get("x-real-ip") || null;
 }
 
-export async function signWaiver(
+export async function submitWaiver(
   _prev: WaiverFormState,
   formData: FormData,
 ): Promise<WaiverFormState> {
