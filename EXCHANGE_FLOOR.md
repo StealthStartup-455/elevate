@@ -48,6 +48,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
+| 2026-10-28 | @Khanh150104 | Claude Code | `feature/35-waiver-signing` | `prisma/` (new `WaiverTemplate` migration), `src/features/waivers/*`, `src/app/me/waiver/*`, `MembershipCard.tsx`, `ClimberForm.tsx`, `e2e/` | In review |
 
 ## Entry template
 
@@ -69,6 +70,31 @@ Copy this block to the top of the timeline.
 ```
 
 ## Timeline
+### 2026-10-28 23:10 UTC: Customer waiver signing (our own waiver tool, part 1)
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#35 (part of it) / PR pending
+- **Branch:** `feature/35-waiver-signing`
+- **What the agent did:**
+  - New `WaiverTemplate` table: a gym's waiver wording as versions that are never edited, with a SHA-256 `bodyHash`. New optional `Waiver` columns: `templateId`, `bodyHash`, `signatureText`, `signatureImage`, `signedByAuthUserId`, `ipAddress`, `userAgent` (migration `waiver_template`, RLS on).
+  - `src/features/waivers/`: `hash.ts`, `validate.ts` (rules ticked, typed name matches, e-signature box, guardian for under 19), `access.ts` (`canActForClimber`), `queries.ts` (`getCurrentWaiverTemplate`, `getWaiverStatus`, `getSignedWaiver`), `actions.ts` (`submitWaiver`), `components/WaiverForm.tsx`, `sample-waiver.ts`.
+  - `/me/waiver`: read, tick each rule, parent or guardian for a minor, type your name, agree. `/me/waiver/[waiverId]`: the signature record and the exact wording, 404 for anyone else.
+  - "Sign the waiver" after `/join` and on `/me` links to `/me/waiver?next=/me`; the membership card links to the waiver once valid. The seed adds template `v1` (placeholder text) and sets `Gym.waiverVersion = "v1"`.
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261028225303_waiver_template/`, `prisma/seed.ts`, `prisma/DATABASE.md`, `src/features/waivers/**`, `src/app/me/waiver/**`, `src/features/climbers/components/{MembershipCard,ClimberForm,WaiverStep}.tsx`, `e2e/{smoke,server-actions-auth,accessibility}.spec.ts`
+- **Decisions and why:**
+  - Build our own instead of paying for Smartwaiver while we test (#58, #35). The gym owns the wording; Elevate proves who signed which exact text, when and from which device.
+  - The action reads the climber and the current template from the database, refuses a stale `templateVersion` (the gym changed it while they read) and re-hashes the stored text before saving.
+  - Guardian signs under 19 (`ADULT_AGE` in `validate.ts`), BC's age of majority. Ask the team if it should be 18.
+  - Typed signature for now; `signatureImage` is already in the schema and validated (PNG data URL, under 200 KB) so the drawn signature pad is UI only.
+  - The new action is `submitWaiver`, not `signWaiver`, because the placeholder `signWaiver` in `features/climbers` still exists and the e2e action lookup goes by name.
+- **Gotchas:**
+  - After the action succeeds, Next refreshes `/me/waiver`, which then shows "You're all set" (with View and Continue links), so the form has no success state of its own.
+  - React resets a form after its action runs; the form remounts with a key from the echoed values so ticks and typing survive an error (changing `defaultChecked` on a mounted MUI checkbox warns).
+  - Run `npx prisma generate` after pulling, or the seed fails with `waiverTemplate` undefined.
+- **Open follow-ups:** Drawn signature pad (`signature_pad`); saved PDF copy in a private Storage bucket; the desk still uses the placeholder `WaiverStep` and a disabled "Look at waiver" button; staff can't open `/me/waiver/[id]` because the proxy keeps desk sessions out of `/me`; gym waiver editor; family signing; importing existing waivers (rest of #35); renewal reminders (#36).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 12 files, 82 passed (2 todo); `npm run build` passed; `npx playwright test` against the local build: 12 passed, 3 skipped (real Supabase logins), then `e2e/accessibility.spec.ts` with `/me/waiver` added: 8 passed. By hand in Chromium at 390px: signed as an adult (light) and as a parent for a minor (dark), checked the rows saved template, hash, IP and user agent, and that another climber gets a 404 on the view page.
+
 
 Newest first.
 
