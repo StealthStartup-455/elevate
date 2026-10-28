@@ -7,6 +7,7 @@ import { formatDate } from "../format";
 import { getMyMembership, type Membership } from "../queries";
 import DemoQrCode from "./DemoQrCode";
 import LinkButton from "./LinkButton";
+import LinkArrow from "@/components/ui/LinkArrow";
 import ScanButton from "@/features/check-ins/components/ScanButton";
 
 const WAIVER_TEXT = {
@@ -71,6 +72,9 @@ export default async function MembershipCard() {
               <Typography variant="body2" color="text.secondary">
                 {waiverExpiry}
               </Typography>
+            ) : null}
+            {membership.waiverStatus === "valid" ? (
+              <LinkArrow href="/me/waiver">View waiver</LinkArrow>
             ) : null}
           </Box>
           <Box sx={{ textAlign: "center", flexShrink: 0 }}>
