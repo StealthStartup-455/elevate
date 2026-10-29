@@ -19,6 +19,7 @@ import { useActionState } from "react";
 import { formatDate } from "@/features/climbers/format";
 import { submitWaiver, type WaiverFormState } from "../actions";
 import type { WaiverTemplateView } from "../queries";
+import SignaturePad from "./SignaturePad";
 
 type Props = {
   template: WaiverTemplateView;
@@ -28,8 +29,8 @@ type Props = {
 };
 
 // The customer signs the gym's waiver: read it, tick each rule, (a parent or
-// guardian for a minor), type their name, agree it's their signature. One
-// form, so it works without JavaScript and on any phone.
+// guardian for a minor), give an emergency contact, draw their signature and
+// agree it's their signature. One form, so it posts like any other.
 export default function WaiverForm({ template, climber, expired }: Props) {
   const [state, formAction, pending] = useActionState<WaiverFormState, FormData>(submitWaiver, {
     status: "idle",
@@ -49,8 +50,9 @@ export default function WaiverForm({ template, climber, expired }: Props) {
       noValidate
       className="flex flex-col gap-3"
       // A new key after each failed try remounts the fields, so their
-      // defaults (what was entered) apply again.
-      key={values ? JSON.stringify(values) : "empty"}
+      // defaults (what was entered) apply again. The signature pad keeps its
+      // own drawing, so it's left out.
+      key={values ? JSON.stringify({ ...values, signatureImage: undefined }) : "empty"}
     >
       <input type="hidden" name="climberId" value={climber.id} />
       <input type="hidden" name="templateVersion" value={template.version} />
@@ -143,24 +145,46 @@ export default function WaiverForm({ template, climber, expired }: Props) {
 
       <Card>
         <CardContent className="flex flex-col gap-2">
-          <Typography variant="cardTitle">Sign</Typography>
+          <Typography variant="cardTitle">Emergency contact</Typography>
+          <Typography variant="secondary">Who should we call if {climber.fullName} gets hurt?</Typography>
           <TextField
-            name="signatureText"
-            label={climber.isMinor ? "Parent or guardian: type your full name" : "Type your full name"}
+            name="emergencyContactName"
+            label="Name"
             required
             fullWidth
-            defaultValue={values?.signatureText}
-            error={Boolean(errors.signatureText)}
-            helperText={
-              errors.signatureText ??
-              (climber.isMinor ? undefined : `As shown above: ${climber.fullName}`)
+            defaultValue={values?.emergencyContactName}
+            error={Boolean(errors.emergencyContactName)}
+            helperText={errors.emergencyContactName}
+          />
+          <TextField
+            name="emergencyContactPhone"
+            label="Phone number"
+            type="tel"
+            required
+            fullWidth
+            defaultValue={values?.emergencyContactPhone}
+            error={Boolean(errors.emergencyContactPhone)}
+            helperText={errors.emergencyContactPhone}
+            slotProps={{ htmlInput: { autoComplete: "off", inputMode: "tel" } }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-2">
+          <Typography variant="cardTitle">Sign</Typography>
+          <SignaturePad
+            name="signatureImage"
+            label={
+              climber.isMinor ? "Parent or guardian: sign in the box" : `${climber.fullName}: sign in the box`
             }
-            slotProps={{ htmlInput: { autoComplete: "name" } }}
+            error={errors.signatureImage}
+            defaultValue={values?.signatureImage}
           />
           <FormControl error={Boolean(errors.agree)} required>
             <FormControlLabel
               control={<Checkbox name="agree" defaultChecked={values?.agree} />}
-              label="I agree that typing my name is my electronic signature, and that I signed this waiver today."
+              label="I agree that my drawn signature is my electronic signature, and that I signed this waiver today."
             />
             {errors.agree ? <FormHelperText>{errors.agree}</FormHelperText> : null}
           </FormControl>

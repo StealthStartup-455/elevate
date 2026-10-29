@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { formatPhone } from "@/features/climbers/phone";
 import { summarizeWaiver, type WaiverSummary } from "@/features/climbers/status";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
@@ -75,6 +76,7 @@ export type SignedWaiverView = {
   signerRelation: "SELF" | "PARENT" | "GUARDIAN";
   signatureText: string | null;
   signatureImage: string | null;
+  emergencyContact: { name: string; phone: string } | null;
   /** The exact wording they signed; null for imported or placeholder waivers. */
   template: { title: string; paragraphs: string[]; clauses: string[] } | null;
   /** False if the wording no longer matches the hash saved when they signed. */
@@ -105,6 +107,10 @@ export async function getSignedWaiver(id: string): Promise<SignedWaiverView | nu
     signerRelation: waiver.signerRelation,
     signatureText: waiver.signatureText,
     signatureImage: waiver.signatureImage,
+    emergencyContact:
+      waiver.emergencyContactName && waiver.emergencyContactPhone
+        ? { name: waiver.emergencyContactName, phone: formatPhone(waiver.emergencyContactPhone) }
+        : null,
     template: template
       ? { title: template.title, paragraphs: paragraphsOf(template.body), clauses: template.clauses }
       : null,

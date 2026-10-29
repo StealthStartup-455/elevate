@@ -12,6 +12,20 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
   await expect(page).toHaveURL(landsOn);
 }
 
+// A wavy line across the signature box, with the mouse.
+async function drawSignature(page: Page) {
+  const pad = page.getByRole("img", { name: /sign in the box/i });
+  await pad.scrollIntoViewIfNeeded();
+  const box = await pad.boundingBox();
+  if (!box) throw new Error("No signature box");
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 20; i++) {
+    await page.mouse.move(box.x + 20 + i * 12, box.y + box.height / 2 + Math.sin(i / 2) * 25);
+  }
+  await page.mouse.up();
+}
+
 async function newPage(browser: Browser, phone = false): Promise<Page> {
   const context = await browser.newContext(
     phone ? { viewport: { width: 390, height: 844 }, isMobile: true } : {},
@@ -73,7 +87,9 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   for (const box of await phone.getByRole("checkbox", { name: /^I (?!agree that typing)/ }).all()) {
     await box.check();
   }
-  await phone.getByLabel(/type your full name/i).fill(`Taylor Test${unique}`);
+  await phone.getByRole("textbox", { name: /^Name/ }).fill("Jordan Test");
+  await phone.getByRole("textbox", { name: /^Phone number/ }).fill("250 555 0199");
+  await drawSignature(phone);
   await phone.getByLabel(/electronic signature/i).check();
   await phone.getByRole("button", { name: "Sign waiver" }).click();
   await expect(phone.getByText(/You.re all set/)).toBeVisible();

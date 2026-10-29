@@ -67,6 +67,11 @@ async function SignedWaiver({ params }: Pick<PageProps<"/me/waiver/[waiverId]">,
           <Typography variant="secondary">
             {signedAt} · version {waiver.version}
           </Typography>
+          {waiver.emergencyContact ? (
+            <Typography variant="body">
+              Emergency contact: {waiver.emergencyContact.name}, {waiver.emergencyContact.phone}
+            </Typography>
+          ) : null}
         </CardContent>
       </Card>
 
