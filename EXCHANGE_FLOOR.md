@@ -70,6 +70,28 @@ Copy this block to the top of the timeline.
 ```
 
 ## Timeline
+### 2026-10-29 01:55 UTC: Drawn signature and emergency contact on the waiver
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#35 (part of it) / PR pending
+- **Branch:** `feature/35-waiver-signing`
+- **What the agent did:**
+  - Replaced the typed-name signature with a drawn one: `src/features/waivers/components/SignaturePad.tsx` (new dependency `signature_pad`, MIT), saved in `Waiver.signatureImage` as a PNG data URL.
+  - Added a required emergency contact (name and phone) to the form, saved on the waiver: new columns `Waiver.emergencyContactName` and `emergencyContactPhone` (migration `waiver_emergency_contact`). The signed waiver page shows it.
+  - `validate.ts`: drawn signature (PNG, under 200 KB) and emergency contact are required; the typed name and `sameName` are gone.
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261029014430_waiver_emergency_contact/`, `prisma/DATABASE.md`, `package.json`, `src/features/waivers/**`, `src/app/me/waiver/[waiverId]/page.tsx`, `e2e/smoke.spec.ts`
+- **Decisions and why:**
+  - Smartwaiver-style signing: Khanh asked for a drawn signature and an emergency contact. `Waiver.signatureText` stays in the schema (empty for new rows) for older rows.
+  - The emergency contact lives on the `Waiver`, as given at signing, not on `Climber`. Move it to `Climber` if other screens need the current contact.
+  - The pad always draws dark ink (`colors.light.text`) on white (`colors.light.surface`) from `tokens.ts`, so the saved image reads the same in dark mode and in print.
+- **Gotchas:**
+  - Resizing a canvas wipes it, and a signature restored after a failed submit is an image with no strokes, so the pad keeps the latest PNG and redraws from it on resize.
+  - The hidden `signatureImage` input is controlled, so React's form reset after a submit doesn't empty it.
+  - Playwright draws on the pad with the mouse; `hasTouch` plus CDP touch events also work (checked by hand).
+- **Open follow-ups:** Saved PDF copy; desk flow; gym waiver editor; adding several minors in one form; importing old waivers; renewal reminders (#36).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 12 files, 80 passed (2 todo); `npm run build` passed; `npx playwright test` 14 passed, 3 skipped (real Supabase logins). By hand at 390px with touch, light and dark: drew with touch (the page didn't scroll), submitted with missing fields (the signature stayed), signed, and the view page showed the signature and contact.
+
 ### 2026-10-28 23:10 UTC: Customer waiver signing (our own waiver tool, part 1)
 
 - **Developer:** @Khanh150104
