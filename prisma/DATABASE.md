@@ -146,6 +146,7 @@ Nothing stores a status. `src/features/climbers/status.ts` works it out from the
 | `signatureImage` | text | no | A drawn signature, as a PNG data URL |
 | `signedByAuthUserId` | text | no | The login that signed (a parent's, for a child) |
 | `ipAddress`, `userAgent` | text | no | The signer's device, as evidence |
+| `emergencyContactName`, `emergencyContactPhone` | text | no | Who to call if they get hurt, as given when they signed. Phone saved like `+12505551234` |
 
 ### WaiverTemplate
 

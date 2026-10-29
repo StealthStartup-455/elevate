@@ -143,13 +143,16 @@ model Waiver {
   externalId     String?
 
   // Set when signed in Elevate; empty for imported and older placeholder rows.
-  templateId         String? // the exact wording they agreed to
-  bodyHash           String? // the template's hash when they signed, to prove the text didn't change
-  signatureText      String? // the name they typed as their signature
-  signatureImage     String? // a drawn signature, as a PNG data URL
-  signedByAuthUserId String? // the login that signed (the parent's, for a child)
-  ipAddress          String?
-  userAgent          String?
+  templateId            String? // the exact wording they agreed to
+  bodyHash              String? // the template's hash when they signed, to prove the text didn't change
+  signatureText         String? // the name they typed as their signature
+  signatureImage        String? // a drawn signature, as a PNG data URL
+  signedByAuthUserId    String? // the login that signed (the parent's, for a child)
+  ipAddress             String?
+  userAgent             String?
+  // Who to call if they get hurt, as given when they signed.
+  emergencyContactName  String?
+  emergencyContactPhone String? // saved like +12505551234
 
   gym      Gym             @relation(fields: [gymId], references: [id])
   climber  Climber         @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
