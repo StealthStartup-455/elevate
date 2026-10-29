@@ -5,7 +5,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { getCheckInClimbers } from "@/features/climbers/queries";
 import { formatWindow } from "../busyness";
-import { BUSYNESS_POLL_INTERVAL_MS, getGymBusynessSettings } from "../config";
+import { DESK_BUSYNESS_REFRESH_MS, getGymBusynessSettings } from "../config";
 import { getFrontDeskBusyness } from "../queries";
 import AutoRefresh from "./AutoRefresh";
 import BusynessHeatMap from "./BusynessHeatMap";
@@ -44,7 +44,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
         alignItems: "start",
       }}
     >
-      <AutoRefresh intervalMs={BUSYNESS_POLL_INTERVAL_MS} />
+      <AutoRefresh intervalMs={DESK_BUSYNESS_REFRESH_MS} />
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent>
           <Stack
