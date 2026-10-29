@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isDemoMode } from "@/features/auth/demo-mode";
 import { MOCK_DESK_COOKIE, MOCK_USER_COOKIE } from "@/features/auth/session";
+import { timed } from "@/lib/timing";
 
 // Redirects logged-out users to /login. Real permission checks go in features/auth.
 export async function proxy(request: NextRequest) {
@@ -51,7 +52,7 @@ export async function proxy(request: NextRequest) {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await timed("perf_auth", { where: "proxy" }, () => supabase.auth.getUser());
 
   if (!user) {
     const url = request.nextUrl.clone();

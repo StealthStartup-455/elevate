@@ -5,6 +5,7 @@ import { requireStaff } from "@/features/auth/staff";
 import { getClimber } from "@/features/climbers/queries";
 import { getGym } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
+import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { saveScan, takeScan } from "./scan-store";
 
@@ -32,6 +33,11 @@ export async function recordScan(): Promise<{ ok: boolean }> {
 // The climber from the latest scan, for the front desk popup. Returns each
 // scan once, then null until someone scans again. Staff only.
 export async function takeLatestScan(): Promise<ScannedClimber | null> {
+  // Polled every few seconds by the desk, so its total time matters (#84, #86).
+  return timed("perf_action", { name: "takeLatestScan" }, takeLatestScanNow);
+}
+
+async function takeLatestScanNow(): Promise<ScannedClimber | null> {
   await requireStaff();
   const gym = await getGym();
   const scan = await takeScan(gym.id);
