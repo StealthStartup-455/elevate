@@ -79,7 +79,8 @@ export async function joinAsCustomer(
   };
 }
 
-// /desk/climbers/new: staff add a climber with the same fields.
+// /desk/climbers/new: staff add a climber with the same fields, then land on
+// their page with the waiver step, as /join does (#88).
 export async function createClimberAtDesk(
   _prev: FormState,
   formData: FormData,
@@ -96,7 +97,7 @@ export async function createClimberAtDesk(
   });
   logEvent("climber_created", { gymId: gym.id, climberId: climber.id, source: "desk" });
   refreshClimberPages();
-  redirect("/desk/climbers");
+  redirect(`/desk/climbers/${climber.id}?added=1`);
 }
 
 // /desk/climbers/[climberId]: staff edit an existing climber's details.
