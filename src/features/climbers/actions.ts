@@ -10,6 +10,7 @@ import { getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { getClimber } from "./queries";
 import { toStoredPhone } from "./phone";
+import { endOfGymDay } from "./status";
 import type { ClimberInput, FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
@@ -153,6 +154,48 @@ export async function signWaiver(
   return { ok: true };
 }
 
+// STOPGAP(#62): staff give a climber with a valid waiver and no active
+// membership a no-charge day pass, so a new sign-up can climb today. Saves a
+// DAY Pass row that ends at midnight in the gym's time zone. Replace with real
+// day-pass purchases (#44 to #46).
+export async function giveDayPass(
+  climberId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  await requireStaff();
+  // TODO(auth): record which staff member gave the pass.
+  const refuse = (reason: string, message: string) => {
+    logEvent("day_pass_refused", { climberId, reason });
+    return { ok: false, message };
+  };
+  if (!UUID.test(climberId)) return refuse("invalid_id", "Climber not found.");
+
+  const climber = await getClimber(climberId);
+  if (!climber) return refuse("not_found", "Climber not found.");
+  if (climber.waiverStatus !== "valid") {
+    return refuse(`waiver_${climber.waiverStatus}`, "Waiver is not valid. Sign a waiver first.");
+  }
+  if (climber.membershipStatus === "active") {
+    return refuse("membership_active", "Already has an active membership.");
+  }
+  // Pressing it twice is fine: today's pass is already there.
+  if (climber.hasDayPass) return { ok: true };
+
+  const gym = await getGym();
+  const now = new Date();
+  await db.pass.create({
+    data: {
+      gymId: gym.id,
+      climberId,
+      kind: "DAY",
+      startsAt: now,
+      expiresAt: endOfGymDay(now, gym.timeZone),
+    },
+  });
+  logEvent("day_pass_given", { gymId: gym.id, climberId, charge: "none" });
+  refreshClimberPages(climberId);
+  return { ok: true };
+}
+
 // Front desk "manual check in" (the desk dialog). Follows the rules in
 // prisma/DATABASE.md: a current waiver and an active membership. Turned-away
 // visits are not saved. Saves a CheckIn row, so the desk list and the busyness
@@ -175,8 +218,10 @@ export async function checkInClimber(
   if (climber.waiverStatus !== "valid") {
     return refuse(`waiver_${climber.waiverStatus}`, "Waiver is not valid. Sign a waiver first.");
   }
-  if (climber.membershipStatus !== "active") {
-    return refuse(`membership_${climber.membershipStatus}`, "No active membership.");
+  // STOPGAP(#62): a no-charge day pass stands in for a membership until
+  // purchases exist (#44 to #46).
+  if (climber.membershipStatus !== "active" && !climber.hasDayPass) {
+    return refuse(`membership_${climber.membershipStatus}`, "No active membership or day pass.");
   }
 
   const gym = await getGym();

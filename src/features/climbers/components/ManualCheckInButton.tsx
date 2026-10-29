@@ -14,6 +14,7 @@ export default async function ManualCheckInButton() {
         waiverExpiresOn: c.waiverExpiresOn,
         membershipStatus: c.membershipStatus,
         membershipRenewsOn: c.membershipRenewsOn,
+        hasDayPass: c.hasDayPass,
       }))}
     />
   );

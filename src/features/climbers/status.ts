@@ -58,3 +58,43 @@ export function summarizeMembership(
   if (latest.pausedAt) return { status: "paused", renewsOn };
   return { status: "active", renewsOn };
 }
+
+// STOPGAP(#62): a no-charge day pass so desk staff can let a new climber in
+// before memberships and purchases exist. Replace with #44 to #46.
+
+type DayPass = { startsAt: Date; expiresAt: Date | null };
+
+/** True when one of the climber's DAY passes covers `now`. */
+export function hasDayPass(passes: DayPass[], now: Date): boolean {
+  return passes.some((p) => p.startsAt <= now && (!p.expiresAt || p.expiresAt > now));
+}
+
+// How far `timeZone` is ahead of UTC at `date`, in milliseconds.
+function zoneOffsetMs(timeZone: string, date: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    })
+      .formatToParts(date)
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+/** Midnight at the end of `now`'s calendar day in the gym's time zone. */
+export function endOfGymDay(now: Date, timeZone: string): Date {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone })
+    .format(now)
+    .split("-")
+    .map(Number);
+  const midnightAsUtc = Date.UTC(y, m - 1, d + 1);
+  return new Date(midnightAsUtc - zoneOffsetMs(timeZone, new Date(midnightAsUtc)));
+}
