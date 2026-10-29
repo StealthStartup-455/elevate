@@ -5,6 +5,7 @@ import { requireStaff } from "@/features/auth/staff";
 import { getClimber } from "@/features/climbers/queries";
 import { getGym } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
+import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { saveScan, takeScan } from "./scan-store";
 
@@ -51,6 +52,11 @@ function watchStart(value: string | undefined, now: Date): Date | undefined {
 // scan once, then null until someone scans again. Only scans made after
 // `watchingSince` (from startWatchingScans) count (#91). Staff only.
 export async function takeLatestScan(watchingSince?: string): Promise<ScannedClimber | null> {
+  // Polled every few seconds by the desk, so its total time matters (#84, #86).
+  return timed("perf_action", { name: "takeLatestScan" }, () => takeLatestScanNow(watchingSince));
+}
+
+async function takeLatestScanNow(watchingSince?: string): Promise<ScannedClimber | null> {
   await requireStaff();
   const gym = await getGym();
   const now = new Date();
