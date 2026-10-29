@@ -15,6 +15,7 @@ import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
 import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../actions";
+import { useOtherDeskDialogOpen } from "../desk-dialogs";
 
 // How often the desk asks the server for a new scan. Short, so the popup
 // shows up right after the climber taps "Demo scan".
@@ -55,6 +56,9 @@ export default function ScanWatcher() {
   // When this desk started watching (server time). Scans from before then are
   // never shown, so opening the desk doesn't pop up an old scan (#91).
   const [watchingSince, setWatchingSince] = useState<string | null>(null);
+  // Another desk dialog (manual check in) is open: hold scans until it
+  // closes, so two dialogs never stack (#92). They wait in the database.
+  const otherDialogOpen = useOtherDeskDialogOpen();
 
   useEffect(() => {
     let active = true;
@@ -67,16 +71,16 @@ export default function ScanWatcher() {
   }, []);
 
   useEffect(() => {
-    // Don't look for a new scan before the desk knows when it started, or
-    // while one is already showing.
-    if (!watchingSince || climber) return;
+    // Don't look for a new scan before the desk knows when it started, while
+    // one is already showing, or while another dialog is open.
+    if (!watchingSince || climber || otherDialogOpen) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
       const scanned = await takeLatestScan(watchingSince);
       if (scanned) setClimber(scanned);
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [climber, watchingSince]);
+  }, [climber, otherDialogOpen, watchingSince]);
 
   function close() {
     setClimber(null);

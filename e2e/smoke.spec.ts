@@ -76,6 +76,28 @@ test("a scan made before the desk opens doesn't pop up later", async ({ browser 
   await expect(desk.getByRole("dialog")).toContainText("Demo Expired-Active", { timeout: 20_000 });
 });
 
+test("a scan waits while manual check in is open, so dialogs never stack", async ({ browser }) => {
+  const desk = await newPage(browser);
+  const phone = await newPage(browser, true);
+  await logIn(desk, "desk", /\/desk/);
+  await logIn(phone, "demo-valid-paused", /\/me/);
+
+  await desk.getByRole("button", { name: /manual check in/i }).click();
+  await expect(desk.getByRole("dialog")).toHaveCount(1);
+
+  await phone.getByRole("button", { name: /scan/i }).click();
+  await desk.waitForTimeout(6_000); // two polls
+  // Still only manual check in (#92). MUI hides a dialog under another from
+  // the accessibility tree, so count the dialogs in the page, not by role.
+  const dialogs = desk.locator(".MuiDialog-root");
+  await expect(dialogs).toHaveCount(1);
+  await expect(dialogs).toContainText("Manual check in");
+
+  await desk.keyboard.press("Escape");
+  await expect(dialogs).toContainText("Demo Valid-Paused", { timeout: 20_000 });
+  await expect(dialogs).toHaveCount(1);
+});
+
 test("a new climber joins, signs the waiver and reaches their account", async ({ browser }) => {
   const phone = await newPage(browser, true);
   const desk = await newPage(browser);

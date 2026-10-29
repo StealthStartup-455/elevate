@@ -14,6 +14,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
+import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, giveDayPass } from "../actions";
 import { formatDate } from "../format";
 import type { MembershipStatus, WaiverStatus } from "../types";
@@ -72,6 +73,8 @@ export default function ManualCheckIn({
   climbers: CheckInCandidate[];
 }) {
   const [open, setOpen] = useState(false);
+  // The scan popup waits while this is open, so dialogs never stack (#92).
+  useDeskDialogOpen(open);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
