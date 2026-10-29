@@ -97,12 +97,34 @@ To switch someone off, set `active = false` on their `Staff` row.
 Every pull request runs lint, unit tests and the build (`check`), and the database tests, a migration check and the Playwright demo flow (`e2e`). A merge to `dev` runs `deploy-staging.yml`, which, in order:
 
 1. applies any new migrations to the staging database (`prisma migrate deploy`),
-2. builds and deploys the app on Vercel (`vercel deploy --prod`),
-3. checks that `STAGING_URL/login` shows Elevate's login.
+2. works out the version from git and builds and deploys the app on Vercel with it (`vercel deploy --prod --build-env ...`),
+3. checks that `STAGING_URL/api/version` reports the commit it just deployed and that `/login` shows Elevate's login. `STAGING_URL` must be a **variable** of the `staging` environment, not a secret; if it's missing the run warns and skips this check.
 
 Nobody runs anything by hand. To redeploy without a merge: Actions, Deploy staging, Run workflow. Migrations land before the new code, but the old code keeps serving until the deploy finishes, so every migration must still work with both the old and the new code (see "Database changes" in `CONTRIBUTING.md`: add, never rename or drop in the same release).
 
 The Milestone 3 release candidate follows the release steps in `CONTRIBUTING.md`: `dev` into `release`, tested, then `main`, tagged `v0.3.0`.
+
+## Which version is live
+
+Every build has a version worked out from git (`scripts/app-version.mjs`, #43), with no spaces or brackets:
+
+| Build | Example | Meaning |
+|---|---|---|
+| Exactly a release | `v1.0.0+def5678` | Tag `v1.0.0`, commit `def5678` |
+| After a release | `v1.0.1-dev.23+abc1234` | 23 commits after `v1.0.0`, counted toward the next patch |
+| Before the first release tag | `v0.1.0-dev.121+abc1234` | 121 commits; `0.1.0` comes from `package.json` |
+| Not deployed (laptop, CI) | `v0.1.0-dev.121+abc1234.local` | Same rule, marked `.local` |
+
+It follows Semantic Versioning 2.0 (after `-` is a pre-release, after `+` the commit), so versions sort in order: `v1.0.0` < `v1.0.1-dev.3` < `v1.0.1-dev.23` < `v1.0.1`.
+
+Where to see it:
+
+- **The footer of every page.** The version links to its commit on GitHub.
+- **`/api/version`**: `{"version", "commit", "builtAt", "environment"}`. The deploy workflow checks it.
+- **The deploy run's summary** in Actions ("Deployed v0.1.0-dev.121+abc1234").
+- **Every log line** has a `version` field.
+
+Releases are tagged on `main` as `vX.Y.Z` (see "Ship" in `CONTRIBUTING.md`); the next builds count from that tag automatically. Until the first tag, the version counts every commit on the branch. Vercel's builder has no `.git` folder, so deploys work the version out first and pass it in (`--build-env NEXT_PUBLIC_APP_VERSION=...`); a deploy without it shows `+unknown`.
 
 ## Before a demo
 
@@ -150,5 +172,8 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | A real login says "This login isn't set up for the gym yet" | The Supabase user has no `Staff` row and no linked `Climber` | Add the row (see "Real logins on a hosted project") |
 | Phone scans but the desk shows nothing | The `QrScan` migration isn't applied | Run the deploy workflow (Actions, Deploy staging, Run workflow) |
 | Deploy workflow says "Staging is not set up" | A secret is missing from the `staging` environment | Add it (see Environment variables) and run the workflow again |
+| Live check fails: "Expected commit ..." | The new build isn't serving yet, or Vercel's login sits in front of the site | Check the deployment's status in Vercel; set Deployment Protection to Standard |
+| Footer shows `+unknown` | Deployed without the version (an old checkout, or `vercel deploy` run by hand) | Redeploy through the workflow or `npm run staging:setup` |
+| Run warns "STAGING_URL is empty" | `STAGING_URL` saved as a secret, or not saved | Add it as a variable of the `staging` environment |
 | `prisma migrate deploy` warns that migrations were modified | Someone edited a merged migration | Restore the original file; never reset staging |
 | Check in refused, "Already checked in" | The two hour rule from an earlier run | Reseed |

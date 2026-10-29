@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
+import AppVersion from "@/components/ui/AppVersion";
 import ThemeRegistry from "@/components/ui/ThemeRegistry";
 import { plexMono, plexSans } from "@/components/ui/theme/fonts";
 import "./globals.css";
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <InitColorSchemeScript attribute="data-mui-color-scheme" />
-        <ThemeRegistry>{children}</ThemeRegistry>
+        <ThemeRegistry>
+          {children}
+          <AppVersion />
+        </ThemeRegistry>
       </body>
     </html>
   );
