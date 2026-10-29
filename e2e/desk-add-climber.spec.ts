@@ -11,6 +11,9 @@ test("the desk adds a climber and lands on their page with the waiver step", asy
 
   const unique = Date.now().toString().slice(-6);
   await page.goto("/desk/climbers/new");
+  // /desk/climbers/new briefly renders the form twice while it loads (seen
+  // on dev too); wait for one before typing.
+  await expect(page.locator('input[name="dateOfBirth"]')).toHaveCount(1);
   await page.getByRole("textbox", { name: "First name" }).fill("Casey");
   await page.getByRole("textbox", { name: "Last name" }).fill(`Desk${unique}`);
   await page.getByRole("textbox", { name: "Phone number" }).fill(`250556${unique.slice(-4)}`);
