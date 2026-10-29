@@ -153,6 +153,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
 | `scan_saved` / `scan_taken` | Phone scan saved; the desk showed it | `climberId`; `waitMs` (time from tap to desk), `waiverStatus`, `membershipStatus` |
 | `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |
+| `day_pass_given` / `day_pass_refused` | Desk gave a no-charge day pass (stopgap, #62) | `climberId`, `charge`: `none`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_active`, `not_found`, `invalid_id` |
 
 **When someone reports an error**, ask for the error code on the "Something went wrong" page. It is the `digest` of the matching `server_error` line.
 

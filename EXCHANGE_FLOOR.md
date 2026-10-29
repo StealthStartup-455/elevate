@@ -48,6 +48,9 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | Merged (#78) |
 | 2026-10-27 | @guerrerj | Claude Code | `feature/43-show-app-version` | `scripts/app-version.mjs`, `next.config.ts`, `src/lib/version.ts`, `src/components/ui/AppVersion.tsx`, root layout, `src/app/api/version`, `src/lib/log.ts`, `deploy-staging.yml`, `scripts/staging-setup.mjs`, docs | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
 ## Entry template
 
@@ -72,6 +75,21 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-28 UTC: Desk loads only today's day passes (review fix on #83)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - `findRows` now loads every `MEMBERSHIP` pass but only `DAY` passes that haven't expired, instead of every day pass a climber ever had (review by @guerrerj on #83).
+  - Added `day_pass_given` / `day_pass_refused` to the log table in `DEPLOYMENT.md`.
+- **Files touched:** `src/features/climbers/queries.ts`, `DEPLOYMENT.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Day passes end at midnight and pile up daily, and the desk loads every climber on each load and 30 second refresh (#85). `hasDayPass` already ignored expired passes, so behaviour is unchanged.
+- **Gotchas:** none.
+- **Open follow-ups:** From the same review, left for later: #97 moves the new labels to the style guide's text styles; whoever picks up #90 should build on the "Give free day pass" button; say it's a stopgap in demos (#44 to #46).
+- **Verification:** `npx tsc --noEmit` clean; `npm run lint` clean; `npm test` 71 passed (2 todo). `npm run test:db`, build and e2e not run locally (Docker wasn't running); left to CI on #83.
+
 ### 2026-10-27 UTC: App version from git, shown in the footer and at /api/version
 
 - **Developer:** @guerrerj
@@ -94,6 +112,39 @@ Newest first.
   - CI's shallow checkout gives a count of 1 (`v0.1.0-dev.1+...local`); harmless, CI builds aren't deployed.
 - **Open follow-ups:** Create the first release tag when cutting M3. Optional later: release-please for version bumps and a changelog once commit messages follow `feat:` / `fix:`.
 - **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 77 passed (2 todo), including 11 new version tests; `npm run build` passed (`/api/version` static); `npx playwright test` 13 passed, 3 skipped (real-login needs seeded Supabase logins), including the new footer test and axe on every screen in light and dark. A first run failed one smoke test on "Already checked in" from an earlier run on the same database; passed after reseeding. Footer checked by eye in light, dark and at phone width. The workflow's deploy and live check can only be proven by the first run after merge.
+### 2026-10-27 UTC: No-charge day pass so desk staff can check in a new climber (stopgap)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - New staff-only action `giveDayPass` saves a `DAY` `Pass` row that ends at midnight in the gym's time zone. It needs a valid waiver and no active membership, and does nothing if today's pass already exists.
+  - `checkInClimber` accepts an active membership **or** a current day pass.
+  - "Give free day pass" (outlined) button in the manual check-in dialog and the QR scan popup; `/me` shows "Free day pass for today" and the demo scan stops warning about the membership.
+  - Pure helpers `hasDayPass` and `endOfGymDay` in `status.ts`, with tests (summer time, standard time, late evening).
+- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`, `src/features/climbers/day-pass.db.test.ts`
+- **Decisions and why:**
+  - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
+  - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
+  - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
+- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC. tzdata 2026b (Node 24 in CI) keeps `America/Vancouver` on UTC-7 all year from November 2026, while older tzdata (e.g. 2026a in Node 26.12) still switches to UTC-8 in winter. Don't hard-code a Vancouver winter offset in tests.
+- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
+- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
+### 2026-10-27 UTC: Placeholder waiver signs in under a second
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#66 / PR pending
+- **Branch:** `fix/66-shorten-placeholder-waiver`
+- **What the agent did:**
+  - `WaiverStep`: the placeholder spinner waits 300 ms instead of 5 seconds, marked as a stopgap until #35 / #36.
+  - `e2e/smoke.spec.ts`: the join test expects "Waiver signed." within 3 seconds of tapping "Sign a waiver now".
+- **Files touched:** `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts`
+- **Decisions and why:** Kept a short spinner rather than none so the step doesn't flash past; 300 ms plus the server action stays under the 1 second in #66. The test allows 3 seconds so a slow CI runner doesn't fail it, which still catches the old 5 second wait.
+- **Gotchas:** None.
+- **Open follow-ups:** Replace the whole component with the real waiver flow (#35, #36).
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` passed; `npm run build` passed; `npx playwright test e2e/smoke.spec.ts` 4 passed (the join test went from about 11 s to 6 s). With the old 5000 ms value the new assertion failed, as intended.
 
 ### 2026-10-27 UTC: Pin CI to Ubuntu 24.04 so e2e can install Chromium
 
