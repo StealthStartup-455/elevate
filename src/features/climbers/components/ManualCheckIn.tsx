@@ -14,7 +14,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { checkInClimber } from "../actions";
+import { checkInClimber, giveDayPass } from "../actions";
 import { formatDate } from "../format";
 import type { MembershipStatus, WaiverStatus } from "../types";
 import { searchScore } from "./ClimberTable";
@@ -28,6 +28,7 @@ export type CheckInCandidate = {
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
+  hasDayPass: boolean;
 };
 
 const MAX_RESULTS = 8;
@@ -40,6 +41,7 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 };
 
 function membershipDetail(c: CheckInCandidate): string | null {
+  if (c.hasDayPass && c.membershipStatus !== "active") return "Free day pass for today";
   if (!c.membershipRenewsOn) return null;
   const date = formatDate(c.membershipRenewsOn, true);
   if (c.membershipStatus === "expired") return `Ended ${date}`;
@@ -50,8 +52,16 @@ function membershipDetail(c: CheckInCandidate): string | null {
 function blocker(c: CheckInCandidate): string | null {
   const problems: string[] = [];
   if (c.waiverStatus !== "valid") problems.push("needs a valid waiver");
-  if (c.membershipStatus !== "active") problems.push("has no active membership");
+  if (c.membershipStatus !== "active" && !c.hasDayPass) {
+    problems.push("has no active membership or day pass");
+  }
   return problems.length ? `${c.name} ${problems.join(" and ")}.` : null;
+}
+
+// STOPGAP(#62): a climber who can be let in with a free day pass: valid
+// waiver, no active membership, no pass yet today. Replace with #44 to #46.
+function canGiveDayPass(c: CheckInCandidate): boolean {
+  return c.waiverStatus === "valid" && c.membershipStatus !== "active" && !c.hasDayPass;
 }
 
 // Front desk "Manual check in": find a climber with fuzzy search, see their
@@ -67,8 +77,13 @@ export default function ManualCheckIn({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Day passes given in this dialog, so it updates before the list reloads.
+  const [dayPassIds, setDayPassIds] = useState<Set<string>>(new Set());
 
-  const selected = climbers.find((c) => c.id === selectedId) ?? null;
+  const found = climbers.find((c) => c.id === selectedId);
+  const selected = found
+    ? { ...found, hasDayPass: found.hasDayPass || dayPassIds.has(found.id) }
+    : null;
 
   const results = useMemo(() => {
     if (query.trim() === "") return [];
@@ -97,6 +112,15 @@ export default function ManualCheckIn({
       const result = await checkInClimber(climber.id);
       if (result.ok) setDone(`${climber.name} is checked in.`);
       else setError(result.message ?? "Couldn't check in. Try again.");
+    });
+  }
+
+  function dayPass(climber: CheckInCandidate) {
+    setError(null);
+    startTransition(async () => {
+      const result = await giveDayPass(climber.id);
+      if (result.ok) setDayPassIds((ids) => new Set(ids).add(climber.id));
+      else setError(result.message ?? "Couldn't give a day pass. Try again.");
     });
   }
 
@@ -227,6 +251,11 @@ export default function ManualCheckIn({
               >
                 Back to search
               </Button>
+              {canGiveDayPass(selected) ? (
+                <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
+                  Give free day pass
+                </Button>
+              ) : null}
               <Button
                 variant="contained"
                 disabled={pending || blocked !== null}

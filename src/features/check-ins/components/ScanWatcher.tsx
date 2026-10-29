@@ -10,7 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkInClimber } from "@/features/climbers/actions";
+import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
@@ -31,8 +31,16 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 function problems(c: ScannedClimber): string[] {
   const list: string[] = [];
   if (c.waiverStatus !== "valid") list.push("needs a valid waiver");
-  if (c.membershipStatus !== "active") list.push("has no active membership");
+  if (c.membershipStatus !== "active" && !c.hasDayPass) {
+    list.push("has no active membership or day pass");
+  }
   return list;
+}
+
+// STOPGAP(#62): valid waiver but nothing to get in with, so staff can give a
+// free day pass. Replace with #44 to #46.
+function canGiveDayPass(c: ScannedClimber): boolean {
+  return c.waiverStatus === "valid" && c.membershipStatus !== "active" && !c.hasDayPass;
 }
 
 // Front desk: pops up the climber who just scanned on /me, with their
@@ -75,6 +83,15 @@ export default function ScanWatcher() {
     });
   }
 
+  function dayPass(c: ScannedClimber) {
+    setError(null);
+    startTransition(async () => {
+      const result = await giveDayPass(c.id);
+      if (result.ok) setClimber({ ...c, hasDayPass: true });
+      else setError(result.message ?? "Couldn't give a day pass. Try again.");
+    });
+  }
+
   if (!climber) return null;
   const issues = problems(climber);
 
@@ -108,7 +125,11 @@ export default function ScanWatcher() {
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {MEMBERSHIP_LABEL[climber.membershipStatus]}
             </Typography>
-            {climber.membershipRenewsOn ? (
+            {climber.hasDayPass && climber.membershipStatus !== "active" ? (
+              <Typography variant="caption" color="text.secondary">
+                Free day pass for today
+              </Typography>
+            ) : climber.membershipRenewsOn ? (
               <Typography variant="caption" color="text.secondary">
                 {climber.membershipStatus === "expired" ? "Ended" : "Renews"}{" "}
                 {formatDate(climber.membershipRenewsOn, true)}
@@ -143,6 +164,11 @@ export default function ScanWatcher() {
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Close</Button>
+        {canGiveDayPass(climber) ? (
+          <Button variant="outlined" disabled={pending} onClick={() => dayPass(climber)}>
+            Give free day pass
+          </Button>
+        ) : null}
         {issues.length === 0 && !done ? (
           <Button
             variant="contained"

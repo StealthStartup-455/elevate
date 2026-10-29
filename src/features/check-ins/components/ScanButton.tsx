@@ -18,13 +18,16 @@ const PROCESSING_MS = 3000;
 type Props = {
   waiverStatus: WaiverStatus;
   membershipStatus: MembershipStatus;
+  hasDayPass: boolean;
 };
 
 // What the climber still needs to sort out, or an empty list if nothing.
-function problems({ waiverStatus, membershipStatus }: Props): string[] {
+function problems({ waiverStatus, membershipStatus, hasDayPass }: Props): string[] {
   const list: string[] = [];
   if (waiverStatus === "missing") list.push("You haven't signed a waiver yet.");
   if (waiverStatus === "expired") list.push("Your waiver has expired.");
+  // A day pass from the desk (#62 stopgap) lets them in today anyway.
+  if (hasDayPass) return list;
   if (membershipStatus === "none") list.push("You don't have a membership yet.");
   if (membershipStatus === "expired") list.push("Your membership has expired.");
   if (membershipStatus === "paused") list.push("Your membership is paused.");
