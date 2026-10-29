@@ -1,31 +1,18 @@
-# Exchange Floor
+# Exchange Floor (archive)
 
-The shared, living log of everything AI agents do in this repo. Every agent **reads this before starting a task** and **adds an entry when it finishes** (see "Exchange Floor" in `AGENTS.md`).
+The log of AI agent work up to 2026-10-28. New entries are files in `exchange-floor/`.
 
 It exists so that one person's agent never repeats, contradicts or breaks what another person's agent already did.
 
-## How to use it
+## Archive (read only since 2026-10-29)
 
-**Before you start a task**
+**New entries go in `exchange-floor/`, one file per entry.** See `exchange-floor/README.md` and "Exchange Floor (mandatory)" in `AGENTS.md` (#102). Every pull request used to edit the same two spots in this file, so every merge made the other open pull requests conflict here.
 
-1. `git fetch origin` and read this file from `origin/dev`, not a stale local copy.
-2. Read at least the **Active work** table and the last 10 timeline entries. Read further back if your task touches the same files or area.
-3. If someone else's agent is already working on the same area, or left an open follow-up for it, tell the developer before you begin.
+This file keeps the entries written before then, unchanged. Don't add to it or edit it.
 
-**When you finish a task**
+## Active work (frozen 2026-10-29)
 
-1. Add a row to **Active work** when you start, and remove it (or mark it done) when you finish.
-2. Add a new entry at the **top** of the timeline, newest first, using the template below.
-3. Commit the update in the same pull request as the work, so the log merges with the change it describes.
-
-**Rules**
-
-- Append only. Never delete or rewrite another entry. Correct a mistake with a new entry that references the old one.
-- Facts, not narrative. Say what was done, what was decided, and what the next agent must know.
-- Never put secrets, tokens, `.env` values or personal data in an entry.
-- Resolve merge conflicts by keeping both sets of entries, ordered by date and time.
-
-## Active work
+No longer updated: open pull requests on GitHub show active work now.
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
@@ -46,13 +33,17 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-20 | @guerrerj | Claude Code | `feature/42-staging-deployment` | `src/features/check-ins/scan-store.ts`, `src/features/auth/*`, `src/proxy.ts`, `prisma/` (new `QrScan` migration), fonts, tests, CI, `DEPLOYMENT.md` | In review |
 | 2026-10-22 | @TylerLeHere | Claude Code | `feature/33-supabase-auth-sign-in-out` | `src/features/auth/*`, `src/app/desk/*`, `src/features/climbers/{queries,actions}.ts`, `src/features/check-ins/actions.ts`, `prisma/seed-logins.ts`, `e2e/`, `DEPLOYMENT.md` | In review |
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
+| 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | Merged (#78) |
+| 2026-10-27 | @guerrerj | Claude Code | `feature/43-show-app-version` | `scripts/app-version.mjs`, `next.config.ts`, `src/lib/version.ts`, `src/components/ui/AppVersion.tsx`, root layout, `src/app/api/version`, `src/lib/log.ts`, `deploy-staging.yml`, `scripts/staging-setup.mjs`, docs | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-28 | @guerrerj | Claude Code | `feature/84-server-timing` | `src/lib/{timing,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md` | In review |
+| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 | 2026-10-28 | @Khanh150104 | Claude Code | `feature/35-waiver-signing` | `prisma/` (new `WaiverTemplate` migration), `src/features/waivers/*`, `src/app/me/waiver/*`, `MembershipCard.tsx`, `ClimberForm.tsx`, `e2e/` | In review |
 
-## Entry template
+## Entry template (old)
 
-Copy this block to the top of the timeline.
+For reference only; the current template is in `exchange-floor/README.md`.
 
 ```markdown
 ### YYYY-MM-DD HH:MM UTC: <short title>
@@ -120,6 +111,84 @@ Copy this block to the top of the timeline.
 
 Newest first.
 
+### 2026-10-28 UTC: Timing logs for slow requests (PERF_LOG)
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#84 / PR pending
+- **Branch:** `feature/84-server-timing`
+- **What the agent did:**
+  - `src/lib/timing.ts`: `timed(event, fields, work)` logs how long a step took, only when `PERF_LOG="true"`.
+  - `src/lib/db.ts`: a Prisma query extension times every query (`perf_db`: model, operation, ms; never the data).
+  - `perf_auth` around Supabase `getUser()` in the proxy and in `getCurrentUser`; `perf_action` around the desk's `takeLatestScan` poll.
+  - DEPLOYMENT.md: "Finding slow requests" (turn on, read in Vercel Logs, turn off); `PERF_LOG` in the variables table; the new events in the log table.
+- **Files touched:** `src/lib/{timing,timing.test,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md`
+- **Decisions and why:**
+  - Log lines rather than a `Server-Timing` header: server components and server actions can't set response headers, and Vercel already groups a request's log lines under it.
+  - Off by default: the desk polls every 2.5 s, so always-on timing would flood the one hour of logs the free plan keeps.
+  - `db` is now Prisma's extended client type; call sites are unchanged.
+- **Gotchas:**
+  - Local run with `PERF_LOG=true` (local Postgres, demo desk): the scan check takes 4 to 7 ms in total, but on `/desk` each `Climber.findMany` (every climber with waivers and passes) takes about 250 ms and the first query of a page 150 to 250 ms, because `/desk` runs four queries at once, two of them that same full climber list (#85).
+  - A query's `ms` includes waiting for a free pool connection, so parallel queries look slower than they are alone.
+- **Open follow-ups:** Turn `PERF_LOG` on for one staging deploy, read the breakdown, then fix #85 and #86 with numbers in hand. Remove the timing once those are done if it's no longer useful.
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` 68 passed (2 todo), 3 new; `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 12 passed, 3 skipped (real-login needs seeded Supabase logins); ran `next start` with `PERF_LOG=true`, logged in as the demo desk, loaded `/desk` twice and let it poll: the expected `perf_db` and `perf_action` lines appeared. The unit tests cover the off case.
+
+### 2026-10-28 UTC: Desk loads only today's day passes (review fix on #83)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - `findRows` now loads every `MEMBERSHIP` pass but only `DAY` passes that haven't expired, instead of every day pass a climber ever had (review by @guerrerj on #83).
+  - Added `day_pass_given` / `day_pass_refused` to the log table in `DEPLOYMENT.md`.
+- **Files touched:** `src/features/climbers/queries.ts`, `DEPLOYMENT.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Day passes end at midnight and pile up daily, and the desk loads every climber on each load and 30 second refresh (#85). `hasDayPass` already ignored expired passes, so behaviour is unchanged.
+- **Gotchas:** none.
+- **Open follow-ups:** From the same review, left for later: #97 moves the new labels to the style guide's text styles; whoever picks up #90 should build on the "Give free day pass" button; say it's a stopgap in demos (#44 to #46).
+- **Verification:** `npx tsc --noEmit` clean; `npm run lint` clean; `npm test` 71 passed (2 todo). `npm run test:db`, build and e2e not run locally (Docker wasn't running); left to CI on #83.
+
+### 2026-10-27 UTC: App version from git, shown in the footer and at /api/version
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#43 / PR pending
+- **Branch:** `feature/43-show-app-version`
+- **What the agent did:**
+  - `scripts/app-version.mjs` works out the version from git with no spaces or brackets: `v1.0.0+def5678` on a release tag, `v1.0.1-dev.23+abc1234` 23 commits later, `v0.1.0-dev.121+abc1234` before the first tag (base from `package.json`), `.local` when not deployed.
+  - `next.config.ts` puts it in the build (`NEXT_PUBLIC_APP_VERSION`, `NEXT_PUBLIC_COMMIT_SHA`, `NEXT_PUBLIC_BUILD_TIME`); `src/lib/version.ts` reads it.
+  - Footer on every page (`AppVersion`, root layout) showing the version, linked to the commit on GitHub; `GET /api/version` returns version, commit, build time and environment; every log line gets a `version` field.
+  - Deploy staging: full-history checkout, version passed to Vercel with `--build-env`, written to the run summary; the live check now waits for `/api/version` to report the deployed commit and for `/login` to show the password field; warns when `STAGING_URL` is empty. `staging-setup.mjs` passes and checks the version the same way.
+- **Files touched:** `scripts/app-version.mjs`, `next.config.ts`, `src/lib/{version,version.test,app-version.test,log}.ts`, `src/components/ui/AppVersion.tsx`, `src/app/layout.tsx`, `src/app/api/version/route.ts`, `e2e/version.spec.ts`, `.github/workflows/deploy-staging.yml`, `scripts/staging-setup.mjs`, `DEPLOYMENT.md`, `CONTRIBUTING.md`
+- **Decisions and why:**
+  - Builds after a release count toward the next patch (`v1.0.1-dev.N`), not `v1.0.0-dev.N`: in Semantic Versioning a pre-release sorts before its release, so this keeps versions in order.
+  - The version is computed in GitHub Actions, not on Vercel: `vercel deploy` uploads files without `.git`, so a build there can't see the commit.
+  - Commit count from `git describe` against `v*.*.*` tags; no tags exist yet, so it counts every commit until the first release tag (`v0.3.0` for M3 per DEPLOYMENT.md). Tags stay with the release manager (CONTRIBUTING).
+- **Gotchas:**
+  - The old live check looked for `name="username"`, which PR #75 removed (the form now has Email). It would have failed every deploy once `STAGING_URL` was read; replaced by `/api/version` plus `name="password"`.
+  - `STAGING_URL` saved as a secret is invisible to `vars.STAGING_URL`, which is why the live check was skipped on the #75 deploy.
+  - CI's shallow checkout gives a count of 1 (`v0.1.0-dev.1+...local`); harmless, CI builds aren't deployed.
+- **Open follow-ups:** Create the first release tag when cutting M3. Optional later: release-please for version bumps and a changelog once commit messages follow `feat:` / `fix:`.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 77 passed (2 todo), including 11 new version tests; `npm run build` passed (`/api/version` static); `npx playwright test` 13 passed, 3 skipped (real-login needs seeded Supabase logins), including the new footer test and axe on every screen in light and dark. A first run failed one smoke test on "Already checked in" from an earlier run on the same database; passed after reseeding. Footer checked by eye in light, dark and at phone width. The workflow's deploy and live check can only be proven by the first run after merge.
+### 2026-10-27 UTC: No-charge day pass so desk staff can check in a new climber (stopgap)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - New staff-only action `giveDayPass` saves a `DAY` `Pass` row that ends at midnight in the gym's time zone. It needs a valid waiver and no active membership, and does nothing if today's pass already exists.
+  - `checkInClimber` accepts an active membership **or** a current day pass.
+  - "Give free day pass" (outlined) button in the manual check-in dialog and the QR scan popup; `/me` shows "Free day pass for today" and the demo scan stops warning about the membership.
+  - Pure helpers `hasDayPass` and `endOfGymDay` in `status.ts`, with tests (summer time, standard time, late evening).
+- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`, `src/features/climbers/day-pass.db.test.ts`
+- **Decisions and why:**
+  - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
+  - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
+  - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
+- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC. tzdata 2026b (Node 24 in CI) keeps `America/Vancouver` on UTC-7 all year from November 2026, while older tzdata (e.g. 2026a in Node 26.12) still switches to UTC-8 in winter. Don't hard-code a Vancouver winter offset in tests.
+- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
+- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
 ### 2026-10-27 UTC: Placeholder waiver signs in under a second
 
 - **Developer:** @guerrerj

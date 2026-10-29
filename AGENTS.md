@@ -62,21 +62,22 @@ A hook, CI check or ruleset rejection is the system working. Fix the cause (usua
 
 ## Exchange Floor (mandatory)
 
-`EXCHANGE_FLOOR.md` at the repo root is the shared, living log of everything AI agents have done here. It stops one agent repeating, contradicting or breaking another's work.
+`exchange-floor/` at the repo root is the shared log of everything AI agents have done here, one file per entry. It stops one agent repeating, contradicting or breaking another's work. Entries before 2026-10-29 are in `EXCHANGE_FLOOR.md`, kept as a read-only archive.
 
 **Before you start any task** (before planning, editing or creating a branch):
 
-1. Run `git fetch origin`, then read `EXCHANGE_FLOOR.md` from `origin/dev` (`git show origin/dev:EXCHANGE_FLOOR.md`). Read the **Active work** table and at least the last 10 timeline entries.
-2. Take in what other agents did, their decisions, gotchas and open follow-ups. If your task overlaps active work or a follow-up, tell the developer before you begin.
-3. Tell the developer in one line what you picked up from it, or that there was nothing relevant.
+1. Run `git fetch origin`, then read the 10 newest entries on `origin/dev`:
+   `git ls-tree --name-only origin/dev exchange-floor/ | grep -v README | sort | tail -10`, then `git show origin/dev:exchange-floor/<file>` for each.
+2. Check what is in progress: the open pull requests and their branches (`gh pr list`, or Pull requests on GitHub).
+3. Take in what other agents did, their decisions, gotchas and open follow-ups. If your task overlaps open work or a follow-up, tell the developer before you begin.
+4. Tell the developer in one line what you picked up from it, or that there was nothing relevant.
 
 **When you finish** (in the same branch and pull request as the work):
 
-1. Add an entry at the top of the timeline using the template in the file: what you did, files touched, decisions, gotchas, follow-ups, and the real verification results.
-2. Update the **Active work** table.
-3. Say in the PR description that you added an Exchange Floor entry.
+1. Add **one new file** `exchange-floor/YYYY-MM-DD-HHMM-<branch>.md` (UTC; the branch's `/` written as `-`) using the template in `exchange-floor/README.md`: what you did, files touched, decisions, gotchas, follow-ups, and the real verification results.
+2. Say in the PR description that you added an Exchange Floor entry.
 
-The log is append-only. Never delete or rewrite another entry, and never put secrets in one.
+Never edit or delete another entry, never add to `EXCHANGE_FLOOR.md`, and never put secrets in an entry. You may update your own entry while your branch is open.
 
 # UI and styling (mandatory)
 
