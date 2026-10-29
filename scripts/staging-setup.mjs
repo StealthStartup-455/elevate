@@ -18,6 +18,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
+import { gitVersion } from "./app-version.mjs";
 
 const args = new Set(process.argv.slice(2));
 const VERCEL = process.env.VERCEL_CLI ?? "npx -y vercel@63.1.2";
@@ -158,8 +159,18 @@ for (const [name, value] of Object.entries(settings)) {
 }
 
 step("Deploying (vercel deploy --prod)");
-console.log("Building on Vercel, about a minute; the log prints when it finishes.");
-const deployed = run(`${VERCEL} deploy --prod --yes`, { capture: "all" });
+// Vercel's builder has no .git folder, so the version goes in as build
+// variables (#43). The values have no spaces or quotes.
+const version = gitVersion({ local: false });
+console.log(`Version ${version.version}. Building on Vercel, about a minute; the log prints when it finishes.`);
+const buildEnv = [
+  `NEXT_PUBLIC_APP_VERSION=${version.version}`,
+  `NEXT_PUBLIC_COMMIT_SHA=${version.commit}`,
+  `NEXT_PUBLIC_BUILD_TIME=${version.builtAt}`,
+]
+  .map((pair) => `--build-env ${pair}`)
+  .join(" ");
+const deployed = run(`${VERCEL} deploy --prod --yes ${buildEnv}`, { capture: "all" });
 // Vercel prints the deployment's own URL (behind Vercel's login by default)
 // and, for --prod, the project's public alias. Test the alias when there is one.
 const words = deployed.stdout.split(/\s+/);
@@ -169,28 +180,34 @@ const alias = aliasAt >= 0 ? words.slice(aliasAt).find((word) => /^https?:\/\//.
 const url = alias ?? urls.at(-1);
 if (!deployed.ok || !url) fail("the deploy failed. The build log is above.");
 
-step(`Checking ${url}/login`);
+step(`Checking ${url}/api/version`);
 let healthy = false;
 for (let attempt = 0; attempt < 10 && !healthy; attempt++) {
   try {
-    const response = await fetch(`${url}/login`);
-    // Elevate's login form, not Vercel's own login page in front of it.
-    const page = await response.text();
-    if (response.ok && !page.includes('name="username"')) {
+    const response = await fetch(`${url}/api/version`);
+    // Elevate's own answer for this commit, not Vercel's login page in front of it.
+    const text = await response.text();
+    let live = null;
+    try {
+      live = JSON.parse(text);
+    } catch {
+      // Not JSON: some other page.
+    }
+    if (response.ok && !live) {
       fail(
         `${url} shows a different page, probably Vercel's login (Deployment Protection). ` +
           "In Vercel, Settings, Deployment Protection, use Standard Protection so the production address is public.",
       );
     }
-    healthy = response.ok;
-    if (!healthy) console.log(`status ${response.status}, retrying`);
+    healthy = response.ok && live?.commit === version.commit;
+    if (!healthy) console.log(response.ok ? `still on ${live?.version}, retrying` : `status ${response.status}, retrying`);
   } catch {
     console.log("not answering yet, retrying");
   }
   if (!healthy) await new Promise((resolve) => setTimeout(resolve, 3000));
 }
 if (!healthy) fail(`${url}/login did not answer. Check the Logs tab in Vercel.`);
-console.log("the site answers");
+console.log(`the site answers and runs ${version.version}`);
 
 if (!args.has("--skip-e2e")) {
   const answer = await prompt(

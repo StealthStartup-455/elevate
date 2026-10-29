@@ -3,7 +3,10 @@ name: Deploy staging
 # Deploys dev to the hosted staging demo after every merge, in order:
 # 1. apply new migrations to the staging database (prisma migrate deploy),
 # 2. build and deploy the app on Vercel,
-# 3. check the public address shows Elevate's login.
+# 3. check the public address now runs this commit (/api/version) and shows
+#    Elevate's login.
+# Each deploy carries a version worked out from git, e.g. v0.1.0-dev.23+abc1234
+# (scripts/app-version.mjs, #43), shown in the site's footer and the run summary.
 # Migrations run first, so new code never meets an old database.
 #
 # Needs these in the repository's "staging" environment (Settings,
@@ -46,9 +49,15 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
+          if [ -z "$STAGING_URL" ]; then
+            echo "::warning::STAGING_URL is empty, so the live check will be skipped. Add it as a variable (not a secret) in Settings, Environments, staging."
+          fi
 
       - uses: actions/checkout@v4
         if: steps.ready.outputs.ok == 'true'
+        with:
+          # Full history and tags: the version counts commits since the last release tag.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         if: steps.ready.outputs.ok == 'true'
         with:
@@ -61,20 +70,41 @@ jobs:
         if: steps.ready.outputs.ok == 'true'
         run: npx prisma migrate deploy
 
+      - name: Work out the version
+        id: version
+        if: steps.ready.outputs.ok == 'true'
+        run: node scripts/app-version.mjs --deployed --github-output
+
+      # Vercel's builder has no .git folder, so the version goes in as build variables.
       - name: Deploy to Vercel
         if: steps.ready.outputs.ok == 'true'
-        run: npx -y vercel@63.1.2 deploy --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_SHA: ${{ steps.version.outputs.commit }}
+          BUILD_TIME: ${{ steps.version.outputs.built_at }}
+        run: |
+          npx -y vercel@63.1.2 deploy --prod --yes --token="$VERCEL_TOKEN" \
+            --build-env NEXT_PUBLIC_APP_VERSION="$APP_VERSION" \
+            --build-env NEXT_PUBLIC_COMMIT_SHA="$COMMIT_SHA" \
+            --build-env NEXT_PUBLIC_BUILD_TIME="$BUILD_TIME"
+          echo "Deployed **$APP_VERSION** ([commit](https://github.com/$GITHUB_REPOSITORY/commit/$COMMIT_SHA))" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Check the public address shows Elevate's login
+      - name: Check the live site runs this commit and shows Elevate's login
         if: steps.ready.outputs.ok == 'true' && env.STAGING_URL != ''
+        env:
+          COMMIT_SHA: ${{ steps.version.outputs.commit }}
         run: |
           for attempt in 1 2 3 4 5 6; do
-            page=$(curl -fsS "$STAGING_URL/login" || true)
-            if echo "$page" | grep -q 'name="username"'; then
-              echo "$STAGING_URL/login shows Elevate's login."
-              exit 0
+            info=$(curl -fsS "$STAGING_URL/api/version" || true)
+            if echo "$info" | grep -q "\"commit\":\"$COMMIT_SHA\""; then
+              page=$(curl -fsS "$STAGING_URL/login" || true)
+              if echo "$page" | grep -q 'name="password"'; then
+                echo "$STAGING_URL runs $COMMIT_SHA and shows Elevate's login: $info"
+                exit 0
+              fi
             fi
             sleep 10
           done
-          echo "$STAGING_URL/login did not show Elevate's login form. Check Vercel's Deployment Protection (Standard) and the deployment's logs."
+          echo "$STAGING_URL/api/version answered: ${info:-nothing}"
+          echo "Expected commit $COMMIT_SHA and Elevate's login form. If the page is Vercel's own login, set Deployment Protection to Standard; otherwise check the deployment's logs."
           exit 1
