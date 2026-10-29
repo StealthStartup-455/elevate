@@ -84,7 +84,7 @@ In the Supabase dashboard:
    ```sql
    insert into "Staff" (id, "gymId", "authUserId", name, "updatedAt")
    select gen_random_uuid()::text, id, '<user uid>', '<their name>', now()
-   from "Gym" where slug = 'boulderhouse-victoria';
+   from "Gym" where slug = 'demo-gym';
    ```
 
    Or, for a climber who already exists: `update "Climber" set "authUserId" = '<user uid>' where id = '<climber id>';`
