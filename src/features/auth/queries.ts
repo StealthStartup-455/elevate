@@ -3,6 +3,7 @@ import type { StaffRole } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { createClient } from "@/lib/supabase/server";
+import { timed } from "@/lib/timing";
 import { getDemoClimberId } from "./session";
 
 // Not in session.ts on purpose: proxy.ts imports that file, and the proxy
@@ -45,7 +46,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await timed("perf_auth", { where: "page" }, () => supabase.auth.getUser());
   return user ? findAccount(user.id) : null;
 });
 
