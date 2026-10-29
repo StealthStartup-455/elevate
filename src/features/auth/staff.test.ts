@@ -7,8 +7,12 @@ import { isStaff, requireStaff } from "./staff";
 const signedIn = vi.hoisted(() => ({
   user: null as CurrentUser | null,
   demoDesk: false,
+  demoClimberId: undefined as string | undefined,
 }));
-vi.mock("./queries", () => ({ getCurrentUser: async () => signedIn.user }));
+vi.mock("./queries", () => ({
+  getCurrentUser: async () => signedIn.user,
+  getSessionClimberId: async () => signedIn.demoClimberId ?? signedIn.user?.climberIds[0],
+}));
 vi.mock("./session", () => ({ hasDemoDeskSession: async () => signedIn.demoDesk }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -26,6 +30,7 @@ const STAFF: CurrentUser = {
 beforeEach(() => {
   signedIn.user = null;
   signedIn.demoDesk = false;
+  signedIn.demoClimberId = undefined;
 });
 
 describe("requireStaff", () => {
@@ -39,14 +44,19 @@ describe("requireStaff", () => {
     await expect(requireStaff()).resolves.toBeUndefined();
   });
 
-  it("sends a signed-in climber to log in", async () => {
+  it("sends a signed-in climber to the staff-only page, not to log in", async () => {
     signedIn.user = CLIMBER;
-    await expect(requireStaff()).rejects.toThrow("redirect /login");
+    await expect(requireStaff()).rejects.toThrow("redirect /staff-only");
   });
 
-  it("sends a login with no staff row or climber to log in", async () => {
+  it("sends a demo climber session to the staff-only page", async () => {
+    signedIn.demoClimberId = "c9";
+    await expect(requireStaff()).rejects.toThrow("redirect /staff-only");
+  });
+
+  it("sends a login with no staff row or climber to the staff-only page", async () => {
     signedIn.user = { authUserId: "u3", staff: null, climberIds: [] };
-    await expect(requireStaff()).rejects.toThrow("redirect /login");
+    await expect(requireStaff()).rejects.toThrow("redirect /staff-only");
   });
 
   it("sends a logged-out visitor to log in", async () => {
