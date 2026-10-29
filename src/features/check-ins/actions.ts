@@ -16,6 +16,7 @@ export type ScannedClimber = {
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
+  hasDayPass: boolean;
 };
 
 // /me "Demo scan": remembers that the signed-in climber just scanned, so the
@@ -62,5 +63,6 @@ async function takeLatestScanNow(): Promise<ScannedClimber | null> {
     waiverExpiresOn: climber.waiverExpiresOn,
     membershipStatus: climber.membershipStatus,
     membershipRenewsOn: climber.membershipRenewsOn,
+    hasDayPass: climber.hasDayPass,
   };
 }

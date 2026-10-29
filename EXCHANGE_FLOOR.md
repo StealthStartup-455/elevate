@@ -48,6 +48,7 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-24 | @guerrerj | Claude Code | `chore/71-add-license` | `LICENSE`, `README.md`, `package.json` | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
 | 2026-10-28 | @guerrerj | Claude Code | `feature/84-server-timing` | `src/lib/{timing,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md` | In review |
+| 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
 ## Entry template
@@ -95,6 +96,40 @@ Newest first.
 - **Open follow-ups:** Turn `PERF_LOG` on for one staging deploy, read the breakdown, then fix #85 and #86 with numbers in hand. Remove the timing once those are done if it's no longer useful.
 - **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` 68 passed (2 todo), 3 new; `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 12 passed, 3 skipped (real-login needs seeded Supabase logins); ran `next start` with `PERF_LOG=true`, logged in as the demo desk, loaded `/desk` twice and let it poll: the expected `perf_db` and `perf_action` lines appeared. The unit tests cover the off case.
 
+### 2026-10-28 UTC: Desk loads only today's day passes (review fix on #83)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - `findRows` now loads every `MEMBERSHIP` pass but only `DAY` passes that haven't expired, instead of every day pass a climber ever had (review by @guerrerj on #83).
+  - Added `day_pass_given` / `day_pass_refused` to the log table in `DEPLOYMENT.md`.
+- **Files touched:** `src/features/climbers/queries.ts`, `DEPLOYMENT.md`, `EXCHANGE_FLOOR.md`
+- **Decisions and why:** Day passes end at midnight and pile up daily, and the desk loads every climber on each load and 30 second refresh (#85). `hasDayPass` already ignored expired passes, so behaviour is unchanged.
+- **Gotchas:** none.
+- **Open follow-ups:** From the same review, left for later: #97 moves the new labels to the style guide's text styles; whoever picks up #90 should build on the "Give free day pass" button; say it's a stopgap in demos (#44 to #46).
+- **Verification:** `npx tsc --noEmit` clean; `npm run lint` clean; `npm test` 71 passed (2 todo). `npm run test:db`, build and e2e not run locally (Docker wasn't running); left to CI on #83.
+
+### 2026-10-27 UTC: No-charge day pass so desk staff can check in a new climber (stopgap)
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#62 / #83
+- **Branch:** `feature/62-no-charge-day-pass`
+- **What the agent did:**
+  - New staff-only action `giveDayPass` saves a `DAY` `Pass` row that ends at midnight in the gym's time zone. It needs a valid waiver and no active membership, and does nothing if today's pass already exists.
+  - `checkInClimber` accepts an active membership **or** a current day pass.
+  - "Give free day pass" (outlined) button in the manual check-in dialog and the QR scan popup; `/me` shows "Free day pass for today" and the demo scan stops warning about the membership.
+  - Pure helpers `hasDayPass` and `endOfGymDay` in `status.ts`, with tests (summer time, standard time, late evening).
+- **Files touched:** `src/features/climbers/{status,status.test,queries,actions,types}.ts`, `src/features/climbers/components/{ManualCheckIn,ManualCheckInButton,MembershipCard}.tsx`, `src/features/check-ins/actions.ts`, `src/features/check-ins/components/{ScanWatcher,ScanButton}.tsx`, `src/features/climbers/day-pass.db.test.ts`
+- **Decisions and why:**
+  - Uses the existing `PassKind.DAY`, so there's no migration. `findRows` now loads `MEMBERSHIP` and `DAY` passes and splits them by `kind`; `summarizeMembership` still sees memberships only, so membership status is unchanged.
+  - A day pass is a separate `hasDayPass` flag, not a new `MembershipStatus`, so it's easy to remove when real purchases land.
+  - Every piece is marked `STOPGAP(#62)`; replace with #44 to #46.
+- **Gotchas:** `endOfGymDay` uses `Intl` with `Gym.timeZone`, not the server's time zone; staging runs in UTC. tzdata 2026b (Node 24 in CI) keeps `America/Vancouver` on UTC-7 all year from November 2026, while older tzdata (e.g. 2026a in Node 26.12) still switches to UTC-8 in winter. Don't hard-code a Vancouver winter offset in tests.
+- **Open follow-ups:** Record which staff member gave the pass once auth exposes it. No e2e test for the day pass button yet.
+- **Verification:** `npx tsc --noEmit` clean; `npm test` 71 passed (2 todo), including 6 new ones; `npm run lint` clean; `npm run build` passed; `npm run test:db` 14 passed, including 7 new ones in `src/features/climbers/day-pass.db.test.ts` (giving the pass, check-in after it, midnight expiry, no double pass, waiver and membership refusals, staff only, yesterday's pass refused). The check-in test fails when the day-pass rule is removed from `checkInClimber`.
 ### 2026-10-27 UTC: Placeholder waiver signs in under a second
 
 - **Developer:** @guerrerj
