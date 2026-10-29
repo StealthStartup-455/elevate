@@ -15,10 +15,11 @@ import type {
 // ACTIVE_WINDOW_MINUTES after checking in. There is no checked-out state.
 
 /**
- * The current time for busyness. Returns the mock data's fixed clock so
- * results are the same on every request.
+ * The current time for busyness. With a mock scenario, the scenario's fixed
+ * clock, so its results are the same on every request; with `none`, the real
+ * clock (see mockNow).
  *
- * When the real query lands, return `new Date()` instead.
+ * When the mock goes (#39), return `new Date()` instead.
  */
 async function busynessNow(): Promise<Date> {
   // Render per request, never at build time.

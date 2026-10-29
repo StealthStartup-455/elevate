@@ -60,6 +60,17 @@ describe("sample check-ins", () => {
     expect(summary).toMatchObject({ count: 1, sampleCount: 0 });
   });
 
+  it("shows real check-ins only in production unless a scenario is set", async () => {
+    vi.stubEnv("APP_ENV", "production");
+    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "");
+    let { getBusynessSummary } = await load();
+    expect(await getBusynessSummary("demo-gym")).toMatchObject({ count: 1, sampleCount: 0 });
+
+    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "moderate");
+    ({ getBusynessSummary } = await load());
+    expect((await getBusynessSummary("demo-gym")).sampleCount).toBeGreaterThan(0);
+  });
+
   it("still labels the typical week, which is always generated for now", async () => {
     const { getWeeklyBusyness } = await load();
     expect((await getWeeklyBusyness("demo-gym")).sample).toBe(true);

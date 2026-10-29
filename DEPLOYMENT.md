@@ -31,7 +31,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
 | `PERF_LOG` | unset | `true` only while looking for slow requests: logs each query's and step's time (see "Finding slow requests") |
-| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39). Generated check-ins are labelled on screen (#64); `none` shows real check-ins only |
+| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39). Generated check-ins are labelled on screen (#64); `none` shows real check-ins only. Leave it unset on production: with `APP_ENV=production` it defaults to `none` |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
 
