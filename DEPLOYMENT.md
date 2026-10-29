@@ -30,6 +30,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the project's publishable key | Public by design |
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
+| `PERF_LOG` | unset | `true` only while looking for slow requests: logs each query's and step's time (see "Finding slow requests") |
 | `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39) |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
@@ -97,12 +98,34 @@ To switch someone off, set `active = false` on their `Staff` row.
 Every pull request runs lint, unit tests and the build (`check`), and the database tests, a migration check and the Playwright demo flow (`e2e`). A merge to `dev` runs `deploy-staging.yml`, which, in order:
 
 1. applies any new migrations to the staging database (`prisma migrate deploy`),
-2. builds and deploys the app on Vercel (`vercel deploy --prod`),
-3. checks that `STAGING_URL/login` shows Elevate's login.
+2. works out the version from git and builds and deploys the app on Vercel with it (`vercel deploy --prod --build-env ...`),
+3. checks that `STAGING_URL/api/version` reports the commit it just deployed and that `/login` shows Elevate's login. `STAGING_URL` must be a **variable** of the `staging` environment, not a secret; if it's missing the run warns and skips this check.
 
 Nobody runs anything by hand. To redeploy without a merge: Actions, Deploy staging, Run workflow. Migrations land before the new code, but the old code keeps serving until the deploy finishes, so every migration must still work with both the old and the new code (see "Database changes" in `CONTRIBUTING.md`: add, never rename or drop in the same release).
 
 The Milestone 3 release candidate follows the release steps in `CONTRIBUTING.md`: `dev` into `release`, tested, then `main`, tagged `v0.3.0`.
+
+## Which version is live
+
+Every build has a version worked out from git (`scripts/app-version.mjs`, #43), with no spaces or brackets:
+
+| Build | Example | Meaning |
+|---|---|---|
+| Exactly a release | `v1.0.0+def5678` | Tag `v1.0.0`, commit `def5678` |
+| After a release | `v1.0.1-dev.23+abc1234` | 23 commits after `v1.0.0`, counted toward the next patch |
+| Before the first release tag | `v0.1.0-dev.121+abc1234` | 121 commits; `0.1.0` comes from `package.json` |
+| Not deployed (laptop, CI) | `v0.1.0-dev.121+abc1234.local` | Same rule, marked `.local` |
+
+It follows Semantic Versioning 2.0 (after `-` is a pre-release, after `+` the commit), so versions sort in order: `v1.0.0` < `v1.0.1-dev.3` < `v1.0.1-dev.23` < `v1.0.1`.
+
+Where to see it:
+
+- **The footer of every page.** The version links to its commit on GitHub.
+- **`/api/version`**: `{"version", "commit", "builtAt", "environment"}`. The deploy workflow checks it.
+- **The deploy run's summary** in Actions ("Deployed v0.1.0-dev.121+abc1234").
+- **Every log line** has a `version` field.
+
+Releases are tagged on `main` as `vX.Y.Z` (see "Ship" in `CONTRIBUTING.md`); the next builds count from that tag automatically. Until the first tag, the version counts every commit on the branch. Vercel's builder has no `.git` folder, so deploys work the version out first and pass it in (`--build-env NEXT_PUBLIC_APP_VERSION=...`); a deploy without it shows `+unknown`.
 
 ## Before a demo
 
@@ -130,12 +153,28 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
 | `scan_saved` / `scan_taken` | Phone scan saved; the desk showed it | `climberId`; `waitMs` (time from tap to desk), `waiverStatus`, `membershipStatus` |
+| `perf_db` / `perf_auth` / `perf_action` | Only when `PERF_LOG="true"` (see "Finding slow requests") | `model` and `operation`, or `where` (`proxy`, `page`), or `name`; `ms` |
 | `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |
 | `day_pass_given` / `day_pass_refused` | Desk gave a no-charge day pass (stopgap, #62) | `climberId`, `charge`: `none`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_active`, `not_found`, `invalid_id` |
 
 **When someone reports an error**, ask for the error code on the "Something went wrong" page. It is the `digest` of the matching `server_error` line.
 
 **Privacy:** log lines carry ids and reason codes only, never names, phone numbers, emails or anything typed into a form. Keep it that way when adding events.
+
+### Finding slow requests
+
+Timing logs are off by default (#84). To see where a slow page spends its time:
+
+1. In Vercel, Settings, Environment Variables, add `PERF_LOG` = `true` for Production (the staging project deploys with `--prod`), then redeploy (Actions, Deploy staging, Run workflow).
+2. Use the slow screens for a minute.
+3. In Vercel, Logs, open a slow request and search `perf_`. Every line that request wrote is grouped under it:
+   - `perf_db`: one line per database query, with `model`, `operation` and `ms`.
+   - `perf_auth`: asking Supabase who is signed in, in the proxy and in the page.
+   - `perf_action`: the desk's scan check (`takeLatestScan`) end to end.
+4. Compare the request's total time (shown by Vercel) with the sum of the `perf_` lines: if the queries add up to most of it, fix the queries; if not, the time is elsewhere (startup, rendering, the network).
+5. Remove `PERF_LOG` and redeploy when done, so the logs stay readable.
+
+Queries on one page can run at the same time, so their times overlap; a query's `ms` includes waiting for a free database connection.
 
 **Useful numbers from the logs during a pilot:** `waitMs` on `scan_taken` (how fast the desk sees a scan), and `check_in_refused` by `reason` (which rule turns people away).
 
@@ -150,5 +189,8 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | A real login says "This login isn't set up for the gym yet" | The Supabase user has no `Staff` row and no linked `Climber` | Add the row (see "Real logins on a hosted project") |
 | Phone scans but the desk shows nothing | The `QrScan` migration isn't applied | Run the deploy workflow (Actions, Deploy staging, Run workflow) |
 | Deploy workflow says "Staging is not set up" | A secret is missing from the `staging` environment | Add it (see Environment variables) and run the workflow again |
+| Live check fails: "Expected commit ..." | The new build isn't serving yet, or Vercel's login sits in front of the site | Check the deployment's status in Vercel; set Deployment Protection to Standard |
+| Footer shows `+unknown` | Deployed without the version (an old checkout, or `vercel deploy` run by hand) | Redeploy through the workflow or `npm run staging:setup` |
+| Run warns "STAGING_URL is empty" | `STAGING_URL` saved as a secret, or not saved | Add it as a variable of the `staging` environment |
 | `prisma migrate deploy` warns that migrations were modified | Someone edited a merged migration | Restore the original file; never reset staging |
 | Check in refused, "Already checked in" | The two hour rule from an earlier run | Reseed |
