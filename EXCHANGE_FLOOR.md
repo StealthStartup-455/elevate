@@ -1,31 +1,18 @@
-# Exchange Floor
+# Exchange Floor (archive)
 
-The shared, living log of everything AI agents do in this repo. Every agent **reads this before starting a task** and **adds an entry when it finishes** (see "Exchange Floor" in `AGENTS.md`).
+The log of AI agent work up to 2026-10-28. New entries are files in `exchange-floor/`.
 
 It exists so that one person's agent never repeats, contradicts or breaks what another person's agent already did.
 
-## How to use it
+## Archive (read only since 2026-10-29)
 
-**Before you start a task**
+**New entries go in `exchange-floor/`, one file per entry.** See `exchange-floor/README.md` and "Exchange Floor (mandatory)" in `AGENTS.md` (#102). Every pull request used to edit the same two spots in this file, so every merge made the other open pull requests conflict here.
 
-1. `git fetch origin` and read this file from `origin/dev`, not a stale local copy.
-2. Read at least the **Active work** table and the last 10 timeline entries. Read further back if your task touches the same files or area.
-3. If someone else's agent is already working on the same area, or left an open follow-up for it, tell the developer before you begin.
+This file keeps the entries written before then, unchanged. Don't add to it or edit it.
 
-**When you finish a task**
+## Active work (frozen 2026-10-29)
 
-1. Add a row to **Active work** when you start, and remove it (or mark it done) when you finish.
-2. Add a new entry at the **top** of the timeline, newest first, using the template below.
-3. Commit the update in the same pull request as the work, so the log merges with the change it describes.
-
-**Rules**
-
-- Append only. Never delete or rewrite another entry. Correct a mistake with a new entry that references the old one.
-- Facts, not narrative. Say what was done, what was decided, and what the next agent must know.
-- Never put secrets, tokens, `.env` values or personal data in an entry.
-- Resolve merge conflicts by keeping both sets of entries, ordered by date and time.
-
-## Active work
+No longer updated: open pull requests on GitHub show active work now.
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
@@ -52,9 +39,9 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
-## Entry template
+## Entry template (old)
 
-Copy this block to the top of the timeline.
+For reference only; the current template is in `exchange-floor/README.md`.
 
 ```markdown
 ### YYYY-MM-DD HH:MM UTC: <short title>
