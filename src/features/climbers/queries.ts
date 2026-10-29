@@ -6,7 +6,7 @@ import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { formatPhone } from "./phone";
-import { isoDay, summarizeMembership, summarizeWaiver } from "./status";
+import { hasDayPass, isoDay, summarizeMembership, summarizeWaiver } from "./status";
 import type { Climber, MembershipStatus, WaiverStatus } from "./types";
 
 // Reads for the climbers feature, from the Climber, Waiver and Pass tables.
@@ -25,6 +25,8 @@ export type Membership = {
   waiverExpiresOn?: string;
   // Printed under the QR code for manual entry at the desk.
   memberCode: string;
+  /** A free day pass from the desk covers today (stopgap, #62). */
+  hasDayPass: boolean;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,10 +42,14 @@ function findRows(gymId: string, id?: string) {
         select: { signedAt: true, version: true },
       },
       passes: {
-        // All of them: a renewal bought early has not started yet, and the
+        // Every membership: a renewal bought early has not started yet, and the
         // status comes from the one in effect today (see summarizeMembership).
-        where: { kind: "MEMBERSHIP" },
-        select: { startsAt: true, expiresAt: true, pausedAt: true },
+        // DAY passes are the #62 stopgap. They end at midnight and pile up
+        // daily, so only unexpired ones are loaded.
+        where: {
+          OR: [{ kind: "MEMBERSHIP" }, { kind: "DAY", expiresAt: { gt: new Date() } }],
+        },
+        select: { kind: true, startsAt: true, expiresAt: true, pausedAt: true },
       },
     },
   });
@@ -53,7 +59,10 @@ type Row = Awaited<ReturnType<typeof findRows>>[number];
 
 function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
   const waiver = summarizeWaiver(row.waivers[0], waiverVersion, now);
-  const membership = summarizeMembership(row.passes, now);
+  const membership = summarizeMembership(
+    row.passes.filter((p) => p.kind === "MEMBERSHIP"),
+    now,
+  );
   return {
     id: row.id,
     firstName: row.firstName,
@@ -66,6 +75,7 @@ function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
     waiverExpiresOn: waiver.expiresOn,
     membershipStatus: membership.status,
     membershipRenewsOn: membership.renewsOn,
+    hasDayPass: hasDayPass(row.passes.filter((p) => p.kind === "DAY"), now),
   };
 }
 
@@ -95,6 +105,7 @@ export async function getMyMembership(): Promise<Membership> {
     waiverExpiresOn: climber.waiverExpiresOn,
     // Printed code until real member numbers exist.
     memberCode: `ELV-${climber.id.slice(0, 6).toUpperCase()}`,
+    hasDayPass: climber.hasDayPass,
   };
 }
 
