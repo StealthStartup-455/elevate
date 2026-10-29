@@ -56,6 +56,26 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   await expect(popup).toContainText("Already checked in");
 });
 
+test("a scan made before the desk opens doesn't pop up later", async ({ browser }) => {
+  const phone = await newPage(browser, true);
+  const desk = await newPage(browser);
+  await logIn(phone, "demo-expired-active", /\/me/);
+  // Scan while nobody is at the desk, and wait until the phone says it's done.
+  await phone.getByRole("button", { name: /scan/i }).click();
+  await expect(phone.getByRole("dialog")).toBeVisible({ timeout: 20_000 });
+
+  // The desk opens afterwards: that old scan never pops up (#91).
+  await logIn(desk, "desk", /\/desk/);
+  await desk.waitForTimeout(6_000); // two polls
+  await expect(desk.getByRole("dialog")).toHaveCount(0);
+
+  // A scan made now does.
+  await phone.keyboard.press("Escape");
+  await phone.reload();
+  await phone.getByRole("button", { name: /scan/i }).click();
+  await expect(desk.getByRole("dialog")).toContainText("Demo Expired-Active", { timeout: 20_000 });
+});
+
 test("a new climber joins, signs the waiver and reaches their account", async ({ browser }) => {
   const phone = await newPage(browser, true);
   const desk = await newPage(browser);

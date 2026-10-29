@@ -73,6 +73,19 @@ describe("scan store", () => {
     expect(await takeScan(gymId, later)).toBeUndefined();
   });
 
+  it("ignores scans made before the desk started watching", async () => {
+    await saveScan(gymId, alex);
+    const deskOpened = new Date(Date.now() + 1000);
+    const later = new Date(deskOpened.getTime() + 1000);
+    expect(await takeScan(gymId, later, deskOpened)).toBeUndefined();
+  });
+
+  it("shows a scan made after the desk started watching", async () => {
+    const deskOpened = new Date(Date.now() - 1000);
+    await saveScan(gymId, sam);
+    expect((await takeScan(gymId, new Date(), deskOpened))?.climberId).toBe(sam);
+  });
+
   it("never shows another gym's scan", async () => {
     await saveScan(gymId, alex);
     expect(await takeScan(otherGymId)).toBeUndefined();

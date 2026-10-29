@@ -14,7 +14,7 @@ import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
-import { takeLatestScan, type ScannedClimber } from "../actions";
+import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../actions";
 
 // How often the desk asks the server for a new scan. Short, so the popup
 // shows up right after the climber taps "Demo scan".
@@ -52,17 +52,31 @@ export default function ScanWatcher() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  // When this desk started watching (server time). Scans from before then are
+  // never shown, so opening the desk doesn't pop up an old scan (#91).
+  const [watchingSince, setWatchingSince] = useState<string | null>(null);
 
   useEffect(() => {
-    // Don't look for a new scan while one is already showing.
-    if (climber) return;
+    let active = true;
+    startWatchingScans().then((at) => {
+      if (active) setWatchingSince(at);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Don't look for a new scan before the desk knows when it started, or
+    // while one is already showing.
+    if (!watchingSince || climber) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
-      const scanned = await takeLatestScan();
+      const scanned = await takeLatestScan(watchingSince);
       if (scanned) setClimber(scanned);
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [climber]);
+  }, [climber, watchingSince]);
 
   function close() {
     setClimber(null);

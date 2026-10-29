@@ -29,12 +29,32 @@ export async function recordScan(): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+// When the desk page starts watching for scans, on the server's clock so the
+// browser's clock doesn't matter. The desk passes it back to takeLatestScan.
+export async function startWatchingScans(): Promise<string> {
+  await requireStaff();
+  return new Date().toISOString();
+}
+
+// A day is longer than any desk session that matters; anything older, or not
+// a date, falls back to the usual time limit.
+const MAX_WATCH_MS = 24 * 60 * 60 * 1000;
+
+function watchStart(value: string | undefined, now: Date): Date | undefined {
+  if (!value) return undefined;
+  const at = new Date(value);
+  const age = now.getTime() - at.getTime();
+  return Number.isNaN(at.getTime()) || age < 0 || age > MAX_WATCH_MS ? undefined : at;
+}
+
 // The climber from the latest scan, for the front desk popup. Returns each
-// scan once, then null until someone scans again. Staff only.
-export async function takeLatestScan(): Promise<ScannedClimber | null> {
+// scan once, then null until someone scans again. Only scans made after
+// `watchingSince` (from startWatchingScans) count (#91). Staff only.
+export async function takeLatestScan(watchingSince?: string): Promise<ScannedClimber | null> {
   await requireStaff();
   const gym = await getGym();
-  const scan = await takeScan(gym.id);
+  const now = new Date();
+  const scan = await takeScan(gym.id, now, watchStart(watchingSince, now));
   if (!scan) return null;
   const climber = await getClimber(scan.climberId);
   if (!climber) {
