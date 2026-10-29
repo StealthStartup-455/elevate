@@ -1,31 +1,18 @@
-# Exchange Floor
+# Exchange Floor (archive)
 
-The shared, living log of everything AI agents do in this repo. Every agent **reads this before starting a task** and **adds an entry when it finishes** (see "Exchange Floor" in `AGENTS.md`).
+The log of AI agent work up to 2026-10-28. New entries are files in `exchange-floor/`.
 
 It exists so that one person's agent never repeats, contradicts or breaks what another person's agent already did.
 
-## How to use it
+## Archive (read only since 2026-10-29)
 
-**Before you start a task**
+**New entries go in `exchange-floor/`, one file per entry.** See `exchange-floor/README.md` and "Exchange Floor (mandatory)" in `AGENTS.md` (#102). Every pull request used to edit the same two spots in this file, so every merge made the other open pull requests conflict here.
 
-1. `git fetch origin` and read this file from `origin/dev`, not a stale local copy.
-2. Read at least the **Active work** table and the last 10 timeline entries. Read further back if your task touches the same files or area.
-3. If someone else's agent is already working on the same area, or left an open follow-up for it, tell the developer before you begin.
+This file keeps the entries written before then, unchanged. Don't add to it or edit it.
 
-**When you finish a task**
+## Active work (frozen 2026-10-29)
 
-1. Add a row to **Active work** when you start, and remove it (or mark it done) when you finish.
-2. Add a new entry at the **top** of the timeline, newest first, using the template below.
-3. Commit the update in the same pull request as the work, so the log merges with the change it describes.
-
-**Rules**
-
-- Append only. Never delete or rewrite another entry. Correct a mistake with a new entry that references the old one.
-- Facts, not narrative. Say what was done, what was decided, and what the next agent must know.
-- Never put secrets, tokens, `.env` values or personal data in an entry.
-- Resolve merge conflicts by keeping both sets of entries, ordered by date and time.
-
-## Active work
+No longer updated: open pull requests on GitHub show active work now.
 
 | Started (UTC) | Developer | AI tool | Branch | Area / files | Status |
 |---|---|---|---|---|---|
@@ -49,12 +36,13 @@ It exists so that one person's agent never repeats, contradicts or breaks what a
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | Merged (#78) |
 | 2026-10-27 | @guerrerj | Claude Code | `feature/43-show-app-version` | `scripts/app-version.mjs`, `next.config.ts`, `src/lib/version.ts`, `src/components/ui/AppVersion.tsx`, root layout, `src/app/api/version`, `src/lib/log.ts`, `deploy-staging.yml`, `scripts/staging-setup.mjs`, docs | In review |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/77-pin-ci-runner` | `.github/workflows/ci.yml` | In review |
+| 2026-10-28 | @guerrerj | Claude Code | `feature/84-server-timing` | `src/lib/{timing,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md` | In review |
 | 2026-10-27 | @SethMess | Claude Code | `feature/62-no-charge-day-pass` | `src/features/climbers/{status,queries,actions,types}.ts`, `ManualCheckIn.tsx`, `MembershipCard.tsx`, `src/features/check-ins/*` | In review (#83) |
 | 2026-10-27 | @guerrerj | Claude Code | `fix/66-shorten-placeholder-waiver` | `src/features/climbers/components/WaiverStep.tsx`, `e2e/smoke.spec.ts` | In review |
 
-## Entry template
+## Entry template (old)
 
-Copy this block to the top of the timeline.
+For reference only; the current template is in `exchange-floor/README.md`.
 
 ```markdown
 ### YYYY-MM-DD HH:MM UTC: <short title>
@@ -74,6 +62,28 @@ Copy this block to the top of the timeline.
 ## Timeline
 
 Newest first.
+
+### 2026-10-28 UTC: Timing logs for slow requests (PERF_LOG)
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#84 / PR pending
+- **Branch:** `feature/84-server-timing`
+- **What the agent did:**
+  - `src/lib/timing.ts`: `timed(event, fields, work)` logs how long a step took, only when `PERF_LOG="true"`.
+  - `src/lib/db.ts`: a Prisma query extension times every query (`perf_db`: model, operation, ms; never the data).
+  - `perf_auth` around Supabase `getUser()` in the proxy and in `getCurrentUser`; `perf_action` around the desk's `takeLatestScan` poll.
+  - DEPLOYMENT.md: "Finding slow requests" (turn on, read in Vercel Logs, turn off); `PERF_LOG` in the variables table; the new events in the log table.
+- **Files touched:** `src/lib/{timing,timing.test,db}.ts`, `src/features/auth/queries.ts`, `src/proxy.ts`, `src/features/check-ins/actions.ts`, `DEPLOYMENT.md`
+- **Decisions and why:**
+  - Log lines rather than a `Server-Timing` header: server components and server actions can't set response headers, and Vercel already groups a request's log lines under it.
+  - Off by default: the desk polls every 2.5 s, so always-on timing would flood the one hour of logs the free plan keeps.
+  - `db` is now Prisma's extended client type; call sites are unchanged.
+- **Gotchas:**
+  - Local run with `PERF_LOG=true` (local Postgres, demo desk): the scan check takes 4 to 7 ms in total, but on `/desk` each `Climber.findMany` (every climber with waivers and passes) takes about 250 ms and the first query of a page 150 to 250 ms, because `/desk` runs four queries at once, two of them that same full climber list (#85).
+  - A query's `ms` includes waiting for a free pool connection, so parallel queries look slower than they are alone.
+- **Open follow-ups:** Turn `PERF_LOG` on for one staging deploy, read the breakdown, then fix #85 and #86 with numbers in hand. Remove the timing once those are done if it's no longer useful.
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` 68 passed (2 todo), 3 new; `npm run test:db` 7 passed; `npm run build` passed; `npx playwright test` 12 passed, 3 skipped (real-login needs seeded Supabase logins); ran `next start` with `PERF_LOG=true`, logged in as the demo desk, loaded `/desk` twice and let it poll: the expected `perf_db` and `perf_action` lines appeared. The unit tests cover the off case.
 
 ### 2026-10-28 UTC: Desk loads only today's day passes (review fix on #83)
 
