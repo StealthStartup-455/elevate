@@ -1,5 +1,6 @@
 // Checks the waiver form. Plain functions, like features/climbers/validate.ts,
 // so the rules can be unit tested without a database or a browser.
+import { toStoredPhone } from "@/features/climbers/phone";
 
 // Under this age a parent or guardian signs. 19 is the age of majority in
 // British Columbia, where the pilot gyms are.
@@ -13,14 +14,25 @@ const PNG_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/;
 export type SignerRelation = "SELF" | "PARENT" | "GUARDIAN";
 
 export type WaiverFieldErrors = Partial<
-  Record<"clauses" | "guardianName" | "signerRelation" | "signatureText" | "agree" | "signatureImage", string>
+  Record<
+    | "clauses"
+    | "guardianName"
+    | "signerRelation"
+    | "emergencyContactName"
+    | "emergencyContactPhone"
+    | "signatureImage"
+    | "agree",
+    string
+  >
 >;
 
 export type WaiverSignature = {
   signedByName: string;
   signerRelation: SignerRelation;
-  signatureText: string;
-  signatureImage: string | null;
+  signatureImage: string;
+  emergencyContactName: string;
+  /** Stored like +12505551234. */
+  emergencyContactPhone: string;
 };
 
 export type ParsedWaiverSignature =
@@ -33,19 +45,6 @@ export function ageOn(dateOfBirth: string, now: Date): number {
   const today = now.toISOString().slice(0, 10);
   const [ty, tm, td] = today.split("-").map(Number);
   return ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
-}
-
-// "  josé  DE la Cruz " and "Jose de la Cruz" are the same name, and so are
-// "Mary-Jane" and "Mary Jane".
-export function sameName(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .replace(/[\s-]+/g, " ")
-      .trim();
-  return norm(a) === norm(b);
 }
 
 function text(formData: FormData, name: string): string {
@@ -83,25 +82,39 @@ export function parseWaiverSignature(
     else errors.signerRelation = "Choose parent or guardian.";
   }
 
-  const signatureText = text(formData, "signatureText");
-  if (!signatureText) errors.signatureText = "Type your full name to sign.";
-  else if (signedByName && !sameName(signatureText, signedByName))
-    errors.signatureText = minor
-      ? "Type the parent or guardian's name exactly as entered above."
-      : `Type your full name as shown above: ${climber.fullName}.`;
+  const emergencyContactName = text(formData, "emergencyContactName");
+  if (!emergencyContactName) errors.emergencyContactName = "Enter an emergency contact's name.";
+  else if (emergencyContactName.length > MAX_NAME_LENGTH)
+    errors.emergencyContactName = `Use ${MAX_NAME_LENGTH} characters or fewer.`;
+
+  const phone = text(formData, "emergencyContactPhone");
+  const digits = phone.replace(/\D/g, "");
+  if (!phone) errors.emergencyContactPhone = "Enter an emergency contact's phone number.";
+  else if (digits.length < 10 || digits.length > 15)
+    errors.emergencyContactPhone = "Enter a valid phone number, including area code.";
+
+  // The signature pad puts the drawing in this hidden field as a PNG.
+  const signatureImage = text(formData, "signatureImage");
+  if (!signatureImage)
+    errors.signatureImage = minor
+      ? "The parent or guardian needs to sign in the box."
+      : "Sign in the box with your finger or mouse.";
+  else if (signatureImage.length > MAX_SIGNATURE_IMAGE_LENGTH || !PNG_DATA_URL.test(signatureImage))
+    errors.signatureImage = "The signature couldn't be read. Clear it and sign again.";
 
   if (formData.get("agree") !== "on")
     errors.agree = "Tick the box to agree that this is your electronic signature.";
-
-  // Optional for now: the drawn signature pad comes in a later change.
-  const image = text(formData, "signatureImage");
-  if (image && (image.length > MAX_SIGNATURE_IMAGE_LENGTH || !PNG_DATA_URL.test(image)))
-    errors.signatureImage = "The drawn signature couldn't be read. Clear it and draw it again.";
 
   return Object.keys(errors).length > 0
     ? { ok: false, errors }
     : {
         ok: true,
-        value: { signedByName, signerRelation, signatureText, signatureImage: image || null },
+        value: {
+          signedByName,
+          signerRelation,
+          signatureImage,
+          emergencyContactName,
+          emergencyContactPhone: toStoredPhone(phone),
+        },
       };
 }

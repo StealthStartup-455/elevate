@@ -31,7 +31,9 @@ export type WaiverFormValues = {
   clauses: string[];
   guardianName: string;
   signerRelation: string;
-  signatureText: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  signatureImage: string;
   agree: boolean;
 };
 
@@ -41,7 +43,9 @@ function valuesOf(formData: FormData): WaiverFormValues {
     clauses: formData.getAll("clause").map(String),
     guardianName: text("guardianName"),
     signerRelation: text("signerRelation"),
-    signatureText: text("signatureText"),
+    emergencyContactName: text("emergencyContactName"),
+    emergencyContactPhone: text("emergencyContactPhone"),
+    signatureImage: text("signatureImage"),
     agree: formData.get("agree") === "on",
   };
 }
@@ -134,7 +138,6 @@ export async function submitWaiver(
     climberId,
     version: template.version,
     relation: parsed.value.signerRelation,
-    drawn: parsed.value.signatureImage !== null,
   });
   revalidatePath("/me");
   revalidatePath("/desk");

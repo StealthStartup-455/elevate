@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ageOn, parseWaiverSignature, sameName } from "./validate";
+import { ageOn, parseWaiverSignature } from "./validate";
 
 const NOW = new Date("2026-10-28T18:00:00Z");
 const ADULT = { fullName: "Tyler Le", dateOfBirth: "2003-08-15" };
 const CHILD = { fullName: "Nevin Gill", dateOfBirth: "2015-01-17" };
+const SIGNATURE = "data:image/png;base64,iVBORw0KGgo=";
 
 function form(fields: Record<string, string | string[]>): FormData {
   const data = new FormData();
@@ -13,7 +14,19 @@ function form(fields: Record<string, string | string[]>): FormData {
   return data;
 }
 
-const ALL_CLAUSES = ["0", "1", "2"];
+// A correctly filled form for an adult; tests change one thing at a time.
+const COMPLETE = {
+  clause: ["0", "1", "2"],
+  emergencyContactName: "Kim Le",
+  emergencyContactPhone: "(250) 555-0199",
+  signatureImage: SIGNATURE,
+  agree: "on",
+};
+
+function errorsFor(fields: Record<string, string | string[]>, climber = ADULT) {
+  const result = parseWaiverSignature(form(fields), climber, 3, NOW);
+  return result.ok ? {} : result.errors;
+}
 
 describe("ageOn", () => {
   it("counts a birthday later this year as not yet reached", () => {
@@ -22,97 +35,56 @@ describe("ageOn", () => {
   });
 });
 
-describe("sameName", () => {
-  it("ignores case, extra spaces and accents", () => {
-    expect(sameName("  josé  DE la Cruz ", "Jose de la Cruz")).toBe(true);
-  });
-
-  it("treats a hyphen like a space", () => {
-    expect(sameName("Mary Jane Lee", "Mary-Jane Lee")).toBe(true);
-  });
-
-  it("tells different names apart", () => {
-    expect(sameName("Rob Smith", "Robert Smith")).toBe(false);
-  });
-});
-
 describe("parseWaiverSignature", () => {
-  it("accepts an adult who ticked everything and typed their name", () => {
-    const result = parseWaiverSignature(
-      form({ clause: ALL_CLAUSES, signatureText: "tyler le", agree: "on" }),
-      ADULT,
-      3,
-      NOW,
-    );
-    expect(result).toEqual({
+  it("accepts an adult who filled everything in", () => {
+    expect(parseWaiverSignature(form(COMPLETE), ADULT, 3, NOW)).toEqual({
       ok: true,
       value: {
         signedByName: "Tyler Le",
         signerRelation: "SELF",
-        signatureText: "tyler le",
-        signatureImage: null,
+        signatureImage: SIGNATURE,
+        emergencyContactName: "Kim Le",
+        emergencyContactPhone: "+12505550199",
       },
     });
   });
 
   it("refuses when a rule isn't ticked", () => {
-    const result = parseWaiverSignature(
-      form({ clause: ["0", "2"], signatureText: "Tyler Le", agree: "on" }),
-      ADULT,
-      3,
-      NOW,
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.clauses).toBeDefined();
+    expect(errorsFor({ ...COMPLETE, clause: ["0", "2"] }).clauses).toBeDefined();
   });
 
-  it("refuses an empty or different typed name", () => {
-    for (const signatureText of ["", "Someone Else"]) {
-      const result = parseWaiverSignature(
-        form({ clause: ALL_CLAUSES, signatureText, agree: "on" }),
-        ADULT,
-        3,
-        NOW,
-      );
-      expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.errors.signatureText).toBeDefined();
-    }
+  it("needs a drawn signature", () => {
+    expect(errorsFor({ ...COMPLETE, signatureImage: "" }).signatureImage).toBeDefined();
+  });
+
+  it("refuses a signature that isn't a PNG", () => {
+    const html = "data:text/html;base64,PHNjcmlwdD4=";
+    expect(errorsFor({ ...COMPLETE, signatureImage: html }).signatureImage).toBeDefined();
+  });
+
+  it("refuses a huge signature", () => {
+    const huge = `data:image/png;base64,${"A".repeat(200_001)}`;
+    expect(errorsFor({ ...COMPLETE, signatureImage: huge }).signatureImage).toBeDefined();
+  });
+
+  it("needs an emergency contact with a real phone number", () => {
+    expect(errorsFor({ ...COMPLETE, emergencyContactName: "" }).emergencyContactName).toBeDefined();
+    expect(errorsFor({ ...COMPLETE, emergencyContactPhone: "555" }).emergencyContactPhone).toBeDefined();
   });
 
   it("refuses without the electronic signature agreement", () => {
-    const result = parseWaiverSignature(
-      form({ clause: ALL_CLAUSES, signatureText: "Tyler Le" }),
-      ADULT,
-      3,
-      NOW,
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.agree).toBeDefined();
+    expect(errorsFor({ ...COMPLETE, agree: "" }).agree).toBeDefined();
   });
 
   it("needs a parent or guardian for a minor", () => {
-    const result = parseWaiverSignature(
-      form({ clause: ALL_CLAUSES, signatureText: "Nevin Gill", agree: "on" }),
-      CHILD,
-      3,
-      NOW,
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.guardianName).toBeDefined();
-      expect(result.errors.signerRelation).toBeDefined();
-    }
+    const errors = errorsFor(COMPLETE, CHILD);
+    expect(errors.guardianName).toBeDefined();
+    expect(errors.signerRelation).toBeDefined();
   });
 
   it("accepts a parent signing for a minor", () => {
     const result = parseWaiverSignature(
-      form({
-        clause: ALL_CLAUSES,
-        guardianName: "Ekam Gill",
-        signerRelation: "PARENT",
-        signatureText: "Ekam Gill",
-        agree: "on",
-      }),
+      form({ ...COMPLETE, guardianName: "Ekam Gill", signerRelation: "PARENT" }),
       CHILD,
       3,
       NOW,
@@ -121,31 +93,5 @@ describe("parseWaiverSignature", () => {
       ok: true,
       value: { signedByName: "Ekam Gill", signerRelation: "PARENT" },
     });
-  });
-
-  it("refuses a drawn signature that isn't a PNG", () => {
-    const result = parseWaiverSignature(
-      form({
-        clause: ALL_CLAUSES,
-        signatureText: "Tyler Le",
-        agree: "on",
-        signatureImage: "data:text/html;base64,PHNjcmlwdD4=",
-      }),
-      ADULT,
-      3,
-      NOW,
-    );
-    expect(result.ok).toBe(false);
-  });
-
-  it("keeps a valid drawn signature", () => {
-    const signatureImage = "data:image/png;base64,iVBORw0KGgo=";
-    const result = parseWaiverSignature(
-      form({ clause: ALL_CLAUSES, signatureText: "Tyler Le", agree: "on", signatureImage }),
-      ADULT,
-      3,
-      NOW,
-    );
-    expect(result).toMatchObject({ ok: true, value: { signatureImage } });
   });
 });
