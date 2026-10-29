@@ -12,7 +12,7 @@ import Typography from "@mui/material/Typography";
 import MuiLink from "@mui/material/Link";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { fuzzyScore } from "@/lib/fuzzy";
+import { searchScore } from "../search";
 import type { WaiverStatus } from "../types";
 import WaiverBadge from "./WaiverBadge";
 
@@ -23,24 +23,6 @@ export type ClimberRow = {
   dateOfBirth: string;
   waiverStatus: WaiverStatus;
 };
-
-const digits = (s: string) => s.replace(/\D/g, "");
-
-// Match quality, 0 for no match. Number-only words match the phone, the rest
-// fuzzy match the name (same rules as the check-in table).
-export function searchScore(
-  row: { name: string; phone: string },
-  query: string,
-): number {
-  const terms = query.split(/\s+/).filter(Boolean);
-  const numbers = terms.filter((t) => /^[\d()+-]+$/.test(t)).map(digits);
-  const words = terms.filter((t) => !/^[\d()+-]+$/.test(t));
-
-  const phone = digits(row.phone);
-  if (!numbers.every((n) => n === "" || phone.includes(n))) return 0;
-  const nameScore = words.length ? fuzzyScore(row.name, words.join(" ")) : 1;
-  return nameScore === 0 ? 0 : nameScore + numbers.length * 5;
-}
 
 // Every climber, A to Z (the server sorts), with search. Rows open the climber.
 export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {

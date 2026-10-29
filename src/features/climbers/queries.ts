@@ -6,6 +6,7 @@ import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { formatPhone } from "./phone";
+import { bestMatches } from "./search";
 import { hasDayPass, isoDay, summarizeMembership, summarizeWaiver } from "./status";
 import type { Climber, MembershipStatus, WaiverStatus } from "./types";
 
@@ -32,9 +33,10 @@ export type Membership = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Only the latest waiver and membership pass matter for the status.
-function findRows(gymId: string, id?: string) {
+// Every climber of the gym, or only `ids` when given.
+function findRows(gymId: string, ids?: string[]) {
   return db.climber.findMany({
-    where: { gymId, ...(id ? { id } : {}) },
+    where: { gymId, ...(ids ? { id: { in: ids } } : {}) },
     include: {
       waivers: {
         orderBy: { signedAt: "desc" },
@@ -132,7 +134,7 @@ export async function getClimber(id: string): Promise<Climber | null> {
   // Not a UUID: no such climber, and Postgres would reject the query.
   if (!UUID.test(id)) return null;
   const gym = await getGym();
-  const [row] = await findRows(gym.id, id);
+  const [row] = await findRows(gym.id, [id]);
   return row ? toClimber(row, gym.waiverVersion, new Date()) : null;
 }
 
@@ -140,25 +142,74 @@ export async function getClimber(id: string): Promise<Climber | null> {
 // database climber (id for the link, live waiver status) by the mock's own id.
 export type CheckInClimber = { id: string; waiverStatus: WaiverStatus };
 
-export async function getCheckInClimbers(): Promise<Map<string, CheckInClimber>> {
+// The climbers behind the desk's recent check-ins, by the keys the check-ins
+// use: a database id (desk check-ins) or a seeded busyness climber's mock id
+// (climber-12, kept as externalId). Only those climbers are loaded (#85).
+export async function getCheckInClimbers(
+  keys: string[],
+): Promise<Map<string, CheckInClimber>> {
   await connection();
   await requireStaff();
+  const map = new Map<string, CheckInClimber>();
+  const unique = [...new Set(keys)];
+  if (unique.length === 0) return map;
   const gym = await getGym();
   const now = new Date();
-  const rows = await findRows(gym.id);
-  const map = new Map<string, CheckInClimber>();
+  const ids = unique.filter((key) => UUID.test(key));
+  const externalIds = unique.filter((key) => !UUID.test(key));
+  const rows = await db.climber.findMany({
+    where: {
+      gymId: gym.id,
+      OR: [{ id: { in: ids } }, { externalId: { in: externalIds } }],
+    },
+    select: {
+      id: true,
+      externalId: true,
+      waivers: { orderBy: { signedAt: "desc" }, take: 1, select: { signedAt: true, version: true } },
+    },
+  });
   for (const row of rows) {
-    // Seeded busyness climbers keep the mock's id (climber-12) as externalId.
-    if (!row.externalId?.startsWith("climber-")) continue;
     const value = {
       id: row.id,
       waiverStatus: summarizeWaiver(row.waivers[0], gym.waiverVersion, now).status,
     };
-    map.set(row.externalId, value);
-    // Check-ins saved by the desk refer to the climber by database id.
     map.set(row.id, value);
+    if (row.externalId) map.set(row.externalId, value);
   }
   return map;
+}
+
+// Manual check in search (#85): the best matches for `query`, with their
+// waiver and membership. Matching runs on the server over names and phones
+// only (one light query), then statuses load for the few matches, so the desk
+// never sends the whole climber list to the browser. Staff only.
+export async function searchClimbers(query: string, limit: number): Promise<Climber[]> {
+  await requireStaff();
+  const q = query.trim().slice(0, 100);
+  if (q === "") return [];
+  const gym = await getGym();
+  const people = await db.climber.findMany({
+    where: { gymId: gym.id },
+    select: { id: true, firstName: true, lastName: true, phone: true },
+  });
+  const matches = bestMatches(
+    people.map((p) => ({
+      id: p.id,
+      name: `${p.firstName} ${p.lastName}`,
+      phone: p.phone ? formatPhone(p.phone) : "",
+    })),
+    q,
+    limit,
+  );
+  if (matches.length === 0) return [];
+  const now = new Date();
+  const byId = new Map(
+    (await findRows(gym.id, matches.map((m) => m.id))).map((row) => [
+      row.id,
+      toClimber(row, gym.waiverVersion, now),
+    ]),
+  );
+  return matches.flatMap((m) => byId.get(m.id) ?? []);
 }
 
 // Visits saved in the CheckIn table inside the active window, newest first.

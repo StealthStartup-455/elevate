@@ -8,10 +8,10 @@ import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
-import { getClimber } from "./queries";
+import { getClimber, searchClimbers } from "./queries";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
-import type { ClimberInput, FormState } from "./types";
+import type { CheckInCandidate, ClimberInput, FormState } from "./types";
 import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
 // Server actions are public POST endpoints, so each one checks the caller
@@ -243,4 +243,23 @@ export async function checkInClimber(
   revalidatePath("/desk");
   revalidatePath("/me");
   return { ok: true };
+}
+
+// Manual check in search (#85): the best few matches for what staff typed,
+// found on the server, so the desk page doesn't carry every climber. Staff
+// only (searchClimbers checks).
+const MAX_CANDIDATES = 8;
+
+export async function findClimbersToCheckIn(query: string): Promise<CheckInCandidate[]> {
+  const climbers = await searchClimbers(String(query ?? ""), MAX_CANDIDATES);
+  return climbers.map((c) => ({
+    id: c.id,
+    name: `${c.firstName} ${c.lastName}`,
+    phone: c.phone,
+    waiverStatus: c.waiverStatus,
+    waiverExpiresOn: c.waiverExpiresOn,
+    membershipStatus: c.membershipStatus,
+    membershipRenewsOn: c.membershipRenewsOn,
+    hasDayPass: c.hasDayPass,
+  }));
 }

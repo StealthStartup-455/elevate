@@ -13,26 +13,17 @@ import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
-import { checkInClimber, giveDayPass } from "../actions";
+import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate } from "../format";
-import type { MembershipStatus, WaiverStatus } from "../types";
-import { searchScore } from "./ClimberTable";
+import type { CheckInCandidate, MembershipStatus } from "../types";
 import WaiverBadge from "./WaiverBadge";
 
-export type CheckInCandidate = {
-  id: string;
-  name: string;
-  phone: string;
-  waiverStatus: WaiverStatus;
-  waiverExpiresOn?: string;
-  membershipStatus: MembershipStatus;
-  membershipRenewsOn?: string;
-  hasDayPass: boolean;
-};
+export type { CheckInCandidate };
 
-const MAX_RESULTS = 8;
+// Wait this long after the last keystroke before searching (#85).
+const SEARCH_DELAY_MS = 200;
 
 const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
   none: "No membership",
@@ -66,44 +57,53 @@ function canGiveDayPass(c: CheckInCandidate): boolean {
 }
 
 // Front desk "Manual check in": find a climber with fuzzy search, see their
-// membership and waiver, and check them in, all in one dialog.
-export default function ManualCheckIn({
-  climbers,
-}: {
-  climbers: CheckInCandidate[];
-}) {
+// membership and waiver, and check them in, all in one dialog. The search runs
+// on the server as staff type, so the page never carries every climber (#85).
+export default function ManualCheckIn() {
   const [open, setOpen] = useState(false);
   // The scan popup waits while this is open, so dialogs never stack (#92).
   useDeskDialogOpen(open);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [results, setResults] = useState<CheckInCandidate[]>([]);
+  // The query the current results are for, so "No climbers match" only shows
+  // once the search for what was typed has answered.
+  const [resultsFor, setResultsFor] = useState("");
+  const [selected, setSelected] = useState<CheckInCandidate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Day passes given in this dialog, so it updates before the list reloads.
-  const [dayPassIds, setDayPassIds] = useState<Set<string>>(new Set());
 
-  const found = climbers.find((c) => c.id === selectedId);
-  const selected = found
-    ? { ...found, hasDayPass: found.hasDayPass || dayPassIds.has(found.id) }
-    : null;
+  useEffect(() => {
+    const q = query.trim();
+    if (q === "") return;
+    let current = true;
+    const timer = setTimeout(async () => {
+      try {
+        const found = await findClimbersToCheckIn(q);
+        if (current) {
+          setResults(found);
+          setResultsFor(q);
+        }
+      } catch {
+        if (current) setError("Couldn't search. Try again.");
+      }
+    }, SEARCH_DELAY_MS);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
-  const results = useMemo(() => {
-    if (query.trim() === "") return [];
-    return climbers
-      .map((row) => ({ row, score: searchScore(row, query) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS)
-      .map(({ row }) => row);
-  }, [climbers, query]);
+  const searched = query.trim() !== "" && resultsFor === query.trim();
 
   function close() {
     setOpen(false);
     // Reset after the closing animation so nothing flashes.
     setTimeout(() => {
       setQuery("");
-      setSelectedId(null);
+      setResults([]);
+      setResultsFor("");
+      setSelected(null);
       setError(null);
       setDone(null);
     }, 200);
@@ -122,7 +122,7 @@ export default function ManualCheckIn({
     setError(null);
     startTransition(async () => {
       const result = await giveDayPass(climber.id);
-      if (result.ok) setDayPassIds((ids) => new Set(ids).add(climber.id));
+      if (result.ok) setSelected({ ...climber, hasDayPass: true });
       else setError(result.message ?? "Couldn't give a day pass. Try again.");
     });
   }
@@ -175,8 +175,10 @@ export default function ManualCheckIn({
                 variant="contained"
                 onClick={() => {
                   setDone(null);
-                  setSelectedId(null);
+                  setSelected(null);
                   setQuery("");
+                  setResults([]);
+                  setResultsFor("");
                 }}
               >
                 Check in someone else
@@ -248,7 +250,7 @@ export default function ManualCheckIn({
             <DialogActions>
               <Button
                 onClick={() => {
-                  setSelectedId(null);
+                  setSelected(null);
                   setError(null);
                 }}
               >
@@ -281,9 +283,18 @@ export default function ManualCheckIn({
                 onChange={(e) => setQuery(e.target.value)}
                 sx={{ mt: 1 }}
               />
+              {error ? (
+                <Alert severity="error" sx={{ mt: 4 }}>
+                  {error}
+                </Alert>
+              ) : null}
               {query.trim() === "" ? (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
                   Start typing to find a climber.
+                </Typography>
+              ) : !searched ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
+                  Searching…
                 </Typography>
               ) : results.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
@@ -292,7 +303,7 @@ export default function ManualCheckIn({
               ) : (
                 <List aria-label="Matching climbers" sx={{ mt: 2 }}>
                   {results.map((c) => (
-                    <ListItemButton key={c.id} onClick={() => setSelectedId(c.id)}>
+                    <ListItemButton key={c.id} onClick={() => setSelected(c)}>
                       <ListItemText primary={c.name} secondary={c.phone} />
                       <WaiverBadge status={c.waiverStatus} />
                     </ListItemButton>
