@@ -43,7 +43,7 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   );
 }
 
-// The checkout popup: the full sum with GST, how they paid, and Tender, which
+// The checkout popup: the full sum with GST and PST, how they paid, and Tender, which
 // saves the sale once the card machine (or the till) has the money. Then a
 // summary of what was added, with Check in now and New sale.
 export default function CheckoutDialog({
@@ -170,7 +170,10 @@ export default function CheckoutDialog({
             </ul>
             <Divider />
             <Row label="Subtotal" value={formatMoney(cart.subtotalCents)} />
-            <Row label={`GST (${formatRate(cart.taxRateBps)})`} value={formatMoney(cart.taxCents)} />
+            <Row label={`GST (${formatRate(cart.gstRateBps)})`} value={formatMoney(cart.gstCents)} />
+            {cart.pstCents > 0 ? (
+              <Row label={`PST (${formatRate(cart.pstRateBps)})`} value={formatMoney(cart.pstCents)} />
+            ) : null}
             <Row label="Total" value={total} strong />
 
             <div className="flex flex-col gap-1">

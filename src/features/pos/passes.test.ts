@@ -14,6 +14,7 @@ const product = (kind: Product["kind"], extra: Partial<Product> = {}): Product =
   punches: null,
   durationMonths: null,
   recurring: false,
+  chargesPst: false,
   ...extra,
 });
 

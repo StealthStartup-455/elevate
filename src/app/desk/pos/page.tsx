@@ -29,7 +29,7 @@ async function Pos() {
         checkedInToday={data.checkedInToday}
         renewalsDue={data.renewalsDue}
         products={data.products}
-        taxRateBps={data.taxRateBps}
+        taxRates={data.taxRates}
       />
       <TodaysSales sales={data.sales} />
     </>

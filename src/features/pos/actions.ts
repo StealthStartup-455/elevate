@@ -129,11 +129,12 @@ export async function recordSale(input: SaleInput): Promise<SaleResult> {
       punches: true,
       durationMonths: true,
       recurring: true,
+      chargesPst: true,
     },
   });
   const problem = checkCart(input.items, products);
   if (problem) return refuse("invalid_cart", problem);
-  const priced = priceCart(input.items, products, gym.taxRateBps);
+  const priced = priceCart(input.items, products, { gstRateBps: gym.gstRateBps, pstRateBps: gym.pstRateBps });
   const byId = new Map(products.map((p) => [p.id, p]));
 
   const now = new Date();
@@ -151,8 +152,10 @@ export async function recordSale(input: SaleInput): Promise<SaleResult> {
           gymId: gym.id,
           climberId: climber.id,
           subtotalCents: priced.subtotalCents,
-          taxRateBps: priced.taxRateBps,
-          taxCents: priced.taxCents,
+          gstRateBps: priced.gstRateBps,
+          gstCents: priced.gstCents,
+          pstRateBps: priced.pstRateBps,
+          pstCents: priced.pstCents,
           totalCents: priced.totalCents,
           tender: input.tender,
           idempotencyKey: input.idempotencyKey,

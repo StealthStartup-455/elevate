@@ -19,7 +19,10 @@ const product = (id: string, kind: Product["kind"], priceCents: number): Product
   punches: kind === "PUNCH" ? 10 : null,
   durationMonths: kind === "MEMBERSHIP" ? 1 : null,
   recurring: false,
+  chargesPst: kind === "RENTAL" || kind === "RETAIL",
 });
+
+const BC = { gstRateBps: 500, pstRateBps: 700 };
 
 const day = product("day", "DAY", 2500);
 const punch = product("punch", "PUNCH", 20000);
@@ -77,26 +80,38 @@ describe("setQuantity", () => {
 });
 
 describe("priceCart", () => {
-  it("adds GST once, at the end, on the subtotal", () => {
+  it("adds GST on the subtotal and PST only on rentals and goods", () => {
     const cart = [
       { productId: "day", quantity: 1 },
       { productId: "shoes", quantity: 1 },
     ];
-    const priced = priceCart(cart, products, 500);
+    const priced = priceCart(cart, products, BC);
     expect(priced.subtotalCents).toBe(3100);
-    expect(priced.taxCents).toBe(155);
-    expect(priced.totalCents).toBe(3255);
+    expect(priced.gstCents).toBe(155); // 5% of 31.00
+    expect(priced.pstCents).toBe(42); // 7% of the 6.00 rental
+    expect(priced.totalCents).toBe(3297);
     expect(priced.lines.map((l) => l.lineTotalCents)).toEqual([2500, 600]);
   });
 
-  it("multiplies by quantity", () => {
-    const priced = priceCart([{ productId: "chalk", quantity: 3 }], products, 500);
+  it("charges no PST on passes and memberships", () => {
+    const priced = priceCart([{ productId: "month", quantity: 1 }], products, BC);
+    expect(priced).toMatchObject({ gstCents: 500, pstCents: 0, totalCents: 10500 });
+  });
+
+  it("rounds each tax once, on its own total", () => {
+    // 3 × 8.00 = 24.00: GST 1.20, PST 1.68.
+    const priced = priceCart([{ productId: "chalk", quantity: 3 }], products, BC);
     expect(priced.subtotalCents).toBe(2400);
-    expect(priced.totalCents).toBe(2520);
+    expect(priced.totalCents).toBe(2688);
+  });
+
+  it("leaves PST out when the gym's rate is 0", () => {
+    const priced = priceCart([{ productId: "chalk", quantity: 1 }], products, { gstRateBps: 500, pstRateBps: 0 });
+    expect(priced).toMatchObject({ pstCents: 0, totalCents: 840 });
   });
 
   it("is zero for an empty cart", () => {
-    expect(priceCart([], products, 500)).toMatchObject({ subtotalCents: 0, taxCents: 0, totalCents: 0 });
+    expect(priceCart([], products, BC)).toMatchObject({ subtotalCents: 0, gstCents: 0, pstCents: 0, totalCents: 0 });
   });
 });
 
@@ -152,7 +167,7 @@ describe("cartWarnings", () => {
     priceCart(
       ids.map((productId) => ({ productId, quantity: 1 })),
       products,
-      500,
+      BC,
     );
 
   it("warns about a missing or expired waiver, without blocking", () => {

@@ -123,7 +123,7 @@ export default function CartPanel({
             {formatMoney(cart.subtotalCents)}
           </Typography>
         </div>
-        <Typography variant="secondary">GST is added at checkout.</Typography>
+        <Typography variant="secondary">Tax is added at checkout: GST, plus PST on rentals and chalk.</Typography>
 
         {warnings.map((w) => (
           <Alert key={w} severity="warning">

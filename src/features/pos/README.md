@@ -1,6 +1,6 @@
 # pos
 
-The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passes, memberships, rentals and chalk to a cart, check out with GST, charge the total on the gym's own card machine (or take cash), then press **Tender** to save the sale. Modelled on the register in Rock Gym Pro and Redpoint. It's a mock-up: prices are rough, and no card details ever reach Elevate.
+The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passes, memberships, rentals and chalk to a cart, check out with GST and PST, charge the total on the gym's own card machine (or take cash), then press **Tender** to save the sale. Modelled on the register in Rock Gym Pro and Redpoint. It's a mock-up: prices are rough, and no card details ever reach Elevate.
 
 **Owner:** _TBD_
 
@@ -8,7 +8,7 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 
 1. **Climber:** search, or pick from "Checked in today" or "Renewals due". One climber per sale; changing climber clears the cart.
 2. **Cart:** passes (day pass, punch card, membership) are one each, and one membership per sale (picking another replaces it). Rentals and chalk go up to 20. The cart shows a subtotal; a missing or expired waiver is a warning, never a block.
-3. **Checkout popup:** lines, subtotal, GST at the gym's `taxRateBps` (5%), total, and Card or Cash.
+3. **Checkout popup:** lines, subtotal, GST at the gym's `gstRateBps` (5%) on everything, PST at `pstRateBps` (7%) on rentals and chalk only (products with `chargesPst`), total, and Card or Cash. Each tax is rounded once.
 4. **Tender:** `recordSale` re-reads prices from the database, saves the `Sale` and its `SaleLine`s and creates the passes in one transaction. The popup's key makes a double press or a retry return the first sale.
 5. **Void:** any desk staff member, with a reason. The sale stays, marked voided, and its passes end now. The refund itself happens on the card machine or from the till.
 

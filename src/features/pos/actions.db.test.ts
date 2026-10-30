@@ -46,8 +46,8 @@ beforeAll(async () => {
     { name: "10-punch card", kind: "PUNCH" as const, priceCents: 20000, punches: 10 },
     { name: "1 month membership", kind: "MEMBERSHIP" as const, priceCents: 10000, durationMonths: 1 },
     { name: "Monthly recurring", kind: "MEMBERSHIP" as const, priceCents: 8500, durationMonths: 1, recurring: true },
-    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600 },
-    { name: "Old hoodie", kind: "RETAIL" as const, priceCents: 5000, active: false },
+    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600, chargesPst: true },
+    { name: "Old hoodie", kind: "RETAIL" as const, priceCents: 5000, chargesPst: true, active: false },
   ];
   for (const p of products) {
     productIds[p.name] = (await db.product.create({ data: { gymId, ...p } })).id;
@@ -96,7 +96,7 @@ const sell = (climberId: string, items: [string, number][], key = randomUUID()) 
   });
 
 describe("recordSale", () => {
-  it("saves the sale with GST from the database prices, and gives the passes", async () => {
+  it("saves the sale with GST and PST from the database prices, and gives the passes", async () => {
     const id = await newClimber();
     const result = await sell(id, [
       ["1 month membership", 1],
@@ -104,11 +104,20 @@ describe("recordSale", () => {
     ]);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 100.00 + 2 × 6.00 = 112.00, plus 5% GST = 117.60.
-    expect(result.totalCents).toBe(11760);
+    // 100.00 + 2 × 6.00 = 112.00, plus 5% GST (5.60) and 7% PST on the
+    // 12.00 of rentals (0.84) = 118.44.
+    expect(result.totalCents).toBe(11844);
 
     const sale = await db.sale.findUniqueOrThrow({ where: { id: result.saleId }, include: { lines: true } });
-    expect(sale).toMatchObject({ subtotalCents: 11200, taxRateBps: 500, taxCents: 560, status: "PAID" });
+    expect(sale).toMatchObject({
+      subtotalCents: 11200,
+      gstRateBps: 500,
+      gstCents: 560,
+      pstRateBps: 700,
+      pstCents: 84,
+      totalCents: 11844,
+      status: "PAID",
+    });
     expect(sale.lines).toHaveLength(2);
 
     const climber = await getClimber(id);

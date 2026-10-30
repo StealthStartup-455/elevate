@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { addToCart, cartWarnings, priceCart, setQuantity } from "../cart";
-import type { CartItem, PosClimber, Product, RecentCheckIn, RenewalDue } from "../types";
+import type { CartItem, PosClimber, Product, RecentCheckIn, RenewalDue, TaxRates } from "../types";
 import CartPanel from "./CartPanel";
 import CheckoutDialog from "./CheckoutDialog";
 import ClimberPanel from "./ClimberPanel";
@@ -16,13 +16,13 @@ export default function PointOfSale({
   checkedInToday,
   renewalsDue,
   products,
-  taxRateBps,
+  taxRates,
 }: {
   climbers: PosClimber[];
   checkedInToday: RecentCheckIn[];
   renewalsDue: RenewalDue[];
   products: Product[];
-  taxRateBps: number;
+  taxRates: TaxRates;
 }) {
   const [climberId, setClimberId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -30,7 +30,7 @@ export default function PointOfSale({
 
   // From the latest server data, so a sale's new passes show straight away.
   const selected = climbers.find((c) => c.id === climberId) ?? null;
-  const priced = useMemo(() => priceCart(cart, products, taxRateBps), [cart, products, taxRateBps]);
+  const priced = useMemo(() => priceCart(cart, products, taxRates), [cart, products, taxRates]);
   const warnings = selected ? cartWarnings(selected, priced) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
 

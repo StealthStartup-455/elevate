@@ -2,7 +2,7 @@
 // popup and the saved sale all use the same sums, and it can be checked
 // without a database. Money is whole cents throughout.
 import { formatDate } from "@/features/climbers/format";
-import type { CartItem, PosClimber, PricedCart, Product, ProductKind } from "./types";
+import type { CartItem, PosClimber, PricedCart, Product, ProductKind, TaxRates } from "./types";
 
 // Passes get someone in, so one of each per sale is enough. Rentals and chalk
 // can be bought several at a time.
@@ -38,16 +38,18 @@ export function setQuantity(cart: CartItem[], product: Product, quantity: number
   return cart.map((i) => (i.productId === product.id ? { ...i, quantity: q } : i));
 }
 
-/** Tax on the whole subtotal, rounded once to the cent. */
-export function taxOn(subtotalCents: number, taxRateBps: number): number {
-  return Math.round((subtotalCents * taxRateBps) / 10_000);
+/** Tax on an amount, rounded once to the cent. */
+export function taxOn(amountCents: number, rateBps: number): number {
+  return Math.round((amountCents * rateBps) / 10_000);
 }
 
 /**
- * Lines, subtotal, tax and total. Items whose product isn't in `products`
- * are left out (the server refuses them first, see checkCart).
+ * Lines, subtotal, taxes and total. GST is on the whole subtotal; PST only
+ * on the lines that charge it (rentals and chalk in BC). Each tax is rounded
+ * once. Items whose product isn't in `products` are left out (the server
+ * refuses them first, see checkCart).
  */
-export function priceCart(cart: CartItem[], products: Product[], taxRateBps: number): PricedCart {
+export function priceCart(cart: CartItem[], products: Product[], rates: TaxRates): PricedCart {
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines = cart.flatMap((item) => {
     const p = byId.get(item.productId);
@@ -60,12 +62,23 @@ export function priceCart(cart: CartItem[], products: Product[], taxRateBps: num
         unitPriceCents: p.priceCents,
         quantity: item.quantity,
         lineTotalCents: p.priceCents * item.quantity,
+        chargesPst: p.chargesPst,
       },
     ];
   });
   const subtotalCents = lines.reduce((sum, l) => sum + l.lineTotalCents, 0);
-  const taxCents = taxOn(subtotalCents, taxRateBps);
-  return { lines, subtotalCents, taxRateBps, taxCents, totalCents: subtotalCents + taxCents };
+  const pstableCents = lines.reduce((sum, l) => sum + (l.chargesPst ? l.lineTotalCents : 0), 0);
+  const gstCents = taxOn(subtotalCents, rates.gstRateBps);
+  const pstCents = taxOn(pstableCents, rates.pstRateBps);
+  return {
+    lines,
+    subtotalCents,
+    gstRateBps: rates.gstRateBps,
+    gstCents,
+    pstRateBps: rates.pstRateBps,
+    pstCents,
+    totalCents: subtotalCents + gstCents + pstCents,
+  };
 }
 
 /**

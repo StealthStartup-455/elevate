@@ -8,7 +8,7 @@ import { isoDay } from "@/features/climbers/status";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { startOfGymDay } from "./day";
-import type { PosClimber, Product, RecentCheckIn, RenewalDue, SaleSummary } from "./types";
+import type { PosClimber, Product, RecentCheckIn, RenewalDue, SaleSummary, TaxRates } from "./types";
 
 // Reads for the POS tab. Staff only, and limited to the gym like every query
 // (see prisma/DATABASE.md, "Gym isolation").
@@ -31,7 +31,7 @@ export type PosData = {
   climbers: PosClimber[];
   checkedInToday: RecentCheckIn[];
   products: Product[];
-  taxRateBps: number;
+  taxRates: TaxRates;
   sales: SaleSummary[];
   renewalsDue: RenewalDue[];
 };
@@ -67,7 +67,7 @@ export async function getPosData(): Promise<PosData | null> {
     })),
     checkedInToday,
     products,
-    taxRateBps: gym.taxRateBps,
+    taxRates: { gstRateBps: gym.gstRateBps, pstRateBps: gym.pstRateBps },
     sales,
     renewalsDue,
   };
@@ -86,6 +86,7 @@ async function listProducts(gymId: string): Promise<Product[]> {
       punches: true,
       durationMonths: true,
       recurring: true,
+      chargesPst: true,
     },
   });
 }
