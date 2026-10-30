@@ -10,14 +10,16 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
+import { checkInClimber, giveDayPass, signWaiver } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
-import { takeLatestScan, type ScannedClimber } from "../actions";
+import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../actions";
+import { useOtherDeskDialogOpen } from "../desk-dialogs";
+import { deskNextStep } from "../scan-messages";
 
 // How often the desk asks the server for a new scan. Short, so the popup
-// shows up right after the climber taps "Demo scan".
+// shows up right after the climber taps "Simulate scan".
 const POLL_MS = 2500;
 
 const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
@@ -52,17 +54,34 @@ export default function ScanWatcher() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  // When this desk started watching (server time). Scans from before then are
+  // never shown, so opening the desk doesn't pop up an old scan (#91).
+  const [watchingSince, setWatchingSince] = useState<string | null>(null);
+  // Another desk dialog (manual check in) is open: hold scans until it
+  // closes, so two dialogs never stack (#92). They wait in the database.
+  const otherDialogOpen = useOtherDeskDialogOpen();
 
   useEffect(() => {
-    // Don't look for a new scan while one is already showing.
-    if (climber) return;
+    let active = true;
+    startWatchingScans().then((at) => {
+      if (active) setWatchingSince(at);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Don't look for a new scan before the desk knows when it started, while
+    // one is already showing, or while another dialog is open.
+    if (!watchingSince || climber || otherDialogOpen) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
-      const scanned = await takeLatestScan();
+      const scanned = await takeLatestScan(watchingSince);
       if (scanned) setClimber(scanned);
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [climber]);
+  }, [climber, otherDialogOpen, watchingSince]);
 
   function close() {
     setClimber(null);
@@ -83,6 +102,21 @@ export default function ScanWatcher() {
     });
   }
 
+  // STOPGAP like the climber page's waiver step, until #35/#36: staff sign
+  // for the climber right here, so the scan doesn't dead-end (#90).
+  function waiver(c: ScannedClimber) {
+    setError(null);
+    startTransition(async () => {
+      const result = await signWaiver(c.id);
+      if (result.ok) {
+        setClimber({ ...c, waiverStatus: "valid", waiverExpiresOn: undefined });
+        router.refresh();
+      } else {
+        setError(result.message ?? "Couldn't sign the waiver. Try again.");
+      }
+    });
+  }
+
   function dayPass(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
@@ -94,6 +128,7 @@ export default function ScanWatcher() {
 
   if (!climber) return null;
   const issues = problems(climber);
+  const nextStep = deskNextStep(climber);
 
   return (
     <Dialog open onClose={close} fullWidth maxWidth="xs">
@@ -151,6 +186,11 @@ export default function ScanWatcher() {
           </Box>
         </Box>
 
+        {nextStep && !done ? (
+          <Typography variant="body" component="p" sx={{ mt: 3 }}>
+            {nextStep}
+          </Typography>
+        ) : null}
         {done ? (
           <Alert severity="success" sx={{ mt: 2.5 }}>
             {climber.name} is checked in.
@@ -164,6 +204,11 @@ export default function ScanWatcher() {
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Close</Button>
+        {climber.waiverStatus !== "valid" ? (
+          <Button variant="outlined" disabled={pending} onClick={() => waiver(climber)}>
+            Sign waiver
+          </Button>
+        ) : null}
         {canGiveDayPass(climber) ? (
           <Button variant="outlined" disabled={pending} onClick={() => dayPass(climber)}>
             Give free day pass

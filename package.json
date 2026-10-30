@@ -14,6 +14,7 @@
     "test": "vitest run --exclude \"**/*.db.test.ts\"",
     "test:db": "vitest run db.test",
     "test:e2e": "playwright test",
+    "test:release": "playwright test e2e/release.spec.ts",
     "postinstall": "prisma generate",
     "prepare": "node scripts/install-hooks.mjs",
     "db:start": "supabase start",

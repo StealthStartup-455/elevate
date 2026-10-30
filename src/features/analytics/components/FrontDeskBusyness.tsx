@@ -5,7 +5,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { getCheckInClimbers } from "@/features/climbers/queries";
 import { formatWindow } from "../busyness";
-import { BUSYNESS_POLL_INTERVAL_MS, getGymBusynessSettings } from "../config";
+import { DESK_BUSYNESS_REFRESH_MS, getGymBusynessSettings } from "../config";
 import { getFrontDeskBusyness } from "../queries";
 import AutoRefresh from "./AutoRefresh";
 import BusynessHeatMap from "./BusynessHeatMap";
@@ -19,8 +19,9 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
   const busyness = await getFrontDeskBusyness(gymId);
   const { timeZone } = getGymBusynessSettings(gymId);
   // The mock check-ins point at climbers in the database, so names link to
-  // their real page and waivers signed in the app show up here.
-  const climbers = await getCheckInClimbers();
+  // their real page and waivers signed in the app show up here. Only the
+  // climbers in this list are loaded (#85).
+  const climbers = await getCheckInClimbers(busyness.checkIns.map((c) => c.climber.id));
 
   const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => {
     const climber = climbers.get(checkIn.climber.id);
@@ -44,7 +45,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
         alignItems: "start",
       }}
     >
-      <AutoRefresh intervalMs={BUSYNESS_POLL_INTERVAL_MS} />
+      <AutoRefresh intervalMs={DESK_BUSYNESS_REFRESH_MS} />
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent>
           <Stack
@@ -58,9 +59,15 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
             </Typography>
             <BusynessLevelChip level={busyness.level} />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: busyness.sampleCount ? 1 : 5 }}>
             Updated {formatTime(busyness.computedAt, timeZone)}
           </Typography>
+          {busyness.sampleCount > 0 && (
+            // Stopgap until #39: say plainly what is generated (#64).
+            <Typography variant="secondary" sx={{ mb: 5 }} data-testid="sample-check-ins">
+              Demo data: {busyness.sampleCount} of these {busyness.count} check-ins are samples, not real visits.
+            </Typography>
+          )}
           <Typography variant="subtitle2" component="h3" sx={{ mb: 2 }}>
             Typical week
           </Typography>

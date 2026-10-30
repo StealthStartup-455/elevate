@@ -94,6 +94,13 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
         ))}
       </Box>
 
+      {week.sample && (
+        // Stopgap until #39: the week is generated, not this gym's history (#64).
+        <Typography variant="secondary" sx={{ mt: 2 }} data-testid="sample-week">
+          Demo data: a sample week, not this gym&apos;s history.
+        </Typography>
+      )}
+
       {legend && (
       <Box
         sx={{
