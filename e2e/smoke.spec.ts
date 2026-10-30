@@ -30,7 +30,11 @@ test("a climber's session can't open the front desk", async ({ browser }) => {
   const phone = await newPage(browser, true);
   await logIn(phone, "demo-valid-active", /\/me/);
   await phone.goto("/desk");
-  await expect(phone).toHaveURL(/\/login/);
+  // Told the desk is for staff, not sent to log in as if logged out (#87).
+  await expect(phone).toHaveURL(/\/staff-only/);
+  await expect(phone.getByRole("heading", { name: "This page is for gym staff" })).toBeVisible();
+  await phone.getByRole("link", { name: /go to your dashboard/i }).click();
+  await expect(phone).toHaveURL(/\/me/);
 });
 
 test("a member scans in, the desk checks them in once", async ({ browser }) => {

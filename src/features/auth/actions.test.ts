@@ -39,7 +39,7 @@ function form(email: string, password: string): FormData {
 
 const account = (staff: boolean, climberIds: string[]): CurrentUser => ({
   authUserId: "u1",
-  staff: staff ? { id: "s1", name: "Front Desk", role: "DESK" } : null,
+  staff: staff ? { id: "s1", name: "Front Desk", role: "DESK", gymId: "g1" } : null,
   climberIds,
 });
 

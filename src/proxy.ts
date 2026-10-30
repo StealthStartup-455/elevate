@@ -20,6 +20,13 @@ export async function proxy(request: NextRequest) {
       ? MOCK_DESK_COOKIE
       : MOCK_USER_COOKIE;
     if (request.cookies.has(needed)) return NextResponse.next({ request });
+    // A climber's demo session on the desk: say the desk is for staff (#87),
+    // rather than sending a signed-in person to log in.
+    if (needed === MOCK_DESK_COOKIE && request.cookies.has(MOCK_USER_COOKIE)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/staff-only";
+      return NextResponse.redirect(url);
+    }
   }
 
   let response = NextResponse.next({ request });

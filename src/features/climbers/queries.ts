@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { usernameFor } from "@/features/auth/mock-users";
-import { getSessionClimberId } from "@/features/auth/queries";
-import { isStaff, requireStaff } from "@/features/auth/staff";
+import { getCurrentUser, getSessionClimberId } from "@/features/auth/queries";
+import { getDemoClimberId } from "@/features/auth/session";
+import { getStaffContext, isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, summarizeMembership, summarizeWaiver } from "./status";
@@ -115,7 +116,10 @@ export async function getMyMembership(): Promise<Membership> {
 export async function listClimbers(): Promise<Climber[]> {
   await connection();
   await requireStaff();
-  const gym = await getGym();
+  const staff = await getStaffContext();
+  if (!staff) return [];
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return [];
   const now = new Date();
   const rows = await findRows(gym.id);
   return rows
@@ -133,7 +137,21 @@ export async function getClimber(id: string): Promise<Climber | null> {
   await connection();
   // Not a UUID: no such climber, and Postgres would reject the query.
   if (!UUID.test(id)) return null;
-  const gym = await getGym();
+  const staff = await getStaffContext();
+  let gymId = staff?.gymId ?? null;
+  if (!gymId) {
+    const user = await getCurrentUser();
+    if (user?.climberIds.includes(id)) {
+      gymId =
+        (await db.climber.findUnique({ where: { id }, select: { gymId: true } }))?.gymId ?? null;
+    } else if ((await getDemoClimberId()) === id) {
+      gymId =
+        (await db.climber.findUnique({ where: { id }, select: { gymId: true } }))?.gymId ?? null;
+    }
+  }
+  if (!gymId) return null;
+  const gym = await getGymById(gymId);
+  if (!gym) return null;
   const [row] = await findRows(gym.id, [id]);
   return row ? toClimber(row, gym.waiverVersion, new Date()) : null;
 }
@@ -153,7 +171,10 @@ export async function getCheckInClimbers(
   const map = new Map<string, CheckInClimber>();
   const unique = [...new Set(keys)];
   if (unique.length === 0) return map;
-  const gym = await getGym();
+  const staff = await getStaffContext();
+  if (!staff) return map;
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return map;
   const now = new Date();
   const ids = unique.filter((key) => UUID.test(key));
   const externalIds = unique.filter((key) => !UUID.test(key));
@@ -187,7 +208,11 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
   await requireStaff();
   const q = query.trim().slice(0, 100);
   if (q === "") return [];
-  const gym = await getGym();
+  // The signed-in staff member's gym, never another gym's climbers (#34).
+  const staff = await getStaffContext();
+  if (!staff) return [];
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return [];
   const people = await db.climber.findMany({
     where: { gymId: gym.id },
     select: { id: true, firstName: true, lastName: true, phone: true },
@@ -227,7 +252,24 @@ export async function getSavedCheckIns(since: Date): Promise<
   }[]
 > {
   await connection();
-  const gym = await getGym();
+  const staff = await getStaffContext();
+  let gymId = staff?.gymId ?? null;
+  if (!gymId) {
+    const user = await getCurrentUser();
+    const demoClimberId = await getDemoClimberId();
+    gymId =
+      (user?.climberIds[0]
+        ? (await db.climber.findFirst({ where: { id: user.climberIds[0] }, select: { gymId: true } }))
+            ?.gymId ?? null
+        : null) ??
+      (demoClimberId
+        ? (await db.climber.findUnique({ where: { id: demoClimberId }, select: { gymId: true } }))
+            ?.gymId ?? null
+        : null);
+  }
+  if (!gymId) return [];
+  const gym = await getGymById(gymId);
+  if (!gym) return [];
   const now = new Date();
   const rows = await db.checkIn.findMany({
     where: { gymId: gym.id, checkedInAt: { gt: since } },

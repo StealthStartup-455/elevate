@@ -2,7 +2,7 @@ import { APP_VERSION, BUILT_AT, COMMIT_SHA } from "@/lib/version";
 
 // Which build is live (#43). The Deploy staging workflow reads this to confirm
 // the commit it just deployed is the one answering. Public and safe: it holds
-// only what the page footer already shows.
+// only what the desk footer and About on /me already show.
 export function GET() {
   return Response.json(
     {
