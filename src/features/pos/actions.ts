@@ -268,3 +268,49 @@ export async function voidSale(
   refreshPosPages(sale.climberId);
   return { ok: true };
 }
+
+/**
+ * Revokes a climber's membership: every membership pass that hasn't ended
+ * stops now, including a renewal bought early, and stops renewing. The sales
+ * stay as they are; to give money back, void the sale instead. Any desk
+ * staff member can revoke.
+ */
+export async function revokeMembership(climberId: string): Promise<{ ok: boolean; message?: string }> {
+  await requireStaff();
+  // TODO(auth): record which staff member revoked it.
+  const refuse = (code: string, message: string) => {
+    logEvent("membership_revoke_refused", { reason: code });
+    return { ok: false, message };
+  };
+  if (!UUID.test(String(climberId))) return refuse("invalid_id", "Climber not found.");
+
+  const gym = await getGym();
+  const climber = await getClimber(climberId);
+  if (!climber) return refuse("climber_not_found", "Climber not found.");
+
+  const now = new Date();
+  const passes = await db.pass.findMany({
+    where: {
+      gymId: gym.id,
+      climberId: climber.id,
+      kind: "MEMBERSHIP",
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: { id: true, startsAt: true },
+  });
+  // Already revoked, or never had one: nothing to do.
+  if (passes.length === 0) return { ok: true };
+
+  await db.$transaction(
+    passes.map((pass) =>
+      db.pass.update({
+        where: { id: pass.id },
+        data: { expiresAt: voidedExpiry(pass.startsAt, now), renews: false },
+      }),
+    ),
+  );
+
+  logEvent("membership_revoked", { gymId: gym.id, climberId: climber.id, passes: passes.length });
+  refreshPosPages(climber.id);
+  return { ok: true };
+}

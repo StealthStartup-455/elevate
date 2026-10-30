@@ -11,6 +11,7 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 3. **Checkout popup:** lines, subtotal, GST at the gym's `gstRateBps` (5%) on everything, PST at `pstRateBps` (7%) on rentals and chalk only (products with `chargesPst`), total, and Card or Cash. Each tax is rounded once.
 4. **Tender:** `recordSale` re-reads prices from the database, saves the `Sale` and its `SaleLine`s and creates the passes in one transaction. The popup's key makes a double press or a retry return the first sale.
 5. **Void:** any desk staff member, with a reason. The sale stays, marked voided, and its passes end now. The refund itself happens on the card machine or from the till.
+6. **Revoke membership:** on the picked climber's card, when their membership is active or paused. Every membership pass that hasn't ended stops now (a renewal bought early too) and stops renewing. The sales stay paid; to refund, void the sale.
 
 ## Passes a sale gives (`passes.ts`)
 
@@ -26,7 +27,7 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 
 ```
 features/pos/
-├── actions.ts     # recordSale, voidSale (Server Actions)
+├── actions.ts     # recordSale, voidSale, revokeMembership (Server Actions)
 ├── queries.ts     # getPosData, isPosEnabled
 ├── cart.ts        # cart rules and totals, shared by the screen and the server
 ├── passes.ts      # what each product gives the climber

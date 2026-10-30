@@ -19,19 +19,25 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => auth.staff,
+  getStaffContext: async () => (auth.staff ? { id: null, gymId, role: "DESK" } : null),
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
 }));
-vi.mock("@/features/auth/queries", () => ({ getSessionClimberId: async () => null }));
+vi.mock("@/features/auth/queries", () => ({
+  getCurrentUser: async () => null,
+  getSessionClimberId: async () => null,
+}));
 vi.mock("@/features/auth/session", () => ({ setSession: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.
 vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  // Uncached here, so each test sees the gym it just set up.
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
-const { recordSale, voidSale } = await import("./actions");
+const { recordSale, revokeMembership, voidSale } = await import("./actions");
 const { checkInClimber } = await import("@/features/climbers/actions");
 const { getClimber } = await import("@/features/climbers/queries");
 
@@ -238,5 +244,41 @@ describe("voidSale", () => {
     if (!result.ok) throw new Error(result.message);
     expect((await voidSale(result.saleId, "  ")).ok).toBe(false);
     expect((await db.sale.findUniqueOrThrow({ where: { id: result.saleId } })).status).toBe("PAID");
+  });
+});
+
+describe("revokeMembership", () => {
+  it("ends the membership and an early renewal now, and keeps the sales", async () => {
+    const id = await newClimber();
+    const first = await sell(id, [["Monthly recurring", 1]]);
+    const renewal = await sell(id, [["Monthly recurring", 1]]);
+    if (!first.ok || !renewal.ok) throw new Error("sale failed");
+    expect((await getClimber(id))?.membershipStatus).toBe("active");
+
+    expect(await revokeMembership(id)).toEqual({ ok: true });
+    expect((await getClimber(id))?.membershipStatus).not.toBe("active");
+    expect((await checkInClimber(id)).ok).toBe(false);
+    const passes = await db.pass.findMany({ where: { climberId: id, kind: "MEMBERSHIP" } });
+    // The early renewal ends where it starts, so it never counts.
+    expect(passes.every((p) => !p.renews && (p.expiresAt! <= new Date() || p.expiresAt! <= p.startsAt))).toBe(true);
+    const sales = await db.sale.findMany({ where: { id: { in: [first.saleId, renewal.saleId] } } });
+    expect(sales.every((s) => s.status === "PAID")).toBe(true);
+
+    // Twice is fine.
+    expect(await revokeMembership(id)).toEqual({ ok: true });
+  });
+
+  it("leaves day passes and punch cards alone", async () => {
+    const id = await newClimber();
+    const result = await sell(id, [["1 month membership", 1], ["10-punch card", 1]]);
+    if (!result.ok) throw new Error(result.message);
+    await revokeMembership(id);
+    expect((await getClimber(id))?.punchesLeft).toBe(10);
+  });
+
+  it("is staff only", async () => {
+    const id = await newClimber();
+    auth.staff = false;
+    await expect(revokeMembership(id)).rejects.toThrow("redirect /login");
   });
 });

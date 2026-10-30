@@ -1,20 +1,26 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import { formatDate } from "@/features/climbers/format";
 import { bestMatches } from "@/features/climbers/search";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
+import { revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
 
 const MAX_RESULTS = 8;
@@ -94,6 +100,9 @@ export default function ClimberPanel({
             <StatusPill status={membership.status} label={membership.label} />
           </div>
           {detail ? <Typography variant="secondary">{detail}</Typography> : null}
+          {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
+            <RevokeMembership key={selected.id} climber={selected} />
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button variant="outlined" size="small" onClick={onChange}>
               Change climber
@@ -190,5 +199,57 @@ export default function ClimberPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Ends the climber's membership now, after a confirm. No money moves: to
+// refund, staff void the sale under Today's sales.
+function RevokeMembership({ climber }: { climber: PosClimber }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function close() {
+    if (pending) return;
+    setOpen(false);
+    setError(null);
+  }
+
+  function confirm() {
+    setError(null);
+    startTransition(async () => {
+      const result = await revokeMembership(climber.id);
+      if (result.ok) setOpen(false);
+      else setError(result.message ?? "Couldn't revoke the membership. Try again.");
+    });
+  }
+
+  return (
+    <>
+      <div>
+        <Button variant="outlined" size="small" onClick={() => setOpen(true)}>
+          Revoke membership
+        </Button>
+      </div>
+      <Dialog open={open} onClose={close} fullWidth maxWidth="xs" aria-labelledby="revoke-title">
+        <DialogTitle id="revoke-title">Revoke membership</DialogTitle>
+        <DialogContent className="flex flex-col gap-3">
+          <Typography variant="body">Revoke {climber.name}&apos;s membership?</Typography>
+          <Typography variant="secondary">
+            It stops working now, along with any renewal already bought, and won&apos;t come up for renewal. No money
+            is given back: to refund, void the sale under Today&apos;s sales.
+          </Typography>
+          {error ? <Alert severity="error">{error}</Alert> : null}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={pending} onClick={close}>
+            Keep membership
+          </Button>
+          <Button variant="contained" disabled={pending} onClick={confirm}>
+            {pending ? "Revoking…" : "Revoke membership"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
