@@ -19,7 +19,7 @@ export type ScannedClimber = {
   hasDayPass: boolean;
 };
 
-// /me "Demo scan": remembers that the signed-in climber just scanned, so the
+// /me "Simulate scan" (#94): remembers that the signed-in climber just scanned, so the
 // front desk can show them.
 export async function recordScan(): Promise<{ ok: boolean }> {
   const climberId = await getSessionClimberId();
