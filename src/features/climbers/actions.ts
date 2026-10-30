@@ -6,7 +6,7 @@ import { getSessionClimberId } from "@/features/auth/queries";
 import { setSession } from "@/features/auth/session";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGym, getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { getClimber } from "./queries";
 import { toStoredPhone } from "./phone";
@@ -154,7 +154,7 @@ export async function signWaiver(
   });
   if (!climber) return { ok: false, message: "Climber not found." };
 
-  const gym = await db.gym.findUnique({ where: { id: gymId }, select: { waiverVersion: true } });
+  const gym = await getGymById(gymId);
   await db.waiver.create({
     data: {
       gymId,
@@ -196,10 +196,7 @@ export async function giveDayPass(
   // Pressing it twice is fine: today's pass is already there.
   if (climber.hasDayPass) return { ok: true };
 
-  const gym = await db.gym.findUnique({
-    where: { id: staff.gymId },
-    select: { id: true, timeZone: true },
-  });
+  const gym = await getGymById(staff.gymId);
   if (!gym) return refuse("not_found", "Climber not found.");
   const now = new Date();
   await db.pass.create({
