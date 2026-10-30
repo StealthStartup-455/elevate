@@ -8,7 +8,7 @@ import { forgetGym, GYM_CACHE_MS, loadGym } from "./gym";
 beforeEach(() => {
   forgetGym();
   findUnique.mockReset();
-  findUnique.mockResolvedValue({ id: "g1", slug: "boulderhouse-victoria" });
+  findUnique.mockResolvedValue({ id: "g1", slug: "demo-gym" });
 });
 
 describe("loadGym", () => {
