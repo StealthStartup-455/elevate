@@ -81,15 +81,45 @@ test("anyone can buy rentals, with a quantity, and see them in Purchase history"
   await expect(history).toBeHidden();
 });
 
-test("the dashboard's Purchase Membership button is under the QR code and opens the Purchase tab", async ({ page }) => {
+async function openDashboard(page: Page, username: string) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("demo-valid-none");
-  await page.getByLabel("Password").fill("demo-valid-none");
+  await page.getByLabel("Email").fill(username);
+  await page.getByLabel("Password").fill(username);
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).toHaveURL(/\/me/);
   await expect(page.getByText("Scan at desk")).toBeVisible();
-  await page.getByRole("link", { name: "Purchase Membership" }).click();
+}
+
+test("the dashboard's Purchase Membership button is under 'Buy a membership' and opens the Purchase tab", async ({
+  page,
+}) => {
+  await openDashboard(page, "demo-valid-none");
+  const text = page.getByText("Buy a membership to start climbing");
+  const button = page.getByRole("link", { name: "Purchase Membership" });
+  const [t, b] = [await text.boundingBox(), await button.boundingBox()];
+  // Below the text, in the same left column.
+  expect(b!.y).toBeGreaterThan(t!.y + t!.height);
+  expect(Math.abs(b!.x - t!.x)).toBeLessThan(2);
+  // Not under the QR code any more.
+  const scan = (await page.getByText("Scan at desk").boundingBox())!;
+  expect(b!.x + b!.width).toBeLessThan(scan.x);
+  await button.click();
   await expect(page).toHaveURL(/\/me\/purchase/);
+});
+
+test("the QR code, its label and the scan button stay centred for every waiver and membership state", async ({
+  page,
+}) => {
+  for (const user of ["demo-valid-none", "demo-valid-active", "demo-missing-expired", "demo-expired-paused"]) {
+    await page.context().clearCookies();
+    await openDashboard(page, user);
+    const label = (await page.getByText("Scan at desk").boundingBox())!;
+    const code = (await page.getByText(/^ELV-/).boundingBox())!;
+    const scan = (await page.getByRole("button", { name: "Simulate scan" }).boundingBox())!;
+    const middle = (box: { x: number; width: number }) => box.x + box.width / 2;
+    expect(Math.abs(middle(label) - middle(scan)), `${user}: scan button vs label`).toBeLessThan(2);
+    expect(Math.abs(middle(label) - middle(code)), `${user}: member code vs label`).toBeLessThan(2);
+  }
 });
 
 test("a climber with a membership has no Purchase Membership button on the dashboard", async ({ page }) => {

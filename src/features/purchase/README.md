@@ -13,7 +13,7 @@ The climber's **Purchase** tab (`/me/purchase`, elevate-docs#58): see your plan 
 
 Picking anything opens a checkout popup with the subtotal, GST, total and any warning (a paused membership's new one starts when it ends, a day pass already bought today), then **Pay**.
 
-The dashboard (`/me`) shows **Purchase Membership** under the QR code for a climber with no membership; it opens this tab.
+The dashboard (`/me`) shows **Purchase Membership** under the "Buy a membership to start climbing" text for a climber with no membership; it opens this tab. The QR column beside it stays centred whatever the waiver or membership status.
 
 Nothing desk-only shows here: no climber search, Card/Cash, Tender, Void or Check in now.
 

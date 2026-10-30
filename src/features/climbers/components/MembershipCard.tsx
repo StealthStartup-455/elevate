@@ -38,7 +38,7 @@ function waiverExpiryLine(membership: Membership): string | null {
 // Membership status and the code staff scan at check-in, plus what to do next:
 // sign a missing or expired waiver, buy a first membership, or renew one that
 // is paused or expired. A climber with no membership gets "Purchase Membership"
-// under the QR code, which opens the Purchase tab.
+// under "Buy a membership to start climbing", which opens the Purchase tab.
 // Layout follows the customer dashboard mock.
 export default async function MembershipCard() {
   const membership = await getMyMembership();
@@ -69,6 +69,13 @@ export default async function MembershipCard() {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {renewalLine(membership)}
             </Typography>
+            {needsPurchase ? (
+              <Box sx={{ mt: 2 }}>
+                <LinkButton href="/me/purchase" variant="outlined">
+                  Purchase Membership
+                </LinkButton>
+              </Box>
+            ) : null}
             <Typography variant="body2" sx={{ mt: 2, fontWeight: 600, color: waiver.color }}>
               {waiver.label}
             </Typography>
@@ -78,7 +85,11 @@ export default async function MembershipCard() {
               </Typography>
             ) : null}
           </Box>
-          <Box sx={{ textAlign: "center", flexShrink: 0 }}>
+          {/* The code, its label and the scan button stay centred under the QR
+              code, whatever the waiver or membership says on the left. */}
+          <Box
+            sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0 }}
+          >
             <DemoQrCode value={membership.memberCode} />
             <Typography variant="caption" component="p" color="text.secondary">
               Scan at desk
@@ -92,13 +103,6 @@ export default async function MembershipCard() {
                 hasDayPass={membership.hasDayPass}
                 punchesLeft={membership.punchesLeft}
             />
-            {needsPurchase ? (
-              <Box sx={{ mt: 2 }}>
-                <LinkButton href="/me/purchase" variant="outlined">
-                  Purchase Membership
-                </LinkButton>
-              </Box>
-            ) : null}
           </Box>
         </Box>
 
