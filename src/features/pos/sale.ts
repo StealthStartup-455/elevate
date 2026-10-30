@@ -11,7 +11,7 @@ import { sellsInElevate } from "./queries";
 import type { CartItem, Tender } from "./types";
 
 // Saving a sale, shared by the desk (actions.ts, Tender) and the climber's own
-// purchase (features/membership). This file does no sign-in check: each caller
+// purchase (features/purchase). This file does no sign-in check: each caller
 // must check who is asking, and pass a climber id it trusts (the desk's
 // picked climber after requireStaff, or the signed-in climber's own id).
 // Prices, totals and passes are always worked out here from the database.
@@ -32,7 +32,7 @@ export function refreshSalePages(climberId: string) {
   revalidatePath("/desk/pos");
   revalidatePath("/desk");
   revalidatePath("/me");
-  revalidatePath("/me/membership");
+  revalidatePath("/me/purchase");
   revalidatePath(`/desk/climbers/${climberId}`);
 }
 

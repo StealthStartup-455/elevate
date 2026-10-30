@@ -37,7 +37,8 @@ function waiverExpiryLine(membership: Membership): string | null {
 
 // Membership status and the code staff scan at check-in, plus what to do next:
 // sign a missing or expired waiver, buy a first membership, or renew one that
-// is paused or expired.
+// is paused or expired. A climber with no membership gets "Purchase Membership"
+// under the QR code, which opens the Purchase tab.
 // Layout follows the customer dashboard mock.
 export default async function MembershipCard() {
   const membership = await getMyMembership();
@@ -90,22 +91,24 @@ export default async function MembershipCard() {
                 membershipStatus={membership.status}
                 hasDayPass={membership.hasDayPass}
                 punchesLeft={membership.punchesLeft}
-            />            
+            />
+            {needsPurchase ? (
+              <Box sx={{ mt: 2 }}>
+                <LinkButton href="/me/purchase" variant="outlined">
+                  Purchase Membership
+                </LinkButton>
+              </Box>
+            ) : null}
           </Box>
         </Box>
 
-        {needsWaiver || needsRenewal || needsPurchase ? (
+        {needsWaiver || needsRenewal ? (
           <Box sx={{ mt: 5, display: "flex", flexDirection: "column", gap: 3 }}>
             {needsWaiver ? (
               <WaiverStep climberId={membership.climberId} />
             ) : null}
-            {needsPurchase ? (
-              <LinkButton href="/me/membership" size="large">
-                Buy membership
-              </LinkButton>
-            ) : null}
             {needsRenewal ? (
-              <LinkButton href="/me/membership" variant="outlined" size="large">
+              <LinkButton href="/me/purchase" variant="outlined" size="large">
                 Renew membership
               </LinkButton>
             ) : null}

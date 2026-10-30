@@ -4,13 +4,12 @@ import { sellsInElevate } from "@/features/pos/queries";
 import type { Product, Tender } from "@/features/pos/types";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
-import { isSoldOnline } from "./catalog";
 
-// Reads for the climber's Membership tab (/me/membership). Everything is for
+// Reads for the climber's Purchase tab (/me/purchase). Everything is for
 // the signed-in climber only: the id comes from the session, never from the
 // page, and every query is limited to the gym (prisma/DATABASE.md).
 
-/** Whether the Membership tab shows. A gym on Rock Gym Pro or Redpoint sells there instead. */
+/** Whether the Purchase tab shows. A gym on Rock Gym Pro or Redpoint sells there instead. */
 export async function isOnlinePurchaseEnabled(): Promise<boolean> {
   await connection();
   return sellsInElevate(await getGym());
@@ -33,7 +32,7 @@ export type MyPurchase = {
   status: "PAID" | "VOIDED";
 };
 
-export type MembershipPageData = {
+export type PurchasePageData = {
   membership: Membership;
   /** The membership in effect today, with the name it was bought under. */
   current: MyPass | null;
@@ -49,10 +48,10 @@ export type MembershipPageData = {
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
- * Everything the Membership tab shows. Null when this gym doesn't sell in
+ * Everything the Purchase tab shows. Null when this gym doesn't sell in
  * Elevate. A visitor who isn't signed in is sent away by getMyMembership.
  */
-export async function getMembershipPage(): Promise<MembershipPageData | null> {
+export async function getPurchasePage(): Promise<PurchasePageData | null> {
   await connection();
   const membership = await getMyMembership();
   const gym = await getGym();
@@ -81,7 +80,8 @@ export async function getMembershipPage(): Promise<MembershipPageData | null> {
     db.sale.findMany({
       where: { gymId: gym.id, climberId: membership.climberId },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      // The history dialog shows these; the desk shows the same list per climber.
+      take: 50,
       select: {
         id: true,
         createdAt: true,
@@ -109,7 +109,7 @@ export async function getMembershipPage(): Promise<MembershipPageData | null> {
     current: started.length > 0 ? toPass(started.at(-1)!) : null,
     upcoming: queued.length > 0 ? toPass(queued[0]) : null,
     coveredUntil: lastEnd ? day(lastEnd) : undefined,
-    products: products.filter((p) => isSoldOnline(p.kind)),
+    products,
     taxRateBps: gym.taxRateBps,
     purchases: sales.map((s) => ({
       id: s.id,

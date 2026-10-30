@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import Logo from "@/components/ui/Logo";
 import LogoutButton from "@/features/auth/components/LogoutButton";
-import { isOnlinePurchaseEnabled } from "@/features/membership/queries";
+import { isOnlinePurchaseEnabled } from "@/features/purchase/queries";
 
 export default function MeLayout({ children }: LayoutProps<"/me">) {
   return (
@@ -16,7 +16,7 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
             The routes stay, so work on them can continue: add the links back
             in the same PR that fills the page. */}
         <Suspense fallback={null}>
-          <MembershipLink />
+          <PurchaseLink />
         </Suspense>
         <LogoutButton />
       </nav>
@@ -25,7 +25,7 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
   );
 }
 
-// Only gyms that sell passes in Elevate get the Membership tab (see features/membership).
-async function MembershipLink() {
-  return (await isOnlinePurchaseEnabled()) ? <Link href="/me/membership">Membership</Link> : null;
+// Only gyms that sell passes in Elevate get the Purchase tab (see features/purchase).
+async function PurchaseLink() {
+  return (await isOnlinePurchaseEnabled()) ? <Link href="/me/purchase">Purchase</Link> : null;
 }

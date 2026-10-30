@@ -5,7 +5,7 @@ import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import { formatDate } from "@/features/climbers/format";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
 import type { MembershipStatus } from "@/features/climbers/types";
-import type { MembershipPageData } from "../queries";
+import type { PurchasePageData } from "../queries";
 
 const STATUS: Record<MembershipStatus, { status: Status; label: string }> = {
   active: { status: "ok", label: "Active" },
@@ -15,7 +15,7 @@ const STATUS: Record<MembershipStatus, { status: Status; label: string }> = {
 };
 
 // Passes that aren't a membership but still get someone in.
-function otherPasses({ hasDayPass, punchesLeft }: MembershipPageData["membership"]): string[] {
+function otherPasses({ hasDayPass, punchesLeft }: PurchasePageData["membership"]): string[] {
   const lines: string[] = [];
   if (hasDayPass) lines.push("Day pass for today");
   if (punchesLeft > 0) lines.push(`Punch card · ${punchesLeft} ${punchesLeft === 1 ? "visit" : "visits"} left`);
@@ -26,7 +26,7 @@ function otherPasses({ hasDayPass, punchesLeft }: MembershipPageData["membership
 // punch card, and the waiver. A missing waiver never blocks a purchase, but
 // it is the next thing to do before climbing, so it sits here with the way to
 // sign it.
-export default function MyPlan({ data }: { data: MembershipPageData }) {
+export default function MyPlan({ data }: { data: PurchasePageData }) {
   const { membership, current, upcoming } = data;
   const state = STATUS[membership.status];
   const extras = otherPasses(membership);
@@ -53,7 +53,7 @@ export default function MyPlan({ data }: { data: MembershipPageData }) {
         ) : membership.status === "expired" && membership.renewsOn ? (
           <Typography variant="secondary">Ended {formatDate(membership.renewsOn, true)}</Typography>
         ) : (
-          <Typography variant="secondary">You don&apos;t have a membership yet. Pick one below.</Typography>
+          <Typography variant="secondary">You don&apos;t have a membership yet. Open Membership below to pick one.</Typography>
         )}
 
         {upcoming ? (

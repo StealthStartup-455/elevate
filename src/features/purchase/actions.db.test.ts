@@ -40,7 +40,7 @@ vi.mock("@/lib/gym", () => ({
 }));
 
 const { buyOnline } = await import("./actions");
-const { getMembershipPage } = await import("./queries");
+const { getPurchasePage } = await import("./queries");
 const { recordSale } = await import("@/features/pos/actions");
 
 let gymId = "";
@@ -53,6 +53,7 @@ beforeAll(async () => {
     { name: "Day pass", kind: "DAY" as const, priceCents: 2500 },
     { name: "1 month membership", kind: "MEMBERSHIP" as const, priceCents: 10000, durationMonths: 1 },
     { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600 },
+    { name: "Chalk", kind: "RETAIL" as const, priceCents: 500 },
     { name: "Old pass", kind: "DAY" as const, priceCents: 1000, active: false },
   ];
   for (const p of products) {
@@ -91,8 +92,8 @@ async function newClimber(): Promise<string> {
   return id;
 }
 
-const buy = (name: string, key = randomUUID()) =>
-  buyOnline({ productId: productIds[name], idempotencyKey: key });
+const buy = (name: string, key = randomUUID(), quantity?: number) =>
+  buyOnline({ productId: productIds[name], idempotencyKey: key, quantity });
 
 describe("buyOnline", () => {
   it("sells a membership to a climber with no waiver, as an ONLINE sale with GST", async () => {
@@ -122,17 +123,42 @@ describe("buyOnline", () => {
     expect(await db.sale.count({ where: { gymId, climberId: id } })).toBe(1);
   });
 
-  it("shows the new membership on the Membership tab", async () => {
+  it("still sells rentals and chalk to an active member", async () => {
     const id = await newClimber();
     session.climberId = id;
     expect((await buy("1 month membership")).ok).toBe(true);
-    const page = await getMembershipPage();
+    const rental = await buy("Shoe rental", randomUUID(), 2);
+    expect(rental.ok).toBe(true);
+    if (!rental.ok) return;
+    // 2 × 6.00 = 12.00, plus 5% GST, and no pass comes with it.
+    expect(rental.totalCents).toBe(1260);
+    expect((await buy("Chalk")).ok).toBe(true);
+    expect(await db.pass.count({ where: { gymId, climberId: id } })).toBe(1);
+    expect(await db.sale.count({ where: { gymId, climberId: id, tender: "ONLINE" } })).toBe(3);
+  });
+
+  it("keeps rentals to 1 to 20, and a pass to one", async () => {
+    session.climberId = await newClimber();
+    const before = await db.sale.count({ where: { gymId } });
+    expect((await buy("Shoe rental", randomUUID(), 0)).ok).toBe(false);
+    expect((await buy("Shoe rental", randomUUID(), 21)).ok).toBe(false);
+    expect((await buy("Shoe rental", randomUUID(), 1.5)).ok).toBe(false);
+    expect((await buy("Day pass", randomUUID(), 2)).ok).toBe(false);
+    expect(await db.sale.count({ where: { gymId } })).toBe(before);
+    expect((await buy("Shoe rental", randomUUID(), 20)).ok).toBe(true);
+  });
+
+  it("shows the new membership on the Purchase tab", async () => {
+    const id = await newClimber();
+    session.climberId = id;
+    expect((await buy("1 month membership")).ok).toBe(true);
+    const page = await getPurchasePage();
     expect(page?.membership.status).toBe("active");
     expect(page?.current?.name).toBe("1 month membership");
     expect(page?.purchases).toHaveLength(1);
     expect(page?.purchases[0]).toMatchObject({ items: "1 month membership", totalCents: 10500, tender: "ONLINE" });
-    // Only passes and memberships are offered, and only the ones for sale.
-    expect(page?.products.map((p) => p.name).sort()).toEqual(["1 month membership", "Day pass"]);
+    // Everything that is for sale is offered (the inactive product is not).
+    expect(page?.products.map((p) => p.name).sort()).toEqual(["1 month membership", "Chalk", "Day pass", "Shoe rental"]);
   });
 
   it("saves one purchase when the pay button is pressed twice", async () => {
@@ -178,10 +204,9 @@ describe("buyOnline", () => {
     expect(await db.sale.count({ where: { gymId, climberId: second } })).toBe(0);
   });
 
-  it("doesn't sell rentals, inactive products or made-up ids", async () => {
+  it("doesn't sell inactive products or made-up ids", async () => {
     session.climberId = await newClimber();
     const before = await db.sale.count({ where: { gymId } });
-    expect((await buy("Shoe rental")).ok).toBe(false);
     expect((await buy("Old pass")).ok).toBe(false);
     expect((await buyOnline({ productId: randomUUID(), idempotencyKey: randomUUID() })).ok).toBe(false);
     expect((await buyOnline({ productId: "nope", idempotencyKey: randomUUID() })).ok).toBe(false);
