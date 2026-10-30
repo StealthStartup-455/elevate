@@ -21,6 +21,59 @@ export type DemoLogin = {
   note?: string;
 };
 
+// What to try as each kind of user, for whoever is testing. The steps follow
+// the desk POS (/desk/pos) and the climber's Membership tab (/me/membership).
+const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
+  {
+    title: "Front desk",
+    login: "desk",
+    steps: [
+      "Check-in: find a climber and check them in.",
+      "POS tab: pick a climber, add a pass or membership, press Checkout, then Tender (card or cash).",
+      "Under Today's sales, Void a sale to undo it.",
+    ],
+  },
+  {
+    title: "Climber who just joined (no waiver, no membership)",
+    login: "demo-missing-none",
+    steps: [
+      "Open the Membership tab, pick a plan and press Pay. It's a demo: nothing is charged.",
+      "Your plan turns Active. The waiver can still be signed from the dashboard.",
+      "Log in as desk: the purchase is in the POS under Today's sales, as Online.",
+    ],
+  },
+  {
+    title: "Climber with an active membership",
+    login: "demo-valid-active",
+    steps: ["Open the Membership tab: buying is switched off, with a warning saying why."],
+  },
+];
+
+function TestingGuide() {
+  return (
+    <Box sx={{ p: 1, pb: 3 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Testing guide
+      </Typography>
+      {TEST_GUIDE.map((g) => (
+        <Box key={g.login} sx={{ mb: 2 }}>
+          <Typography variant="caption" component="p" sx={{ fontWeight: 700 }}>
+            {g.title}
+          </Typography>
+          <Typography variant="caption" component="p">
+            Log in as <code>{g.login}</code>, password <code>{g.login}</code>
+          </Typography>
+          <Box component="ol" sx={{ m: 0, pl: 5, fontSize: "0.75rem", listStyle: "decimal" }}>
+            {g.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
   return (
     <Box sx={{ p: 1 }}>
@@ -81,7 +134,8 @@ function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
 // Log in fields with "Join the gym" right under them. The label always says
 // Email because this page is built ahead of time, but in demo mode a demo
 // username works there too (see actions.ts). The "i" next to the title lists
-// demo accounts for every waiver and membership state.
+// a testing guide (what to try as the desk and as a climber) and the demo
+// accounts for every waiver and membership state.
 export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     login,
@@ -96,11 +150,19 @@ export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] 
             Log in
           </Typography>
           <Tooltip
-            title={<DemoAccountsHint accounts={demoAccounts} />}
+            title={
+              <>
+                <TestingGuide />
+                <DemoAccountsHint accounts={demoAccounts} />
+              </>
+            }
             placement="bottom-start"
             enterTouchDelay={0}
             leaveTouchDelay={15000}
-            slotProps={{ tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))" } } }}
+            // Long, so it scrolls; the tooltip stays open while the pointer is on it.
+            slotProps={{
+              tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } },
+            }}
           >
             <Box
               component="button"
