@@ -2,7 +2,7 @@
 
 - **Developer:** @ekamgill
 - **AI tool / model:** GitHub Copilot CLI
-- **Issue / PR:** StealthStartup-455/elevate#34 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#34 / #123
 - **Branch:** `feature/34-enforce-roles-and-auth`
 - **What the agent did:**
   - Added active staff-role guards and a staff context that scopes actions and reads to the staff row's gym.
