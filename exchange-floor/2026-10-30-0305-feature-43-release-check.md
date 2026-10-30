@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#43 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#43 / #121
 - **Branch:** `feature/43-release-check` (the second branch for #43; the first, `feature/43-show-app-version`, added the app version)
 - **What the agent did:**
   - `e2e/release.spec.ts`: one test walking the pilot journey in order, one `test.step` per workflow #43 names: sign in (logged out visitors go to log in; the desk logs in), join, waiver status (missing, then signed, still signed after a reload), sign in again (log out, back in with the demo username), purchase (scan, the desk gives a day pass), check in, busyness (desk count and the climber's "~N climbers here" both up by one; the climber is in Recent check-ins).
