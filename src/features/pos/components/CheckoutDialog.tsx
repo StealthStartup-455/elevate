@@ -16,6 +16,7 @@ import { recordSale, type SaleResult } from "../actions";
 import { formatMoney, formatRate } from "../cart";
 import { newKey } from "../key";
 import type { CartItem, PricedCart, Tender } from "../types";
+import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 const TENDER_LABEL: Record<Tender, string> = { CARD: "card", CASH: "cash", ONLINE: "online" };
 
@@ -54,6 +55,8 @@ export default function CheckoutDialog({
   /** After a saved sale: clear the cart and start again. */
   onFinished: () => void;
 }) {
+  // Hold the scan popup while checking out (#92, #127).
+  useDeskDialogOpen(open);
   const [tender, setTender] = useState<Tender>("CARD");
   const [key, setKey] = useState(newKey);
   const [error, setError] = useState<string | null>(null);

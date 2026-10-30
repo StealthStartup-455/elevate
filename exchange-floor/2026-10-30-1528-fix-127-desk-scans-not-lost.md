@@ -1,0 +1,23 @@
+# 2026-10-30 15:28 UTC: Desk scans wait until staff deal with them, on every desk page
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#127 (and the desk and phone parts of #130) / #140
+- **Branch:** `fix/127-desk-scans-not-lost`
+- **What the agent did:**
+  - A scan now waits until staff deal with it: `oldestWaitingScan` reads it without taking it, `finishScan` marks it (and the same climber's repeat taps) dealt with. Actions: `nextDeskScan`, `isDeskScanWaiting`, `finishDeskScan` replace `startWatchingScans` and `takeLatestScan`. `SCAN_TTL_MS` is 5 minutes.
+  - `ScanWatcher` moved from the Check-in page into the desk layout, so it runs on POS and Climbers too. Check in (when it succeeds) or Close finishes the scan; a click outside the popup no longer dismisses it. Every open desk shows the same scan, and a desk closes its popup when another desk dealt with it.
+  - POS checkout, void and revoke dialogs report as desk dialogs (#92), so the scan popup waits for them.
+  - Phone: "Sent to the desk" instead of "Scanned!" / "The front desk can see you now"; an offline scan shows "Couldn't reach the gym" instead of a blank page (#130). Desk scan popup and Manual check in show an inline "Couldn't reach the server" when an action fails offline, and keep the popup (#130).
+  - Tests: `scan-store.db.test.ts` rewritten for the new store; new `e2e/scan-delivery.spec.ts` (POS page, reload, two desks) and `e2e/offline.spec.ts`; smoke tests close every popup they open, and #91's "doesn't pop up later" test now expects the scan to show.
+- **Files touched:** `src/features/check-ins/{scan-store,actions,desk-dialogs}.ts`, `ScanWatcher.tsx`, `ScanButton.tsx`, `src/app/desk/{layout,page}.tsx`, POS `CheckoutDialog`, `TodaysSales`, `ClimberPanel`, `ManualCheckIn.tsx`, `DEPLOYMENT.md`, check-ins README, e2e specs above.
+- **Decisions and why:**
+  - Reverses #91's "ignore scans made before the desk opened": it hid stale popups but lost real arrivals (the test report on 2026-10-30). The 5 minute expiry now keeps old scans away instead.
+  - Close counts as dealing with the scan (it won't show again on any desk). Escape does too; a click outside doesn't, so an arrival isn't dismissed by accident.
+  - `scan_taken` is now logged when staff deal with the scan, with `outcome` (`checked_in` or `closed`), so `waitMs` is tap to handled, not tap to shown.
+  - No schema change: `QrScan.takenAt` now means "dealt with".
+- **Gotchas:**
+  - Any e2e test that scans must check the person in or close the popup, or that scan pops up in the next tests for 5 minutes. The new specs close their pages afterwards.
+  - The scan popup is now on every desk page, so a test on POS or Climbers can see a popup from a scan made earlier.
+- **Open follow-ups:** A small "waiting at the desk" list if one popup at a time proves slow on busy days. The error page's missing code (#130) is not covered here.
+- **Verification:** `npm run lint` clean; unit tests 178 passed (2 todo). `tsc`, the database tests, the build and e2e couldn't run in this session (the Prisma client can't be regenerated here for the new models), so they ran in CI on #140: check (lint, tsc, unit tests, build) and e2e (database tests and the full Playwright suite, including the new specs) passed.
