@@ -26,8 +26,10 @@ export type Climber = {
   membershipStatus: MembershipStatus;
   /** ISO date the membership renews, or ended. Unset when there is none. */
   membershipRenewsOn?: string;
-  /** A no-charge day pass covers today (stopgap, #62). */
+  /** A day pass covers today (sold on the POS, or the #62 stopgap). */
   hasDayPass: boolean;
+  /** Visits left on their punch cards. 0 when they have none. */
+  punchesLeft: number;
 };
 
 // The fields a customer or staff member enters.

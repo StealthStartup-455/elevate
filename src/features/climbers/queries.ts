@@ -6,7 +6,7 @@ import { isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { formatPhone } from "./phone";
-import { hasDayPass, isoDay, summarizeMembership, summarizeWaiver } from "./status";
+import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
 import type { Climber, MembershipStatus, WaiverStatus } from "./types";
 
 // Reads for the climbers feature, from the Climber, Waiver and Pass tables.
@@ -25,8 +25,10 @@ export type Membership = {
   waiverExpiresOn?: string;
   // Printed under the QR code for manual entry at the desk.
   memberCode: string;
-  /** A free day pass from the desk covers today (stopgap, #62). */
+  /** A day pass covers today. */
   hasDayPass: boolean;
+  /** Visits left on their punch cards. */
+  punchesLeft: number;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,12 +46,16 @@ function findRows(gymId: string, id?: string) {
       passes: {
         // Every membership: a renewal bought early has not started yet, and the
         // status comes from the one in effect today (see summarizeMembership).
-        // DAY passes are the #62 stopgap. They end at midnight and pile up
-        // daily, so only unexpired ones are loaded.
+        // DAY passes end at midnight and pile up daily, so only unexpired
+        // ones are loaded. Punch cards only matter while they have visits.
         where: {
-          OR: [{ kind: "MEMBERSHIP" }, { kind: "DAY", expiresAt: { gt: new Date() } }],
+          OR: [
+            { kind: "MEMBERSHIP" },
+            { kind: "DAY", expiresAt: { gt: new Date() } },
+            { kind: "PUNCH", visitsLeft: { gt: 0 } },
+          ],
         },
-        select: { kind: true, startsAt: true, expiresAt: true, pausedAt: true },
+        select: { kind: true, startsAt: true, expiresAt: true, pausedAt: true, visitsLeft: true },
       },
     },
   });
@@ -76,6 +82,7 @@ function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
     membershipStatus: membership.status,
     membershipRenewsOn: membership.renewsOn,
     hasDayPass: hasDayPass(row.passes.filter((p) => p.kind === "DAY"), now),
+    punchesLeft: punchesLeft(row.passes.filter((p) => p.kind === "PUNCH"), now),
   };
 }
 
@@ -106,6 +113,7 @@ export async function getMyMembership(): Promise<Membership> {
     // Printed code until real member numbers exist.
     memberCode: `ELV-${climber.id.slice(0, 6).toUpperCase()}`,
     hasDayPass: climber.hasDayPass,
+    punchesLeft: climber.punchesLeft,
   };
 }
 

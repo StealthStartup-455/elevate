@@ -29,6 +29,7 @@ export type CheckInCandidate = {
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
   hasDayPass: boolean;
+  punchesLeft: number;
 };
 
 const MAX_RESULTS = 8;
@@ -41,7 +42,10 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 };
 
 function membershipDetail(c: CheckInCandidate): string | null {
-  if (c.hasDayPass && c.membershipStatus !== "active") return "Free day pass for today";
+  if (c.hasDayPass && c.membershipStatus !== "active") return "Day pass for today";
+  if (c.punchesLeft > 0 && c.membershipStatus !== "active") {
+    return `${c.punchesLeft} ${c.punchesLeft === 1 ? "punch" : "punches"} left`;
+  }
   if (!c.membershipRenewsOn) return null;
   const date = formatDate(c.membershipRenewsOn, true);
   if (c.membershipStatus === "expired") return `Ended ${date}`;
@@ -52,8 +56,8 @@ function membershipDetail(c: CheckInCandidate): string | null {
 function blocker(c: CheckInCandidate): string | null {
   const problems: string[] = [];
   if (c.waiverStatus !== "valid") problems.push("needs a valid waiver");
-  if (c.membershipStatus !== "active" && !c.hasDayPass) {
-    problems.push("has no active membership or day pass");
+  if (c.membershipStatus !== "active" && !c.hasDayPass && c.punchesLeft === 0) {
+    problems.push("has no active membership, day pass or punch card");
   }
   return problems.length ? `${c.name} ${problems.join(" and ")}.` : null;
 }
@@ -61,7 +65,12 @@ function blocker(c: CheckInCandidate): string | null {
 // STOPGAP(#62): a climber who can be let in with a free day pass: valid
 // waiver, no active membership, no pass yet today. Replace with #44 to #46.
 function canGiveDayPass(c: CheckInCandidate): boolean {
-  return c.waiverStatus === "valid" && c.membershipStatus !== "active" && !c.hasDayPass;
+  return (
+    c.waiverStatus === "valid" &&
+    c.membershipStatus !== "active" &&
+    !c.hasDayPass &&
+    c.punchesLeft === 0
+  );
 }
 
 // Front desk "Manual check in": find a climber with fuzzy search, see their

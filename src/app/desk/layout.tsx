@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import Logo from "@/components/ui/Logo";
 import LogoutButton from "@/features/auth/components/LogoutButton";
 import { requireStaff } from "@/features/auth/staff";
+import { isPosEnabled } from "@/features/pos/queries";
 
 export default function DeskLayout({ children }: LayoutProps<"/desk">) {
   return (
@@ -15,6 +16,9 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
               <Logo />
             </Link>
             <Link href="/desk">Check-in</Link>
+            <Suspense fallback={null}>
+              <PosLink />
+            </Suspense>
             <Link href="/desk/climbers">Climbers</Link>
             <Link href="/desk/events">Events</Link>
             <Link href="/desk/waivers">Waivers</Link>
@@ -35,4 +39,9 @@ async function StaffOnly({ children }: { children: ReactNode }) {
   await connection();
   await requireStaff();
   return children;
+}
+
+// Only gyms that sell passes in Elevate get the POS (see features/pos).
+async function PosLink() {
+  return (await isPosEnabled()) ? <Link href="/desk/pos">POS</Link> : null;
 }
