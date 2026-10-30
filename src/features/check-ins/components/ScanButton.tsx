@@ -11,6 +11,7 @@ import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { recordScan } from "../actions";
+import { climberScanMessages } from "../scan-messages";
 
 // Demo only: stands in for the desk's scanner reading this climber's QR code,
 // and says so (#94). In a gym a USB scanner or a tablet camera at the desk
@@ -23,22 +24,9 @@ type Props = {
   hasDayPass: boolean;
 };
 
-// What the climber still needs to sort out, or an empty list if nothing.
-function problems({ waiverStatus, membershipStatus, hasDayPass }: Props): string[] {
-  const list: string[] = [];
-  if (waiverStatus === "missing") list.push("You haven't signed a waiver yet.");
-  if (waiverStatus === "expired") list.push("Your waiver has expired.");
-  // A day pass from the desk (#62 stopgap) lets them in today anyway.
-  if (hasDayPass) return list;
-  if (membershipStatus === "none") list.push("You don't have a membership yet.");
-  if (membershipStatus === "expired") list.push("Your membership has expired.");
-  if (membershipStatus === "paused") list.push("Your membership is paused.");
-  return list;
-}
-
 export default function ScanButton(props: Props) {
   const [step, setStep] = useState<"idle" | "processing" | "done" | "error">("idle");
-  const issues = problems(props);
+  const issues = climberScanMessages(props);
 
   // After the spinner has shown for 3 seconds, tell the server about the
   // scan, then show the result dialog.
@@ -84,14 +72,15 @@ export default function ScanButton(props: Props) {
       </Dialog>
 
       <Dialog open={step === "done"} onClose={() => setStep("idle")}>
-        <DialogTitle>{issues.length ? "Scanned, but…" : "Scanned!"}</DialogTitle>
+        <DialogTitle>{issues.length ? "Your scan reached the desk" : "Scanned!"}</DialogTitle>
         <DialogContent>
           {issues.length ? (
-            <Alert severity="warning">
+            // Info, not a warning: nothing here is the climber's fault (#90).
+            <Alert severity="info">
               {issues.map((text) => (
                 <div key={text}>{text}</div>
               ))}
-              <div>Please see the front desk before climbing.</div>
+              <div>Please stop by the desk before you climb.</div>
             </Alert>
           ) : (
             <Typography>The front desk can see you now. Have a good climb!</Typography>
