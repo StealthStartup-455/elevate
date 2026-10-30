@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "./queries";
-import { isStaff, requireStaff } from "./staff";
+import { getStaffContext, hasStaffRole, isStaff, requireStaff, requireStaffRole } from "./staff";
 
 // Who is signed in is faked here, so these run in CI without Supabase.
 // redirect() throws in Next.js too, so nothing after it runs.
@@ -10,6 +10,7 @@ const signedIn = vi.hoisted(() => ({
 }));
 vi.mock("./queries", () => ({ getCurrentUser: async () => signedIn.user }));
 vi.mock("./session", () => ({ hasDemoDeskSession: async () => signedIn.demoDesk }));
+vi.mock("@/lib/gym", () => ({ getGym: async () => ({ id: "demo-gym" }) }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`redirect ${url}`);
@@ -19,7 +20,7 @@ vi.mock("next/navigation", () => ({
 const CLIMBER: CurrentUser = { authUserId: "u1", staff: null, climberIds: ["c1"] };
 const STAFF: CurrentUser = {
   authUserId: "u2",
-  staff: { id: "s1", name: "Front Desk", role: "DESK" },
+  staff: { id: "s1", name: "Front Desk", role: "DESK", gymId: "g1" },
   climberIds: [],
 };
 
@@ -37,6 +38,7 @@ describe("requireStaff", () => {
   it("lets the demo desk login through", async () => {
     signedIn.demoDesk = true;
     await expect(requireStaff()).resolves.toBeUndefined();
+    await expect(getStaffContext()).resolves.toMatchObject({ gymId: "demo-gym", role: "DESK" });
   });
 
   it("sends a signed-in climber to log in", async () => {
@@ -58,5 +60,12 @@ describe("isStaff", () => {
   it("is false for a climber", async () => {
     signedIn.user = CLIMBER;
     expect(await isStaff()).toBe(false);
+  });
+
+  it("enforces the staff role gate", async () => {
+    signedIn.user = STAFF;
+    expect(await hasStaffRole("DESK")).toBe(true);
+    expect(await hasStaffRole("MANAGER")).toBe(false);
+    await expect(requireStaffRole("MANAGER")).rejects.toThrow("redirect /login");
   });
 });
