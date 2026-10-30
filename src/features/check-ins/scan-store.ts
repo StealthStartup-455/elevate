@@ -18,13 +18,19 @@ export async function saveScan(gymId: string, climberId: string): Promise<void> 
 // is shown once even if two desks poll at the same moment: the update only
 // succeeds while takenAt is still empty. Returns the climber's id and when
 // they scanned, or undefined when nothing is waiting.
+//
+// `notBefore` is when the desk started watching (#91): a scan made before the
+// desk page opened isn't shown, so opening the desk never pops up someone who
+// scanned while nobody was looking.
 export type TakenScan = { climberId: string; scannedAt: Date };
 
 export async function takeScan(
   gymId: string,
   now: Date = new Date(),
+  notBefore?: Date,
 ): Promise<TakenScan | undefined> {
-  const since = new Date(now.getTime() - SCAN_TTL_MS);
+  const oldest = now.getTime() - SCAN_TTL_MS;
+  const since = new Date(notBefore ? Math.max(oldest, notBefore.getTime()) : oldest);
   for (let attempt = 0; attempt < 3; attempt++) {
     const next = await db.qrScan.findFirst({
       where: { gymId, takenAt: null, scannedAt: { gt: since } },
