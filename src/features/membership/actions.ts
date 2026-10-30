@@ -1,11 +1,12 @@
 "use server";
 
 import { getSessionClimberId } from "@/features/auth/queries";
+import { getClimber } from "@/features/climbers/queries";
 import { saveSale, type SaleResult } from "@/features/pos/sale";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
-import { isSoldOnline } from "./catalog";
+import { ACTIVE_MEMBERSHIP_NOTICE, canBuyOnline, isSoldOnline } from "./catalog";
 
 // Server actions are public POST endpoints. This one takes the climber from
 // the session, never from the request, so nobody can buy for another climber.
@@ -39,6 +40,14 @@ export async function buyOnline(input: BuyInput): Promise<SaleResult> {
     !UUID.test(String(input.idempotencyKey))
   ) {
     return refuse("invalid_input", "Something went wrong. Start again.");
+  }
+
+  // The buttons are disabled for an active member; this keeps a hand-made
+  // request out too.
+  const climber = await getClimber(climberId);
+  if (!climber) return refuse("climber_not_found", "Climber not found.");
+  if (!canBuyOnline(climber.membershipStatus)) {
+    return refuse("active_membership", ACTIVE_MEMBERSHIP_NOTICE);
   }
 
   // Rentals and chalk are desk items. saveSale would sell them, so check here.

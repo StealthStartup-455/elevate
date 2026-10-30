@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSoldOnline, purchaseWarnings } from "./catalog";
+import { ACTIVE_MEMBERSHIP_NOTICE, canBuyOnline, isSoldOnline, purchaseWarnings } from "./catalog";
 
 describe("isSoldOnline", () => {
   it("offers passes and memberships, not rentals or chalk", () => {
@@ -11,6 +11,19 @@ describe("isSoldOnline", () => {
   });
 });
 
+describe("canBuyOnline", () => {
+  it("is off only for an active membership", () => {
+    expect(canBuyOnline("active")).toBe(false);
+    expect(canBuyOnline("none")).toBe(true);
+    expect(canBuyOnline("expired")).toBe(true);
+    expect(canBuyOnline("paused")).toBe(true);
+  });
+
+  it("says why in the words shown under the heading", () => {
+    expect(ACTIVE_MEMBERSHIP_NOTICE).toBe("You already have an active membership, so you don't need a day pass.");
+  });
+});
+
 describe("purchaseWarnings", () => {
   const none = { membershipStatus: "none", hasDayPass: false } as const;
 
@@ -19,9 +32,9 @@ describe("purchaseWarnings", () => {
     expect(purchaseWarnings("PUNCH", none)).toEqual([]);
   });
 
-  it("says a new membership starts when the current one ends", () => {
+  it("says a new membership starts when a paused one ends", () => {
     const warnings = purchaseWarnings("MEMBERSHIP", {
-      membershipStatus: "active",
+      membershipStatus: "paused",
       coveredUntil: "2026-11-30",
       hasDayPass: false,
     });
@@ -35,10 +48,7 @@ describe("purchaseWarnings", () => {
     ).toEqual([]);
   });
 
-  it("warns a member off a day pass, and a day pass holder off a second", () => {
-    expect(purchaseWarnings("DAY", { membershipStatus: "active", hasDayPass: false })[0]).toContain(
-      "active membership",
-    );
+  it("warns a day pass holder off a second", () => {
     expect(purchaseWarnings("DAY", { membershipStatus: "none", hasDayPass: true })[0]).toContain(
       "day pass for today",
     );

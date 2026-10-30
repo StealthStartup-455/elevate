@@ -7,7 +7,7 @@ The climber's **Membership** tab (`/me/membership`, elevate-docs#58): see your p
 ## What a climber sees
 
 - **Your plan:** the membership in effect (name, end date), one bought early, any day pass or punch card, and the waiver. A missing or expired waiver shows a **Sign waiver** step, but never blocks a purchase.
-- **Buy a pass or membership:** the same products and prices as the desk, one at a time. Rentals and chalk are left out: they are handed over at the desk. Picking one opens a checkout popup with the subtotal, GST, total and any warning (renewing early, a day pass they don't need), then **Pay**.
+- **Buy a pass or membership:** the same products and prices as the desk, one at a time. Rentals and chalk are left out: they are handed over at the desk. Picking one opens a checkout popup with the subtotal, GST, total and any warning (renewing early, a day pass they don't need), then **Pay**. Someone with an **active membership** has nothing to buy: the tiles are disabled, and the warning "You already have an active membership, so you don't need a day pass." shows under the heading. `buyOnline` refuses them too, so a hand-made request can't get round the disabled buttons. Expired, paused and no-membership climbers can buy (a paused one is warned their new membership starts when the paused one ends).
 - **Your purchases:** the last 10, newest first. A voided one shows **Refunded**.
 
 Nothing desk-only shows here: no climber search, Card/Cash, Tender, Void or Check in now.

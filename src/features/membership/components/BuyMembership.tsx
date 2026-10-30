@@ -11,12 +11,13 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { useState, useTransition } from "react";
+import DisabledReason from "@/components/ui/DisabledReason";
 import { formatMoney, formatRate, priceCart } from "@/features/pos/cart";
 import { newKey } from "@/features/pos/key";
 import type { SaleResult } from "@/features/pos/sale";
 import type { Product, ProductKind } from "@/features/pos/types";
 import { buyOnline } from "../actions";
-import { purchaseWarnings, type PurchaseContext } from "../catalog";
+import { ACTIVE_MEMBERSHIP_NOTICE, canBuyOnline, purchaseWarnings, type PurchaseContext } from "../catalog";
 
 // Tile groups, in the order a climber looks for them.
 const GROUPS: { kinds: ProductKind[]; title: string }[] = [
@@ -66,7 +67,9 @@ export default function BuyMembership({
   }
 
   function close() {
-    if (pending) return;
+    // Not while paying. After a saved purchase it's fine, even though the page
+    // behind is still refreshing (which keeps `pending` on a moment longer).
+    if (pending && !done) return;
     setOpen(false);
     // After the closing animation, so nothing flashes. Cancel keeps the key:
     // if a payment did reach the server, trying again returns that purchase.
@@ -97,11 +100,14 @@ export default function BuyMembership({
 
   const cart = picked ? priceCart([{ productId: picked.id, quantity: 1 }], products, taxRateBps) : null;
   const warnings = picked ? purchaseWarnings(picked.kind, context) : [];
+  // An active member has nothing to buy: the tiles stay, but can't be pressed.
+  const blocked = !canBuyOnline(context.membershipStatus);
 
   return (
     <Card>
       <CardContent className="flex flex-col gap-3">
         <Typography variant="cardTitle">Buy a pass or membership</Typography>
+        {blocked ? <Alert severity="warning">{ACTIVE_MEMBERSHIP_NOTICE}</Alert> : null}
         {products.length === 0 ? (
           <Typography variant="secondary">Nothing is for sale yet. Ask at the front desk.</Typography>
         ) : null}
@@ -114,30 +120,42 @@ export default function BuyMembership({
                 {group.title}
               </Typography>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {items.map((p) => (
-                  <Button
-                    key={p.id}
-                    variant="outlined"
-                    onClick={() => choose(p)}
-                    // A tile, not a one-line button: as tall as its name and price need.
-                    sx={{
-                      height: "auto",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 0.5,
-                      py: 2,
-                      textAlign: "left",
-                      whiteSpace: "normal",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    <span>{p.name}</span>
-                    <Typography variant="secondary" component="span">
-                      {formatMoney(p.priceCents)}
-                      {p.recurring ? " a month" : ""}
-                    </Typography>
-                  </Button>
-                ))}
+                {items.map((p) => {
+                  const tile = (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      disabled={blocked}
+                      onClick={() => choose(p)}
+                      // A tile, not a one-line button: as tall as its name and price need.
+                      sx={{
+                        height: "auto",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 0.5,
+                        py: 2,
+                        textAlign: "left",
+                        whiteSpace: "normal",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      <span>{p.name}</span>
+                      <Typography variant="secondary" component="span">
+                        {formatMoney(p.priceCents)}
+                        {p.recurring ? " a month" : ""}
+                      </Typography>
+                    </Button>
+                  );
+                  return blocked ? (
+                    <DisabledReason key={p.id} reason="You already have an active membership" fullWidth>
+                      {tile}
+                    </DisabledReason>
+                  ) : (
+                    <div key={p.id} className="flex">
+                      {tile}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           );

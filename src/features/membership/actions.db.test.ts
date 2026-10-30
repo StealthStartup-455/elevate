@@ -110,6 +110,18 @@ describe("buyOnline", () => {
     expect(await db.pass.count({ where: { gymId, climberId: id, kind: "MEMBERSHIP" } })).toBe(1);
   });
 
+  it("refuses an active member, whatever the buttons say", async () => {
+    const id = await newClimber();
+    session.climberId = id;
+    expect((await buy("1 month membership")).ok).toBe(true);
+    const again = await buy("Day pass");
+    expect(again).toEqual({
+      ok: false,
+      message: "You already have an active membership, so you don't need a day pass.",
+    });
+    expect(await db.sale.count({ where: { gymId, climberId: id } })).toBe(1);
+  });
+
   it("shows the new membership on the Membership tab", async () => {
     const id = await newClimber();
     session.climberId = id;

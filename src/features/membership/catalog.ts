@@ -12,6 +12,15 @@ export function isSoldOnline(kind: ProductKind): boolean {
   return SOLD_ONLINE.has(kind);
 }
 
+/** Shown under the buy heading, and the server's refusal, for an active member. */
+export const ACTIVE_MEMBERSHIP_NOTICE =
+  "You already have an active membership, so you don't need a day pass.";
+
+/** Someone with an active membership has nothing to buy in the app. */
+export function canBuyOnline(membershipStatus: MembershipStatus): boolean {
+  return membershipStatus !== "active";
+}
+
 export type PurchaseContext = {
   membershipStatus: MembershipStatus;
   /** ISO date the last membership they have (or have queued) ends. */
@@ -20,8 +29,9 @@ export type PurchaseContext = {
 };
 
 /**
- * Things worth knowing before paying. None of them stop the purchase: someone
- * can renew early, or buy a day pass they turn out not to need.
+ * Things worth knowing before paying. None of them stop the purchase. An
+ * active member can't get this far (see canBuyOnline), so these are for
+ * everyone else: a paused membership, or a day pass already bought today.
  */
 export function purchaseWarnings(kind: ProductKind, ctx: PurchaseContext): string[] {
   const warnings: string[] = [];
@@ -31,9 +41,7 @@ export function purchaseWarnings(kind: ProductKind, ctx: PurchaseContext): strin
       `Your membership runs until ${formatDate(ctx.coveredUntil, true)}. The new one starts then, so you don't lose any days.`,
     );
   }
-  if (kind === "DAY" && ctx.membershipStatus === "active") {
-    warnings.push("You already have an active membership, so you don't need a day pass.");
-  } else if (kind === "DAY" && ctx.hasDayPass) {
+  if (kind === "DAY" && ctx.hasDayPass) {
     warnings.push("You already have a day pass for today.");
   }
   return warnings;
