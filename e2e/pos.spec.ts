@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // The desk POS (elevate-docs#56): find a climber, fill the cart, check out
-// with GST, tender, then void. Needs the demo login (DEMO_MODE) and seeded
+// with GST and PST, tender, then void. Needs the demo login (DEMO_MODE) and seeded
 // products (`npm run db:seed`).
 
 async function openPos(page: Page) {
@@ -31,15 +31,18 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
 
   await page.getByRole("button", { name: "Checkout" }).click();
   const checkout = page.getByRole("dialog", { name: "Checkout" });
+  // GST 5% on 37.00 is 1.85; PST 7% on the 12.00 of rentals is 0.84.
   await expect(checkout).toContainText("GST (5%)");
   await expect(checkout).toContainText("$1.85");
-  await expect(checkout).toContainText("$38.85");
+  await expect(checkout).toContainText("PST (7%)");
+  await expect(checkout).toContainText("$0.84");
+  await expect(checkout).toContainText("$39.69");
   await checkout.getByRole("button", { name: "Cash" }).click();
-  await expect(checkout).toContainText("Take $38.85 in cash");
+  await expect(checkout).toContainText("Take $39.69 in cash");
   await checkout.getByRole("button", { name: "Tender" }).click();
 
   const done = page.getByRole("dialog", { name: "Sale saved" });
-  await expect(done).toContainText("$38.85 paid by cash for Nevin Gill");
+  await expect(done).toContainText("$39.69 paid by cash for Nevin Gill");
   await expect(done).toContainText("Day pass: today");
   await done.getByRole("button", { name: "Check in now" }).click();
   // A rerun on the same database finds them already checked in.
@@ -48,7 +51,7 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
 
   const sales = page.getByRole("table", { name: "Today's sales" });
   const row = sales.getByRole("row").filter({ hasText: "Nevin Gill" }).first();
-  await expect(row).toContainText("$38.85");
+  await expect(row).toContainText("$39.69");
   await row.getByRole("button", { name: /^Void/ }).click();
   const voiding = page.getByRole("dialog", { name: "Void sale" });
   await voiding.getByLabel("Reason").fill("Test sale");

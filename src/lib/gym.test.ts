@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findUnique = vi.hoisted(() => vi.fn());
 vi.mock("./db", () => ({ db: { gym: { findUnique } } }));
 
-import { forgetGym, GYM_CACHE_MS, loadGym } from "./gym";
+import { forgetGym, GYM_CACHE_MS, loadGym, loadGymById } from "./gym";
 
 beforeEach(() => {
   forgetGym();
@@ -28,5 +28,20 @@ describe("loadGym", () => {
     findUnique.mockResolvedValueOnce(null);
     await expect(loadGym(1_000)).rejects.toThrow("not found");
     expect(await loadGym(1_000)).toMatchObject({ id: "g1" });
+  });
+});
+
+describe("loadGymById", () => {
+  it("reuses the gym for a minute, and shares it with the demo gym lookup", async () => {
+    await loadGym(1_000);
+    expect(await loadGymById("g1", 1_000 + GYM_CACHE_MS - 1)).toMatchObject({ slug: "demo-gym" });
+    expect(findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null for a gym that doesn't exist, without caching it", async () => {
+    findUnique.mockResolvedValueOnce(null);
+    expect(await loadGymById("nope", 1_000)).toBeNull();
+    await loadGymById("nope", 1_000);
+    expect(findUnique).toHaveBeenCalledTimes(2);
   });
 });

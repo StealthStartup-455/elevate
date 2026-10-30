@@ -62,10 +62,11 @@ test("anyone can buy rentals, with a quantity, and see them in Purchase history"
   await page.getByRole("button", { name: /^Shoe rental/ }).click();
   const checkout = page.getByRole("dialog", { name: "Checkout" });
   await checkout.getByRole("button", { name: "One more Shoe rental" }).click();
-  // 2 × 6.00 = 12.00, plus 5% GST.
-  await expect(checkout).toContainText("$12.60");
+  // 2 × 6.00 = 12.00, plus 5% GST and 7% PST on rentals.
+  await expect(checkout).toContainText("PST (7%)");
+  await expect(checkout).toContainText("$13.44");
   await expect(checkout).toContainText("pick it up at the front desk");
-  await checkout.getByRole("button", { name: /^Pay \$12.60/ }).click();
+  await checkout.getByRole("button", { name: /^Pay \$13.44/ }).click();
   const done = page.getByRole("dialog", { name: "You're all set" });
   await expect(done).toContainText("Shoe rental ×2");
   await done.getByRole("button", { name: "Done" }).click();
@@ -76,7 +77,7 @@ test("anyone can buy rentals, with a quantity, and see them in Purchase history"
   const latest = history.getByRole("list", { name: "Your purchases" }).getByRole("listitem").first();
   await expect(latest).toContainText("Shoe rental ×2");
   await expect(latest).toContainText("Online");
-  await expect(latest).toContainText("$12.60");
+  await expect(latest).toContainText("$13.44");
   await history.getByRole("button", { name: "Done" }).click();
   await expect(history).toBeHidden();
 });

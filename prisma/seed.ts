@@ -70,7 +70,9 @@ const CLIMBERS: SeedClimber[] = [
 ];
 
 // What the desk sells on the POS tab. Rough mock prices in cents, before
-// GST, roughly what climbing gyms around Victoria charge. Not real prices.
+// tax, roughly what climbing gyms around Victoria charge. Not real prices.
+// Rentals and chalk pay BC PST as well as GST; passes and memberships are
+// GST only.
 const PRODUCTS: Omit<Prisma.ProductCreateManyInput, "gymId">[] = [
   { name: "Day pass", kind: "DAY", priceCents: 2500 },
   { name: "10-punch card", kind: "PUNCH", priceCents: 20000, punches: 10 },
@@ -79,9 +81,9 @@ const PRODUCTS: Omit<Prisma.ProductCreateManyInput, "gymId">[] = [
   { name: "Monthly recurring membership", kind: "MEMBERSHIP", priceCents: 8500, durationMonths: 1, recurring: true },
   { name: "Annual membership", kind: "MEMBERSHIP", priceCents: 90000, durationMonths: 12 },
   { name: "Student membership (1 month)", kind: "MEMBERSHIP", priceCents: 7500, durationMonths: 1 },
-  { name: "Shoe rental", kind: "RENTAL", priceCents: 600 },
-  { name: "Harness rental", kind: "RENTAL", priceCents: 500 },
-  { name: "Chalk", kind: "RETAIL", priceCents: 800 },
+  { name: "Shoe rental", kind: "RENTAL", priceCents: 600, chargesPst: true },
+  { name: "Harness rental", kind: "RENTAL", priceCents: 500, chargesPst: true },
+  { name: "Chalk", kind: "RETAIL", priceCents: 800, chargesPst: true },
 ];
 
 type BusynessMockClimber = {

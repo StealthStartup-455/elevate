@@ -19,8 +19,9 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
   const busyness = await getFrontDeskBusyness(gymId);
   const { timeZone } = getGymBusynessSettings(gymId);
   // The mock check-ins point at climbers in the database, so names link to
-  // their real page and waivers signed in the app show up here.
-  const climbers = await getCheckInClimbers();
+  // their real page and waivers signed in the app show up here. Only the
+  // climbers in this list are loaded (#85).
+  const climbers = await getCheckInClimbers(busyness.checkIns.map((c) => c.climber.id));
 
   const rows: CheckInRow[] = busyness.checkIns.map((checkIn) => {
     const climber = climbers.get(checkIn.climber.id);

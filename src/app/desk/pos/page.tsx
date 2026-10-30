@@ -25,11 +25,10 @@ async function Pos() {
   return (
     <>
       <PointOfSale
-        climbers={data.climbers}
         checkedInToday={data.checkedInToday}
         renewalsDue={data.renewalsDue}
         products={data.products}
-        taxRateBps={data.taxRateBps}
+        taxRates={data.taxRates}
       />
       <TodaysSales sales={data.sales} />
     </>

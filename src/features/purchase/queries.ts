@@ -1,18 +1,42 @@
 import { connection } from "next/server";
+import type { Gym } from "@/generated/prisma/client";
+import { getSessionClimberId } from "@/features/auth/queries";
+import { isDemoMode } from "@/features/auth/demo-mode";
 import { getMyMembership, type Membership } from "@/features/climbers/queries";
 import { sellsInElevate } from "@/features/pos/queries";
-import type { Product, Tender } from "@/features/pos/types";
+import type { Product, TaxRates, Tender } from "@/features/pos/types";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 
 // Reads for the climber's Purchase tab (/me/purchase). Everything is for
 // the signed-in climber only: the id comes from the session, never from the
 // page, and every query is limited to the gym (prisma/DATABASE.md).
 
-/** Whether the Purchase tab shows. A gym on Rock Gym Pro or Redpoint sells there instead. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The signed-in climber's own gym: the gym their record belongs to, the same
+ * lookup getClimber uses (#34), read through the cached getGymById. Null when
+ * nobody is signed in.
+ */
+export async function getMyGym(): Promise<Gym | null> {
+  const id = await getSessionClimberId();
+  if (!id || !UUID.test(id)) return null;
+  const row = await db.climber.findUnique({ where: { id }, select: { gymId: true } });
+  return row ? getGymById(row.gymId) : null;
+}
+
+/**
+ * Whether climbers can buy in the app. The checkout is a mock (it charges
+ * nothing and still gives the pass), so it is only on in demo mode, which a
+ * production deployment never has (#45, #31). A gym on Rock Gym Pro or Redpoint
+ * sells there instead.
+ */
 export async function isOnlinePurchaseEnabled(): Promise<boolean> {
   await connection();
-  return sellsInElevate(await getGym());
+  if (!isDemoMode()) return false;
+  const gym = await getMyGym();
+  return gym !== null && sellsInElevate(gym);
 }
 
 export type MyPass = {
@@ -41,7 +65,7 @@ export type PurchasePageData = {
   /** The last day they're covered, counting one bought early. */
   coveredUntil?: string;
   products: Product[];
-  taxRateBps: number;
+  rates: TaxRates;
   purchases: MyPurchase[];
 };
 
@@ -54,8 +78,9 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 export async function getPurchasePage(): Promise<PurchasePageData | null> {
   await connection();
   const membership = await getMyMembership();
-  const gym = await getGym();
-  if (!sellsInElevate(gym)) return null;
+  if (!isDemoMode()) return null;
+  const gym = await getMyGym();
+  if (!gym || !sellsInElevate(gym)) return null;
 
   const now = new Date();
   const [products, passes, sales] = await Promise.all([
@@ -70,6 +95,7 @@ export async function getPurchasePage(): Promise<PurchasePageData | null> {
         punches: true,
         durationMonths: true,
         recurring: true,
+        chargesPst: true,
       },
     }),
     db.pass.findMany({
@@ -110,7 +136,7 @@ export async function getPurchasePage(): Promise<PurchasePageData | null> {
     upcoming: queued.length > 0 ? toPass(queued[0]) : null,
     coveredUntil: lastEnd ? day(lastEnd) : undefined,
     products,
-    taxRateBps: gym.taxRateBps,
+    rates: { gstRateBps: gym.gstRateBps, pstRateBps: gym.pstRateBps },
     purchases: sales.map((s) => ({
       id: s.id,
       date: date.format(s.createdAt),

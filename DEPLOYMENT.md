@@ -127,11 +127,43 @@ Where to see it:
 
 Releases are tagged on `main` as `vX.Y.Z` (see "Ship" in `CONTRIBUTING.md`); the next builds count from that tag automatically. Until the first tag, the version counts every commit on the branch. Vercel's builder has no `.git` folder, so deploys work the version out first and pass it in (`--build-env NEXT_PUBLIC_APP_VERSION=...`); a deploy without it shows `+unknown`.
 
+## Release checks
+
+Before calling a build a release candidate, and before any demo, run the release check (#43). It walks the pilot journey in one test, in the order a new climber meets it:
+
+| Step | What it checks |
+|---|---|
+| Sign in | A logged out visitor is sent to log in; the desk logs in |
+| Join | A new climber registers on `/join` |
+| Waiver status | `/me` says "No waiver on file", the climber signs, `/me` says "✓ Waiver signed" |
+| Sign in again | The climber logs out and back in, and the waiver is still signed |
+| Purchase | They scan; the desk sees no membership and gives a day pass |
+| Check in | The desk checks them in |
+| Busyness | The desk's count and the climber's "~N climbers here" both go up by one, and the climber is in Recent check-ins |
+
+```bash
+npm run build && npm run test:release                        # local build, seeded database
+E2E_BASE_URL="https://<staging url>" npm run test:release    # the hosted demo
+```
+
+It adds a climber and a check in, so reseed a hosted demo afterwards. The full suite (`npm run test:e2e`) runs it too, on every pull request.
+
+**Known limitations** (what the journey uses today, and what replaces it):
+
+- **Sign in is the demo login.** A climber logs back in with `firstname.lastname` as both username and password, and nothing tells them so. Real sign in for climbers is #26 and #33.
+- **The waiver is a placeholder.** One button marks it signed, with no wording or signature. The real waiver tool is #35 (PR #118).
+- **Purchase is a free day pass from the desk** (#62). Selling passes and memberships is #53 (PR #119).
+- **The scan is simulated** from the climber's phone, standing in for a scanner at the desk (#94).
+- **Busyness mixes in generated check-ins** unless `MOCK_BUSYNESS_SCENARIO=none` (#64), and the typical week is always a sample until #39.
+- **No emails.** Nothing is sent after joining or signing (#95).
+
+When one of these is replaced, change the matching step in `e2e/release.spec.ts` in the same pull request, so the check keeps following the real journey.
+
 ## Before a demo
 
 - Resume the Supabase project if it was paused (Dashboard, Resume project). Nothing is lost.
 - Reseed so the demo starts clean, because the two hour check-in rule remembers earlier runs: `DATABASE_URL="<session url>" npm run db:seed`.
-- Run `E2E_BASE_URL="https://<staging url>" npm run test:e2e`, then reseed again.
+- Run `E2E_BASE_URL="https://<staging url>" npm run test:release` (see "Release checks"), then reseed again.
 - Use two browser windows or devices: the climber's phone and the desk.
 - Code freeze the day before; demo from the tagged release.
 

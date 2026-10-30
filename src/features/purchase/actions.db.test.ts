@@ -7,7 +7,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { db } from "@/lib/db";
 
 const SLUG = "test-membership";
-const session = vi.hoisted(() => ({ climberId: null as string | null, staff: false }));
+const OTHER_SLUG = "test-membership-other";
+const session = vi.hoisted(() => ({ climberId: null as string | null, staff: false, demo: true }));
 
 vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -33,14 +34,19 @@ vi.mock("@/features/auth/staff", () => ({
       ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: "DESK" }
       : null,
 }));
+// Buying in the app is a mock, so it only works in demo mode (#45).
+vi.mock("@/features/auth/demo-mode", () => ({ isDemoMode: () => session.demo }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
-// Every query runs against the test gym, not the seeded one.
+// The climber's own gym is read by id; the old "the" gym must not be used (#34).
 vi.mock("@/lib/gym", () => ({
-  getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  getGym: async () => {
+    throw new Error("getGym() must not be used: take the climber's own gym");
+  },
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
 const { buyOnline } = await import("./actions");
-const { getPurchasePage } = await import("./queries");
+const { getPurchasePage, isOnlinePurchaseEnabled } = await import("./queries");
 const { recordSale } = await import("@/features/pos/actions");
 
 let gymId = "";
@@ -52,8 +58,8 @@ beforeAll(async () => {
   const products = [
     { name: "Day pass", kind: "DAY" as const, priceCents: 2500 },
     { name: "1 month membership", kind: "MEMBERSHIP" as const, priceCents: 10000, durationMonths: 1 },
-    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600 },
-    { name: "Chalk", kind: "RETAIL" as const, priceCents: 500 },
+    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600, chargesPst: true },
+    { name: "Chalk", kind: "RETAIL" as const, priceCents: 500, chargesPst: true },
     { name: "Old pass", kind: "DAY" as const, priceCents: 1000, active: false },
   ];
   for (const p of products) {
@@ -64,6 +70,7 @@ beforeAll(async () => {
 beforeEach(() => {
   session.climberId = null;
   session.staff = false;
+  session.demo = true;
 });
 
 afterAll(async () => {
@@ -72,7 +79,11 @@ afterAll(async () => {
 });
 
 async function cleanUp() {
-  const gym = await db.gym.findUnique({ where: { slug: SLUG } });
+  for (const slug of [SLUG, OTHER_SLUG]) await cleanUpGym(slug);
+}
+
+async function cleanUpGym(slug: string) {
+  const gym = await db.gym.findUnique({ where: { slug } });
   if (!gym) return;
   const where = { where: { gymId: gym.id } };
   await db.pass.deleteMany(where);
@@ -130,8 +141,10 @@ describe("buyOnline", () => {
     const rental = await buy("Shoe rental", randomUUID(), 2);
     expect(rental.ok).toBe(true);
     if (!rental.ok) return;
-    // 2 × 6.00 = 12.00, plus 5% GST, and no pass comes with it.
-    expect(rental.totalCents).toBe(1260);
+    // 2 × 6.00 = 12.00, plus 5% GST (0.60) and 7% PST (0.84), and no pass comes with it.
+    expect(rental.totalCents).toBe(1344);
+    const rentalSale = await db.sale.findUniqueOrThrow({ where: { id: rental.saleId } });
+    expect(rentalSale).toMatchObject({ gstCents: 60, pstCents: 84, gstRateBps: 500, pstRateBps: 700 });
     expect((await buy("Chalk")).ok).toBe(true);
     expect(await db.pass.count({ where: { gymId, climberId: id } })).toBe(1);
     expect(await db.sale.count({ where: { gymId, climberId: id, tender: "ONLINE" } })).toBe(3);
@@ -156,6 +169,7 @@ describe("buyOnline", () => {
     expect(page?.membership.status).toBe("active");
     expect(page?.current?.name).toBe("1 month membership");
     expect(page?.purchases).toHaveLength(1);
+    // A membership is GST only (no PST).
     expect(page?.purchases[0]).toMatchObject({ items: "1 month membership", totalCents: 10500, tender: "ONLINE" });
     // Everything that is for sale is offered (the inactive product is not).
     expect(page?.products.map((p) => p.name).sort()).toEqual(["1 month membership", "Chalk", "Day pass", "Shoe rental"]);
@@ -171,6 +185,46 @@ describe("buyOnline", () => {
     expect(a.saleId).toBe(b.saleId);
     expect(await db.sale.count({ where: { gymId, climberId: id } })).toBe(1);
     expect(await db.pass.count({ where: { gymId, climberId: id } })).toBe(1);
+  });
+
+  it("is closed outside demo mode: the mock checkout can't hand out a membership", async () => {
+    const id = await newClimber();
+    session.climberId = id;
+    session.demo = false;
+    const result = await buy("1 month membership");
+    expect(result.ok).toBe(false);
+    expect(await db.sale.count({ where: { gymId, climberId: id } })).toBe(0);
+    expect(await db.pass.count({ where: { gymId, climberId: id } })).toBe(0);
+    // And the tab and page are off too.
+    expect(await isOnlinePurchaseEnabled()).toBe(false);
+    expect(await getPurchasePage()).toBeNull();
+  });
+
+  it("shows the tab in demo mode, for the climber's own gym", async () => {
+    session.climberId = await newClimber();
+    expect(await isOnlinePurchaseEnabled()).toBe(true);
+  });
+
+  it("sells from the climber's own gym only, never another gym's products", async () => {
+    const other = await db.gym.create({ data: { name: "Other gym", slug: OTHER_SLUG } });
+    const theirDay = await db.product.create({
+      data: { gymId: other.id, name: "Their day pass", kind: "DAY", priceCents: 1800 },
+    });
+    // Signed in as a climber of the test gym: the other gym's product isn't theirs to buy.
+    session.climberId = await newClimber();
+    const refused = await buyOnline({ productId: theirDay.id, idempotencyKey: randomUUID() });
+    expect(refused.ok).toBe(false);
+    expect(await db.sale.count({ where: { gymId: other.id } })).toBe(0);
+
+    // A climber of the other gym buys there, at that gym's price and tax rates.
+    const { id } = await db.climber.create({
+      data: { gymId: other.id, firstName: "Other", lastName: "Gym", dateOfBirth: new Date("1990-01-01T00:00:00Z") },
+    });
+    session.climberId = id;
+    const bought = await buyOnline({ productId: theirDay.id, idempotencyKey: randomUUID() });
+    expect(bought.ok).toBe(true);
+    const sale = await db.sale.findFirstOrThrow({ where: { gymId: other.id, climberId: id } });
+    expect(sale).toMatchObject({ gymId: other.id, staffId: null, tender: "ONLINE" });
   });
 
   it("refuses when nobody is signed in", async () => {

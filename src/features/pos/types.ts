@@ -15,7 +15,12 @@ export type Product = {
   durationMonths: number | null;
   /** Monthly recurring membership: the desk rings up each month. */
   recurring: boolean;
+  /** Goods and rentals pay PST as well as GST; admissions and memberships don't. */
+  chargesPst: boolean;
 };
+
+// The gym's tax rates, in hundredths of a percent: 500 is 5%.
+export type TaxRates = { gstRateBps: number; pstRateBps: number };
 
 // What the cart holds: a product and how many. Prices are looked up again
 // from the products, never kept in the cart.
@@ -28,14 +33,18 @@ export type PricedLine = {
   unitPriceCents: number;
   quantity: number;
   lineTotalCents: number;
+  chargesPst: boolean;
 };
 
 export type PricedCart = {
   lines: PricedLine[];
   subtotalCents: number;
-  /** Hundredths of a percent: 500 is GST 5%. */
-  taxRateBps: number;
-  taxCents: number;
+  /** GST is on the whole subtotal. Rates in hundredths of a percent. */
+  gstRateBps: number;
+  gstCents: number;
+  /** PST is only on the lines that charge it. */
+  pstRateBps: number;
+  pstCents: number;
   totalCents: number;
 };
 
@@ -70,6 +79,8 @@ export type SaleSummary = {
 // Someone on the "Checked in today" list, newest first.
 export type RecentCheckIn = {
   climberId: string;
+  name: string;
+  phone: string;
   /** "4:12 p.m.", in the gym's time zone. */
   time: string;
 };
@@ -78,6 +89,7 @@ export type RecentCheckIn = {
 // is stored, so the desk rings up the next month on the POS.
 export type RenewalDue = {
   climberId: string;
+  name: string;
   /** ISO calendar date the current month ends. */
   dueOn: string;
   overdue: boolean;

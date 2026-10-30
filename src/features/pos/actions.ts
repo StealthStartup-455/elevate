@@ -1,12 +1,14 @@
 "use server";
 
-import { requireStaff } from "@/features/auth/staff";
+import { getStaffContext, requireStaff } from "@/features/auth/staff";
+import { getClimber, searchClimbers } from "@/features/climbers/queries";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { voidedExpiry } from "./passes";
+import { getStaffGym, toPosClimber } from "./queries";
 import { refreshSalePages, saveSale, type SaleInput, type SaleResult } from "./sale";
-import type { Tender } from "./types";
+import type { PosClimber, Tender } from "./types";
 
 export type { SaleInput, SaleResult };
 
@@ -43,12 +45,17 @@ function validInput(input: SaleInput): boolean {
  */
 export async function recordSale(input: SaleInput): Promise<SaleResult> {
   await requireStaff();
-  // TODO(auth): set staffId from the logged-in staff member.
-  if (!validInput(input)) {
-    logEvent("sale_refused", { reason: "invalid_input" });
-    return { ok: false, message: "Something went wrong. Start the sale again." };
-  }
-  return saveSale(input);
+  const refuse = (reason: string, message: string): SaleResult => {
+    logEvent("sale_refused", { reason });
+    return { ok: false, message };
+  };
+  if (!validInput(input)) return refuse("invalid_input", "Something went wrong. Start the sale again.");
+
+  // The signed-in staff member's gym (#34); null id for the demo desk login.
+  const staff = await getStaffContext();
+  const gym = staff ? await getGymById(staff.gymId) : null;
+  if (!staff || !gym) return refuse("no_staff_gym", "Log in again to sell.");
+  return saveSale(input, { gym, staffId: staff.id });
 }
 
 /**
@@ -71,7 +78,8 @@ export async function voidSale(
   if (why === "") return refuse("no_reason", "Say why the sale is being voided.");
   if (why.length > 200) return refuse("reason_too_long", "Keep the reason under 200 characters.");
 
-  const gym = await getGym();
+  const gym = await getStaffGym();
+  if (!gym) return refuse("no_staff_gym", "Log in again to void.");
   const sale = await db.sale.findFirst({
     where: { id: saleId, gymId: gym.id },
     select: {
@@ -110,4 +118,67 @@ export async function voidSale(
   logEvent("sale_voided", { gymId: gym.id, saleId, climberId: sale.climberId });
   refreshSalePages(sale.climberId);
   return { ok: true };
+}
+
+/**
+ * Revokes a climber's membership: every membership pass that hasn't ended
+ * stops now, including a renewal bought early, and stops renewing. The sales
+ * stay as they are; to give money back, void the sale instead. Any desk
+ * staff member can revoke.
+ */
+export async function revokeMembership(climberId: string): Promise<{ ok: boolean; message?: string }> {
+  await requireStaff();
+  // TODO(auth): record which staff member revoked it.
+  const refuse = (code: string, message: string) => {
+    logEvent("membership_revoke_refused", { reason: code });
+    return { ok: false, message };
+  };
+  if (!UUID.test(String(climberId))) return refuse("invalid_id", "Climber not found.");
+
+  const gym = await getStaffGym();
+  if (!gym) return refuse("no_staff_gym", "Log in again to revoke.");
+  const climber = await getClimber(climberId);
+  if (!climber) return refuse("climber_not_found", "Climber not found.");
+
+  const now = new Date();
+  const passes = await db.pass.findMany({
+    where: {
+      gymId: gym.id,
+      climberId: climber.id,
+      kind: "MEMBERSHIP",
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: { id: true, startsAt: true },
+  });
+  // Already revoked, or never had one: nothing to do.
+  if (passes.length === 0) return { ok: true };
+
+  await db.$transaction(
+    passes.map((pass) =>
+      db.pass.update({
+        where: { id: pass.id },
+        data: { expiresAt: voidedExpiry(pass.startsAt, now), renews: false },
+      }),
+    ),
+  );
+
+  logEvent("membership_revoked", { gymId: gym.id, climberId: climber.id, passes: passes.length });
+  refreshSalePages(climber.id);
+  return { ok: true };
+}
+
+// The POS climber search: the same server search as Manual check in (#85),
+// so the page never carries every climber. Staff only (searchClimbers checks).
+const MAX_RESULTS = 8;
+
+export async function findPosClimbers(query: string): Promise<PosClimber[]> {
+  const climbers = await searchClimbers(String(query ?? ""), MAX_RESULTS);
+  return climbers.map(toPosClimber);
+}
+
+/** One climber, fresh, for the POS's climber card. Null if not in this gym. */
+export async function getPosClimber(climberId: string): Promise<PosClimber | null> {
+  await requireStaff();
+  const climber = await getClimber(String(climberId ?? ""));
+  return climber ? toPosClimber(climber) : null;
 }

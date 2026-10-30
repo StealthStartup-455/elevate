@@ -2,8 +2,8 @@ import { formatDate } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
 import { isoDay } from "@/features/climbers/status";
 import { revalidatePath } from "next/cache";
+import type { Gym } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { checkCart, priceCart } from "./cart";
 import { membershipStartsAt, passFor } from "./passes";
@@ -12,9 +12,10 @@ import type { CartItem, Tender } from "./types";
 
 // Saving a sale, shared by the desk (actions.ts, Tender) and the climber's own
 // purchase (features/purchase). This file does no sign-in check: each caller
-// must check who is asking, and pass a climber id it trusts (the desk's
-// picked climber after requireStaff, or the signed-in climber's own id).
-// Prices, totals and passes are always worked out here from the database.
+// must check who is asking, and pass a climber id and a gym it trusts. The desk
+// passes the signed-in staff member's gym and id (after requireStaff); a
+// climber's own purchase passes the climber's own gym and no staff id (#34).
+// Prices, tax, totals and passes are always worked out here from the database.
 
 export type SaleInput = {
   climberId: string;
@@ -23,6 +24,9 @@ export type SaleInput = {
   /** Made by the checkout popup. The same key twice saves one sale. */
   idempotencyKey: string;
 };
+
+/** Who is selling: the gym the sale belongs to, and the staff member (none for a climber, or the demo desk login). */
+export type SaleContext = { gym: Gym; staffId: string | null };
 
 export type SaleResult =
   | { ok: true; saleId: string; totalCents: number; tender: Tender; added: string[] }
@@ -65,13 +69,12 @@ async function describeSale(saleId: string, gymId: string): Promise<string[]> {
  * A second call with the same key (a double press, or a retry after a dropped
  * connection) returns the first sale instead of saving another.
  */
-export async function saveSale(input: SaleInput): Promise<SaleResult> {
+export async function saveSale(input: SaleInput, { gym, staffId }: SaleContext): Promise<SaleResult> {
   const refuse = (reason: string, message: string): SaleResult => {
     logEvent("sale_refused", { reason });
     return { ok: false, message };
   };
 
-  const gym = await getGym();
   if (!sellsInElevate(gym)) return refuse("gym_not_elevate", "This gym sells passes in its own system.");
 
   const replay = async (): Promise<SaleResult | null> => {
@@ -110,11 +113,12 @@ export async function saveSale(input: SaleInput): Promise<SaleResult> {
       punches: true,
       durationMonths: true,
       recurring: true,
+      chargesPst: true,
     },
   });
   const problem = checkCart(input.items, products);
   if (problem) return refuse("invalid_cart", problem);
-  const priced = priceCart(input.items, products, gym.taxRateBps);
+  const priced = priceCart(input.items, products, { gstRateBps: gym.gstRateBps, pstRateBps: gym.pstRateBps });
   const byId = new Map(products.map((p) => [p.id, p]));
 
   const now = new Date();
@@ -132,11 +136,14 @@ export async function saveSale(input: SaleInput): Promise<SaleResult> {
           gymId: gym.id,
           climberId: climber.id,
           subtotalCents: priced.subtotalCents,
-          taxRateBps: priced.taxRateBps,
-          taxCents: priced.taxCents,
+          gstRateBps: priced.gstRateBps,
+          gstCents: priced.gstCents,
+          pstRateBps: priced.pstRateBps,
+          pstCents: priced.pstCents,
           totalCents: priced.totalCents,
           tender: input.tender,
           idempotencyKey: input.idempotencyKey,
+          staffId,
         },
         select: { id: true },
       });

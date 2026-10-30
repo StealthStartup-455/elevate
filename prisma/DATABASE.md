@@ -40,7 +40,7 @@ Gym
 
 - Phone and email are not unique. Families often share one, so a phone search can return several climbers. One login can also manage several climbers.
 - Prices are stored (agreed 2026-10-29, elevate-docs#56; this used to say they weren't). The desk POS sells `Product`s and records each `Sale`. The money itself is taken on the gym's own card machine or in cash: Elevate never sees card details.
-- Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added once, on a sale's subtotal, at the gym's `taxRateBps`.
+- Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added at checkout and each tax is rounded once: GST on the whole subtotal at the gym's `gstRateBps`, and BC PST at `pstRateBps` only on the lines whose product has `chargesPst` (rentals and retail goods; admissions and memberships are GST only).
 - A sale copies each product's name and price onto its `SaleLine`, so changing a price never rewrites old sales.
 - Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end.
 
@@ -88,7 +88,8 @@ Every table has an `id` (a UUID made by Prisma). Most also have `createdAt` and 
 | `timeZone` | text | yes | Default `America/Vancouver` |
 | `system` | `GymSystem` | yes | Where passes and waivers really live: `ELEVATE` (default), `REDPOINT`, `ROCK_GYM_PRO` |
 | `waiverVersion` | text | no | The waiver version climbers must have signed. Empty means any signed waiver counts |
-| `taxRateBps` | integer | yes | Sales tax added at POS checkout, in hundredths of a percent. Default `500` (GST 5%) |
+| `gstRateBps` | integer | yes | GST added at POS checkout, in hundredths of a percent. Default `500` (5%) |
+| `pstRateBps` | integer | yes | BC PST on products with `chargesPst`. Default `700` (7%); `0` for a gym with no PST |
 
 Only gyms whose `system` is `ELEVATE` get the POS tab: a gym on Rock Gym Pro or Redpoint sells there, and a sale here would never reach that system.
 
@@ -184,6 +185,7 @@ The climber's phone saves one per scan; the desk takes the oldest waiting scan f
 | `punches` | integer | no | Punch cards only: visits on a new card |
 | `durationMonths` | integer | no | Memberships only |
 | `recurring` | boolean | yes | Monthly recurring membership |
+| `chargesPst` | boolean | yes | Pays PST as well as GST: rentals and retail goods. Default `false` |
 | `active` | boolean | yes | Off means not for sale; old sales still point at it |
 | `sortOrder` | integer | yes | Tile order on the POS |
 
@@ -195,8 +197,8 @@ The seed adds the demo gym's products with rough mock prices.
 |---|---|---|---|
 | `gymId`, `climberId` | text | yes | One climber per sale |
 | `staffId` | text | no | Who rang it up, once auth exposes the staff member |
-| `subtotalCents`, `taxCents`, `totalCents` | integer | yes | `taxCents` is the subtotal times `taxRateBps`, rounded once |
-| `taxRateBps` | integer | yes | The gym's rate at the time |
+| `subtotalCents`, `gstCents`, `pstCents`, `totalCents` | integer | yes | `gstCents` is the subtotal times `gstRateBps`; `pstCents` is the PST lines' total times `pstRateBps`; each rounded once |
+| `gstRateBps`, `pstRateBps` | integer | yes | The gym's rates at the time. Sales from before PST have `pstRateBps` 0 |
 | `tender` | `Tender` | yes | `CARD` (the gym's own card machine), `CASH`, or `ONLINE` (the climber bought it in the app; a mock, no money moves) |
 | `status` | `SaleStatus` | yes | `PAID`, or `VOIDED` |
 | `idempotencyKey` | text | yes | Made by the checkout popup. Unique per gym, so pressing Tender twice saves one sale |
@@ -210,6 +212,7 @@ The seed adds the demo gym's products with rough mock prices.
 | `name`, `kind`, `unitPriceCents` | | yes | Copied from the product at the time of sale |
 | `quantity` | integer | yes | Always 1 for passes; up to 20 for rentals and chalk |
 | `lineTotalCents` | integer | yes | Before tax |
+| `chargesPst` | boolean | yes | Copied from the product at the time of sale |
 
 The full SQL is in [`migrations/`](migrations/), one folder per change, applied in order.
 

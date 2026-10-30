@@ -32,10 +32,12 @@ vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.
 vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  // Uncached here, so each test sees the gym it just set up.
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
 const { checkInClimber, giveDayPass } = await import("./actions");
-const { getClimber } = await import("./queries");
+const { getCheckInClimbers, getClimber } = await import("./queries");
 
 let gymId = "";
 
@@ -168,6 +170,16 @@ describe("giveDayPass", () => {
       await db.climber.delete({ where: { id } });
       await db.gym.delete({ where: { id: otherGym.id } });
     }
+  });
+
+  // Agam's report on #119: a climber checked in at the desk showed in Recent
+  // check-ins without a link to their account. The desk's saved check-ins are
+  // keyed by the climber's id, so the lookup must find them by id too.
+  it("links a desk check-in to the climber's account", async () => {
+    const id = await newClimber();
+    await giveDayPass(id);
+    expect(await checkInClimber(id)).toEqual({ ok: true });
+    expect((await getCheckInClimbers([id])).get(id)?.id).toBe(id);
   });
 
   it("doesn't let yesterday's pass in", async () => {

@@ -25,7 +25,8 @@ model Gym {
   timeZone      String    @default("America/Vancouver")
   system        GymSystem @default(ELEVATE) // where passes and waivers really live
   waiverVersion String? // the waiver wording climbers must have signed; empty means any signed waiver counts
-  taxRateBps    Int       @default(500) // sales tax added at checkout, in hundredths of a percent: 500 is GST 5%
+  gstRateBps    Int       @default(500) // GST added at POS checkout, in hundredths of a percent: 500 is 5%
+  pstRateBps    Int       @default(700) // BC PST on products that charge it (rentals, retail): 700 is 7%; 0 for none
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -180,6 +181,7 @@ model Product {
   punches        Int? // punch cards only: visits on a new card
   durationMonths Int? // memberships only
   recurring      Boolean     @default(false) // monthly recurring membership
+  chargesPst     Boolean     @default(false) // goods and rentals; admissions and memberships are GST only
   active         Boolean     @default(true)
   sortOrder      Int         @default(0)
   createdAt      DateTime    @default(now())
@@ -202,8 +204,10 @@ model Sale {
   climberId      String
   staffId        String? // who rang it up, once auth exposes the staff member
   subtotalCents  Int
-  taxRateBps     Int // the gym's rate at the time of sale
-  taxCents       Int
+  gstRateBps     Int // the gym's rates at the time of sale
+  gstCents       Int
+  pstRateBps     Int        @default(0)
+  pstCents       Int        @default(0)
   totalCents     Int
   tender         Tender
   status         SaleStatus @default(PAID)
@@ -235,6 +239,7 @@ model SaleLine {
   unitPriceCents Int
   quantity       Int
   lineTotalCents Int
+  chargesPst     Boolean     @default(false) // copied from the product at the time of sale
 
   gym     Gym     @relation(fields: [gymId], references: [id])
   sale    Sale    @relation(fields: [saleId, gymId], references: [id, gymId], onDelete: Restrict)

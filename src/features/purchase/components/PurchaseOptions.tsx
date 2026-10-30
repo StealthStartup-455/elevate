@@ -17,7 +17,7 @@ import { useState, useTransition } from "react";
 import { formatMoney, formatRate, isPass, MAX_QUANTITY, priceCart } from "@/features/pos/cart";
 import { newKey } from "@/features/pos/key";
 import type { SaleResult } from "@/features/pos/sale";
-import type { Product, ProductKind } from "@/features/pos/types";
+import type { Product, ProductKind, TaxRates } from "@/features/pos/types";
 import { buyOnline } from "../actions";
 import {
   ACTIVE_MEMBERSHIP_NOTICE,
@@ -79,11 +79,11 @@ function Tile({ product, onPick }: { product: Product; onPick: (p: Product) => v
 // Nothing is charged yet: it is a mock until real payments (#31).
 export default function PurchaseOptions({
   products,
-  taxRateBps,
+  rates,
   context,
 }: {
   products: Product[];
-  taxRateBps: number;
+  rates: TaxRates;
   context: PurchaseContext;
 }) {
   const [picked, setPicked] = useState<Product | null>(null);
@@ -149,7 +149,7 @@ export default function PurchaseOptions({
     });
   }
 
-  const cart = picked ? priceCart([{ productId: picked.id, quantity }], products, taxRateBps) : null;
+  const cart = picked ? priceCart([{ productId: picked.id, quantity }], products, rates) : null;
   const warnings = picked ? purchaseWarnings(picked.kind, context) : [];
   const countable = picked ? !isPass(picked.kind) : false;
   const pickup = picked?.kind === "RENTAL" || picked?.kind === "RETAIL";
@@ -211,7 +211,7 @@ export default function PurchaseOptions({
               ))}
             </section>
           )}
-          <Typography variant="secondary">Pay here, pick it up at the front desk. Prices are before tax.</Typography>
+          <Typography variant="secondary">Pay here, pick it up at the front desk. Prices are before tax: GST, plus PST on rentals and chalk.</Typography>
         </CardContent>
       </Card>
 
@@ -283,7 +283,10 @@ export default function PurchaseOptions({
                   ) : null}
                   <Divider />
                   <Row label="Subtotal" value={formatMoney(cart.subtotalCents)} />
-                  <Row label={`GST (${formatRate(cart.taxRateBps)})`} value={formatMoney(cart.taxCents)} />
+                  <Row label={`GST (${formatRate(cart.gstRateBps)})`} value={formatMoney(cart.gstCents)} />
+                  {cart.pstCents > 0 ? (
+                    <Row label={`PST (${formatRate(cart.pstRateBps)})`} value={formatMoney(cart.pstCents)} />
+                  ) : null}
                   <Row label="Total" value={formatMoney(cart.totalCents)} strong />
                 </>
               ) : null}

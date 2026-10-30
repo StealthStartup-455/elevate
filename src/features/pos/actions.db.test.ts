@@ -19,23 +19,25 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => auth.staff,
+  getStaffContext: async () => (auth.staff ? { id: null, gymId, role: "DESK" } : null),
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
-  getStaffContext: async () =>
-    auth.staff
-      ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: "DESK" }
-      : null,
 }));
-vi.mock("@/features/auth/queries", () => ({ getSessionClimberId: async () => null }));
+vi.mock("@/features/auth/queries", () => ({
+  getCurrentUser: async () => null,
+  getSessionClimberId: async () => null,
+}));
 vi.mock("@/features/auth/session", () => ({ setSession: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.
 vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  // Uncached here, so each test sees the gym it just set up.
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
-const { recordSale, voidSale } = await import("./actions");
+const { findPosClimbers, getPosClimber, recordSale, revokeMembership, voidSale } = await import("./actions");
 const { checkInClimber } = await import("@/features/climbers/actions");
 const { getClimber } = await import("@/features/climbers/queries");
 
@@ -50,8 +52,8 @@ beforeAll(async () => {
     { name: "10-punch card", kind: "PUNCH" as const, priceCents: 20000, punches: 10 },
     { name: "1 month membership", kind: "MEMBERSHIP" as const, priceCents: 10000, durationMonths: 1 },
     { name: "Monthly recurring", kind: "MEMBERSHIP" as const, priceCents: 8500, durationMonths: 1, recurring: true },
-    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600 },
-    { name: "Old hoodie", kind: "RETAIL" as const, priceCents: 5000, active: false },
+    { name: "Shoe rental", kind: "RENTAL" as const, priceCents: 600, chargesPst: true },
+    { name: "Old hoodie", kind: "RETAIL" as const, priceCents: 5000, chargesPst: true, active: false },
   ];
   for (const p of products) {
     productIds[p.name] = (await db.product.create({ data: { gymId, ...p } })).id;
@@ -100,7 +102,7 @@ const sell = (climberId: string, items: [string, number][], key = randomUUID()) 
   });
 
 describe("recordSale", () => {
-  it("saves the sale with GST from the database prices, and gives the passes", async () => {
+  it("saves the sale with GST and PST from the database prices, and gives the passes", async () => {
     const id = await newClimber();
     const result = await sell(id, [
       ["1 month membership", 1],
@@ -108,11 +110,20 @@ describe("recordSale", () => {
     ]);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 100.00 + 2 × 6.00 = 112.00, plus 5% GST = 117.60.
-    expect(result.totalCents).toBe(11760);
+    // 100.00 + 2 × 6.00 = 112.00, plus 5% GST (5.60) and 7% PST on the
+    // 12.00 of rentals (0.84) = 118.44.
+    expect(result.totalCents).toBe(11844);
 
     const sale = await db.sale.findUniqueOrThrow({ where: { id: result.saleId }, include: { lines: true } });
-    expect(sale).toMatchObject({ subtotalCents: 11200, taxRateBps: 500, taxCents: 560, status: "PAID" });
+    expect(sale).toMatchObject({
+      subtotalCents: 11200,
+      gstRateBps: 500,
+      gstCents: 560,
+      pstRateBps: 700,
+      pstCents: 84,
+      totalCents: 11844,
+      status: "PAID",
+    });
     expect(sale.lines).toHaveLength(2);
 
     const climber = await getClimber(id);
@@ -233,5 +244,69 @@ describe("voidSale", () => {
     if (!result.ok) throw new Error(result.message);
     expect((await voidSale(result.saleId, "  ")).ok).toBe(false);
     expect((await db.sale.findUniqueOrThrow({ where: { id: result.saleId } })).status).toBe("PAID");
+  });
+});
+
+describe("revokeMembership", () => {
+  it("ends the membership and an early renewal now, and keeps the sales", async () => {
+    const id = await newClimber();
+    const first = await sell(id, [["Monthly recurring", 1]]);
+    const renewal = await sell(id, [["Monthly recurring", 1]]);
+    if (!first.ok || !renewal.ok) throw new Error("sale failed");
+    expect((await getClimber(id))?.membershipStatus).toBe("active");
+
+    expect(await revokeMembership(id)).toEqual({ ok: true });
+    expect((await getClimber(id))?.membershipStatus).not.toBe("active");
+    expect((await checkInClimber(id)).ok).toBe(false);
+    const passes = await db.pass.findMany({ where: { climberId: id, kind: "MEMBERSHIP" } });
+    // The early renewal ends where it starts, so it never counts.
+    expect(passes.every((p) => !p.renews && (p.expiresAt! <= new Date() || p.expiresAt! <= p.startsAt))).toBe(true);
+    const sales = await db.sale.findMany({ where: { id: { in: [first.saleId, renewal.saleId] } } });
+    expect(sales.every((s) => s.status === "PAID")).toBe(true);
+
+    // Twice is fine.
+    expect(await revokeMembership(id)).toEqual({ ok: true });
+  });
+
+  it("leaves day passes and punch cards alone", async () => {
+    const id = await newClimber();
+    const result = await sell(id, [["1 month membership", 1], ["10-punch card", 1]]);
+    if (!result.ok) throw new Error(result.message);
+    await revokeMembership(id);
+    expect((await getClimber(id))?.punchesLeft).toBe(10);
+  });
+
+  it("is staff only", async () => {
+    const id = await newClimber();
+    auth.staff = false;
+    await expect(revokeMembership(id)).rejects.toThrow("redirect /login");
+  });
+});
+
+describe("POS climber search", () => {
+  it("finds climbers in the staff member's gym only, with their passes", async () => {
+    const id = await newClimber();
+    await db.climber.update({ where: { id }, data: { firstName: "Searchable", lastName: "Zephyr" } });
+    await sell(id, [["10-punch card", 1]]);
+    const otherGym = await db.gym.create({ data: { name: "Other gym", slug: "test-pos-other" } });
+    const other = await db.climber.create({
+      data: { gymId: otherGym.id, firstName: "Searchable", lastName: "Zephyr", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+    });
+    try {
+      const found = await findPosClimbers("Searchable Zephyr");
+      expect(found.some((c) => c.id === id && c.punchesLeft === 10)).toBe(true);
+      expect(found.some((c) => c.id === other.id)).toBe(false);
+      expect(await getPosClimber(other.id)).toBeNull();
+      expect((await getPosClimber(id))?.punchesLeft).toBe(10);
+    } finally {
+      await db.climber.delete({ where: { id: other.id } });
+      await db.gym.delete({ where: { id: otherGym.id } });
+    }
+  });
+
+  it("is staff only", async () => {
+    auth.staff = false;
+    await expect(findPosClimbers("New")).rejects.toThrow("redirect /login");
+    await expect(getPosClimber(randomUUID())).rejects.toThrow("redirect /login");
   });
 });

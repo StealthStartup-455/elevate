@@ -32,7 +32,7 @@ async function Purchase() {
       <MyPlan data={data} />
       <PurchaseOptions
         products={data.products}
-        taxRateBps={data.taxRateBps}
+        rates={data.rates}
         context={{
           membershipStatus: data.membership.status,
           coveredUntil: data.coveredUntil,

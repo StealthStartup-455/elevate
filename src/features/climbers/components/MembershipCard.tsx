@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
@@ -8,6 +9,7 @@ import DemoQrCode from "./DemoQrCode";
 import LinkButton from "./LinkButton";
 import WaiverStep from "./WaiverStep";
 import ScanButton from "@/features/check-ins/components/ScanButton";
+import { isOnlinePurchaseEnabled } from "@/features/purchase/queries";
 
 const WAIVER_TEXT = {
   valid: { label: "✓ Waiver signed", color: "success.main" },
@@ -51,6 +53,9 @@ export default async function MembershipCard() {
   const needsWaiver = membership.waiverStatus !== "valid";
   const needsPurchase = membership.status === "none";
   const needsRenewal = membership.status === "paused" || membership.status === "expired";
+  // Buying in the app is a mock that is only open in demo mode; otherwise the
+  // buttons stay, switched off, until real payments (#31, #45).
+  const canPurchase = await isOnlinePurchaseEnabled();
 
   return (
     <Card
@@ -71,9 +76,15 @@ export default async function MembershipCard() {
             </Typography>
             {needsPurchase ? (
               <Box sx={{ mt: 2 }}>
-                <LinkButton href="/me/purchase" variant="outlined">
-                  Purchase Membership
-                </LinkButton>
+                {canPurchase ? (
+                  <LinkButton href="/me/purchase" variant="outlined">
+                    Purchase Membership
+                  </LinkButton>
+                ) : (
+                  <Button variant="outlined" disabled title="Coming soon">
+                    Purchase Membership
+                  </Button>
+                )}
               </Box>
             ) : null}
             <Typography variant="body2" sx={{ mt: 2, fontWeight: 600, color: waiver.color }}>
@@ -112,9 +123,15 @@ export default async function MembershipCard() {
               <WaiverStep climberId={membership.climberId} />
             ) : null}
             {needsRenewal ? (
-              <LinkButton href="/me/purchase" variant="outlined" size="large">
-                Renew membership
-              </LinkButton>
+              canPurchase ? (
+                <LinkButton href="/me/purchase" variant="outlined" size="large">
+                  Renew membership
+                </LinkButton>
+              ) : (
+                <Button variant="outlined" size="large" disabled title="Coming soon">
+                  Renew membership
+                </Button>
+              )
             ) : null}
           </Box>
         ) : null}
