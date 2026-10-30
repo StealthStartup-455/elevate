@@ -4,7 +4,7 @@ import CardContent from "@mui/material/CardContent";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 import { busynessPercent, formatWindow } from "../busyness";
-import { BUSYNESS_POLL_INTERVAL_MS, getGymBusynessSettings } from "../config";
+import { CLIMBER_BUSYNESS_REFRESH_MS, getGymBusynessSettings } from "../config";
 import { getBusynessSummary } from "../queries";
 import AutoRefresh from "./AutoRefresh";
 import BusynessHeatMap from "./BusynessHeatMap";
@@ -21,7 +21,7 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
-      <AutoRefresh intervalMs={BUSYNESS_POLL_INTERVAL_MS} />
+      <AutoRefresh intervalMs={CLIMBER_BUSYNESS_REFRESH_MS} />
       <CardContent>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>

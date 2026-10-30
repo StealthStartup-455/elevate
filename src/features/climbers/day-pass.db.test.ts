@@ -32,6 +32,8 @@ vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.
 vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  // Uncached here, so each test sees the gym it just set up.
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
 const { checkInClimber, giveDayPass } = await import("./actions");

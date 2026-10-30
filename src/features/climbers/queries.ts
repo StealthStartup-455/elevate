@@ -118,10 +118,7 @@ export async function listClimbers(): Promise<Climber[]> {
   await requireStaff();
   const staff = await getStaffContext();
   if (!staff) return [];
-  const gym = await db.gym.findUnique({
-    where: { id: staff.gymId },
-    select: { id: true, waiverVersion: true },
-  });
+  const gym = await getGymById(staff.gymId);
   if (!gym) return [];
   const now = new Date();
   const rows = await findRows(gym.id);
@@ -271,7 +268,7 @@ export async function getSavedCheckIns(since: Date): Promise<
         : null);
   }
   if (!gymId) return [];
-  const gym = await db.gym.findUnique({ where: { id: gymId }, select: { id: true, waiverVersion: true } });
+  const gym = await getGymById(gymId);
   if (!gym) return [];
   const now = new Date();
   const rows = await db.checkIn.findMany({
