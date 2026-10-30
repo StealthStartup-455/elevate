@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#127 (and the desk and phone parts of #130) / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#127 (and the desk and phone parts of #130) / #140
 - **Branch:** `fix/127-desk-scans-not-lost`
 - **What the agent did:**
   - A scan now waits until staff deal with it: `oldestWaitingScan` reads it without taking it, `finishScan` marks it (and the same climber's repeat taps) dealt with. Actions: `nextDeskScan`, `isDeskScanWaiting`, `finishDeskScan` replace `startWatchingScans` and `takeLatestScan`. `SCAN_TTL_MS` is 5 minutes.
@@ -20,4 +20,4 @@
   - Any e2e test that scans must check the person in or close the popup, or that scan pops up in the next tests for 5 minutes. The new specs close their pages afterwards.
   - The scan popup is now on every desk page, so a test on POS or Climbers can see a popup from a scan made earlier.
 - **Open follow-ups:** A small "waiting at the desk" list if one popup at a time proves slow on busy days. The error page's missing code (#130) is not covered here.
-- **Verification:** `npm run lint` clean; unit tests 178 passed (2 todo). `tsc`, the database tests, the build and e2e couldn't run in this session (the Prisma client can't be regenerated here for the new models), so they are left to CI on the PR.
+- **Verification:** `npm run lint` clean; unit tests 178 passed (2 todo). `tsc`, the database tests, the build and e2e couldn't run in this session (the Prisma client can't be regenerated here for the new models), so they ran in CI on #140: check (lint, tsc, unit tests, build) and e2e (database tests and the full Playwright suite, including the new specs) passed.
