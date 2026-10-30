@@ -1,7 +1,7 @@
 import type { StaffRole } from "@/generated/prisma/client";
 import { redirect } from "next/navigation";
 import { getGym } from "@/lib/gym";
-import { getCurrentUser } from "./queries";
+import { getCurrentUser, getSessionClimberId } from "./queries";
 import { hasDemoDeskSession } from "./session";
 
 // The staff check for everything under /desk. The proxy only checks that
@@ -39,7 +39,19 @@ export async function isStaff(): Promise<boolean> {
   return hasStaffRole("DESK", "MANAGER", "OWNER");
 }
 
-// Sends anyone who isn't staff to log in, signed in or not.
+// Where a signed-in person who isn't staff lands (#87): a page that says the
+// desk is for staff, instead of a login page that looks like being logged out.
+export const STAFF_ONLY_PATH = "/staff-only";
+
+// Signed in at all: the demo climber cookie or a real Supabase login.
+async function isSignedIn(): Promise<boolean> {
+  if (await getSessionClimberId()) return true;
+  return (await getCurrentUser()) !== null;
+}
+
+// Lets staff through. Anyone else goes to the staff-only page if they're
+// signed in (a climber), or to log in if they aren't.
 export async function requireStaff(): Promise<void> {
-  return requireStaffRole("DESK", "MANAGER", "OWNER");
+  if (await isStaff()) return;
+  redirect((await isSignedIn()) ? STAFF_ONLY_PATH : "/login");
 }
