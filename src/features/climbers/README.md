@@ -1,6 +1,6 @@
 # climbers
 
-Climber lookup and profiles, plus memberships and incident reports.
+Climber lookup and profiles, plus memberships and incident reports. Memberships, punch cards and day passes are sold on the desk POS (`features/pos`); check-in here uses them, taking a punch from a punch card when there's no membership or day pass.
 
 **Owner:** _TBD_
 

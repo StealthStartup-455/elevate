@@ -1,4 +1,4 @@
-// Elevate database. Eight tables.
+// Elevate database. Eleven tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -25,15 +25,20 @@ model Gym {
   timeZone      String    @default("America/Vancouver")
   system        GymSystem @default(ELEVATE) // where passes and waivers really live
   waiverVersion String? // the waiver wording climbers must have signed; empty means any signed waiver counts
+  gstRateBps    Int       @default(500) // GST added at POS checkout, in hundredths of a percent: 500 is 5%
+  pstRateBps    Int       @default(700) // BC PST on products that charge it (rentals, retail): 700 is 7%; 0 for none
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  staff    Staff[]
-  climbers Climber[]
-  passes   Pass[]
-  waivers  Waiver[]
-  checkIns CheckIn[]
-  qrScans  QrScan[]
+  staff     Staff[]
+  climbers  Climber[]
+  passes    Pass[]
+  waivers   Waiver[]
+  checkIns  CheckIn[]
+  qrScans   QrScan[]
+  products  Product[]
+  sales     Sale[]
+  saleLines SaleLine[]
 
   waiverTemplates WaiverTemplate[]
 }
@@ -53,6 +58,7 @@ model Staff {
   gym             Gym       @relation(fields: [gymId], references: [id])
   climbersCreated Climber[]
   checkIns        CheckIn[]
+  sales           Sale[]
 
   @@unique([id, gymId])
   @@unique([gymId, authUserId])
@@ -79,6 +85,7 @@ model Climber {
   waivers        Waiver[]
   checkIns       CheckIn[]
   qrScans        QrScan[]
+  sales          Sale[]
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
@@ -89,7 +96,7 @@ model Climber {
 }
 
 // Anything that lets a climber in: a day pass, a punch card or a membership.
-// Prices and billing stay in the gym's own system.
+// Sold at the desk POS (saleLineId), or synced from the gym's own system.
 model Pass {
   id         String    @id @default(uuid())
   gymId      String
@@ -99,11 +106,14 @@ model Pass {
   expiresAt  DateTime? // empty means no end date
   visitsLeft Int? // punch cards only
   pausedAt   DateTime? // memberships only: set while the membership is on hold
+  renews     Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
+  saleLineId String? // the POS sale that paid for it; empty for passes from before the POS or another system
   externalId String?
   createdAt  DateTime  @default(now())
 
-  gym     Gym     @relation(fields: [gymId], references: [id])
-  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  gym      Gym       @relation(fields: [gymId], references: [id])
+  climber  Climber   @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  saleLine SaleLine? @relation(fields: [saleLineId, gymId], references: [id, gymId], onDelete: Restrict)
 
   @@unique([gymId, externalId])
   @@index([gymId, climberId, expiresAt])
@@ -196,10 +206,108 @@ model QrScan {
   @@index([gymId, takenAt, scannedAt]) // the desk's "next waiting scan"
 }
 
+// Something the desk sells on the POS tab. Prices are before tax, in cents.
+// Products are switched off with `active`, never deleted: old sales point at them.
+model Product {
+  id             String      @id @default(uuid())
+  gymId          String
+  name           String
+  kind           ProductKind
+  priceCents     Int
+  punches        Int? // punch cards only: visits on a new card
+  durationMonths Int? // memberships only
+  recurring      Boolean     @default(false) // monthly recurring membership
+  chargesPst     Boolean     @default(false) // goods and rentals; admissions and memberships are GST only
+  active         Boolean     @default(true)
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  gym       Gym        @relation(fields: [gymId], references: [id])
+  saleLines SaleLine[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, name])
+  @@index([gymId, active, sortOrder])
+}
+
+// One sale at the desk POS, for one climber. The card machine takes the
+// money; this records what was sold and how it was paid. A voided sale keeps
+// its row and says who voided it and why.
+model Sale {
+  id             String     @id @default(uuid())
+  gymId          String
+  climberId      String
+  staffId        String? // who rang it up, once auth exposes the staff member
+  subtotalCents  Int
+  gstRateBps     Int // the gym's rates at the time of sale
+  gstCents       Int
+  pstRateBps     Int        @default(0)
+  pstCents       Int        @default(0)
+  totalCents     Int
+  tender         Tender
+  status         SaleStatus @default(PAID)
+  idempotencyKey String // made by the checkout popup, so pressing Tender twice saves one sale
+  voidedAt       DateTime?
+  voidReason     String?
+  createdAt      DateTime   @default(now())
+
+  gym     Gym        @relation(fields: [gymId], references: [id])
+  climber Climber    @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  staff   Staff?     @relation(fields: [staffId, gymId], references: [id, gymId], onDelete: Restrict)
+  lines   SaleLine[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, idempotencyKey])
+  @@index([gymId, createdAt]) // today's sales
+  @@index([climberId, createdAt])
+}
+
+// One line of a sale. Name and price are copied from the product, so later
+// price changes don't rewrite old sales.
+model SaleLine {
+  id             String      @id @default(uuid())
+  gymId          String
+  saleId         String
+  productId      String
+  name           String
+  kind           ProductKind
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+  chargesPst     Boolean     @default(false) // copied from the product at the time of sale
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  sale    Sale    @relation(fields: [saleId, gymId], references: [id, gymId], onDelete: Restrict)
+  product Product @relation(fields: [productId, gymId], references: [id, gymId], onDelete: Restrict)
+  passes  Pass[]
+
+  @@unique([id, gymId])
+  @@index([saleId])
+}
+
 enum GymSystem {
   ELEVATE
   REDPOINT
   ROCK_GYM_PRO
+}
+
+enum ProductKind {
+  DAY
+  PUNCH
+  MEMBERSHIP
+  RENTAL
+  RETAIL
+}
+
+enum Tender {
+  CARD // on the gym's own card machine
+  CASH
+}
+
+enum SaleStatus {
+  PAID
+  VOIDED
 }
 
 enum StaffRole {

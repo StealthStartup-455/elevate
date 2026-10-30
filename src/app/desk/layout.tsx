@@ -5,6 +5,7 @@ import AppVersion from "@/components/ui/AppVersion";
 import Logo from "@/components/ui/Logo";
 import LogoutButton from "@/features/auth/components/LogoutButton";
 import { requireStaff } from "@/features/auth/staff";
+import { isPosEnabled } from "@/features/pos/queries";
 
 export default function DeskLayout({ children }: LayoutProps<"/desk">) {
   return (
@@ -16,6 +17,9 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
               <Logo />
             </Link>
             <Link href="/desk">Check-in</Link>
+            <Suspense fallback={null}>
+              <PosLink />
+            </Suspense>
             <Link href="/desk/climbers">Climbers</Link>
             {/* Events and Waivers are hidden until their pages have content
                 (#65). The routes stay, so work on them can continue: add the
@@ -38,4 +42,9 @@ async function StaffOnly({ children }: { children: ReactNode }) {
   await connection();
   await requireStaff();
   return children;
+}
+
+// Only gyms that sell passes in Elevate get the POS (see features/pos).
+async function PosLink() {
+  return (await isPosEnabled()) ? <Link href="/desk/pos">POS</Link> : null;
 }

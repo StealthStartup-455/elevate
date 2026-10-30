@@ -26,6 +26,7 @@ describe("climberScanMessages", () => {
     const both = { waiverStatus: "missing", membershipStatus: "none", hasDayPass: false } as const;
     expect(climberScanMessages(both)).toHaveLength(2);
     expect(climberScanMessages({ ...both, hasDayPass: true })).toHaveLength(1);
+    expect(climberScanMessages({ ...both, punchesLeft: 3 })).toHaveLength(1);
   });
 });
 
@@ -33,6 +34,7 @@ describe("deskNextStep", () => {
   it("is null when the climber can check in", () => {
     expect(deskNextStep(ok)).toBeNull();
     expect(deskNextStep({ ...ok, membershipStatus: "none", hasDayPass: true })).toBeNull();
+    expect(deskNextStep({ ...ok, membershipStatus: "expired", punchesLeft: 1 })).toBeNull();
   });
 
   it.each([

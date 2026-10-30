@@ -214,9 +214,10 @@ export async function giveDayPass(
 }
 
 // Front desk "manual check in" (the desk dialog). Follows the rules in
-// prisma/DATABASE.md: a current waiver and an active membership. Turned-away
-// visits are not saved. Saves a CheckIn row, so the desk list and the busyness
-// count pick it up.
+// prisma/DATABASE.md: a current waiver, and an active membership, a day pass
+// or a punch card with visits left (which loses one punch). Turned-away visits
+// are not saved. Saves a CheckIn row, so the desk list and the busyness count
+// pick it up.
 export async function checkInClimber(
   climberId: string,
 ): Promise<{ ok: boolean; message?: string }> {
@@ -237,10 +238,13 @@ export async function checkInClimber(
   if (climber.waiverStatus !== "valid") {
     return refuse(`waiver_${climber.waiverStatus}`, "Waiver is not valid. Sign a waiver first.");
   }
-  // STOPGAP(#62): a no-charge day pass stands in for a membership until
-  // purchases exist (#44 to #46).
-  if (climber.membershipStatus !== "active" && !climber.hasDayPass) {
-    return refuse(`membership_${climber.membershipStatus}`, "No active membership or day pass.");
+  // A membership or day pass comes first; a punch card is only used without.
+  const usePunch = climber.membershipStatus !== "active" && !climber.hasDayPass;
+  if (usePunch && climber.punchesLeft === 0) {
+    return refuse(
+      `membership_${climber.membershipStatus}`,
+      "No active membership, day pass or punch card.",
+    );
   }
 
   // Staff cannot check in a climber from another gym.
@@ -261,10 +265,41 @@ export async function checkInClimber(
   });
   if (recent) return refuse("already_checked_in", "Already checked in in the last 2 hours.");
 
-  await db.checkIn.create({
-    data: { gymId: staff.gymId, climberId, method: "FRONT_DESK" },
+  const now = new Date();
+  const saved = await db.$transaction(async (tx) => {
+    if (usePunch) {
+      // The oldest card first. `gt: 0` stops two desks using the last punch.
+      const card = await tx.pass.findFirst({
+        where: {
+          gymId: staff.gymId,
+          climberId,
+          kind: "PUNCH",
+          visitsLeft: { gt: 0 },
+          startsAt: { lte: now },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        orderBy: { startsAt: "asc" },
+        select: { id: true },
+      });
+      if (!card) return false;
+      const { count } = await tx.pass.updateMany({
+        where: { id: card.id, visitsLeft: { gt: 0 } },
+        data: { visitsLeft: { decrement: 1 } },
+      });
+      if (count === 0) return false;
+    }
+    await tx.checkIn.create({
+      data: { gymId: staff.gymId, climberId, method: "FRONT_DESK" },
+    });
+    return true;
   });
-  logEvent("check_in_saved", { gymId: staff.gymId, climberId, method: "FRONT_DESK" });
+  if (!saved) return refuse("no_punches_left", "No punches left on their card.");
+  logEvent("check_in_saved", {
+    gymId: staff.gymId,
+    climberId,
+    method: "FRONT_DESK",
+    pass: usePunch ? "punch" : "membership_or_day",
+  });
   revalidatePath("/desk");
   revalidatePath("/me");
   return { ok: true };
@@ -286,5 +321,6 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     membershipStatus: c.membershipStatus,
     membershipRenewsOn: c.membershipRenewsOn,
     hasDayPass: c.hasDayPass,
+    punchesLeft: c.punchesLeft,
   }));
 }
