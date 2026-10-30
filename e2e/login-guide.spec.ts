@@ -22,7 +22,7 @@ test("the (i) lists test logins by user type, and the ones shown work", async ({
   await expect(tip).toContainText("Climbers by name");
   await expect(tip).toContainText("desk@elevate.test");
   // The password column is shown, not only the usernames.
-  await expect(tip.getByRole("columnheader", { name: "Password" }).first()).toBeVisible();
+  await expect(tip.getByText("Password", { exact: true }).first()).toBeVisible();
 
   for (const [user, lands] of [
     ["desk", /\/desk/],

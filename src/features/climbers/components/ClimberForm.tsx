@@ -7,7 +7,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import { useActionState } from "react";
 import type { ClimberInput, FormState } from "../types";
-import WaiverStep from "./WaiverStep";
+import LinkButton from "./LinkButton";
 
 type Props = {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -43,7 +43,7 @@ export default function ClimberForm({
       <Stack spacing={4}>
         <Alert severity="success">{state.message}</Alert>
         {state.climberId ? (
-          <WaiverStep climberId={state.climberId} nextHref="/me" />
+          <LinkButton href="/me/waiver?next=/me">Sign the waiver</LinkButton>
         ) : null}
       </Stack>
     );

@@ -3,7 +3,7 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import { formatDate } from "@/features/climbers/format";
-import WaiverStep from "@/features/climbers/components/WaiverStep";
+import LinkButton from "@/features/climbers/components/LinkButton";
 import type { MembershipStatus } from "@/features/climbers/types";
 import type { PurchasePageData } from "../queries";
 
@@ -79,7 +79,11 @@ export default function MyPlan({ data }: { data: PurchasePageData }) {
                 ? "Your waiver has expired. Sign a new one before you climb."
                 : "You haven't signed the waiver yet. You can buy now, but sign it before you climb."}
             </Typography>
-            <WaiverStep climberId={membership.climberId} />
+            <div>
+              <LinkButton href="/me/waiver?next=/me/purchase" variant="outlined">
+                {membership.waiverStatus === "expired" ? "Sign the waiver again" : "Sign the waiver"}
+              </LinkButton>
+            </div>
           </div>
         ) : (
           <StatusPill status="ok" label="Waiver signed" />

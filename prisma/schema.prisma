@@ -1,4 +1,4 @@
-// Elevate database. Ten tables.
+// Elevate database. Eleven tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -39,6 +39,8 @@ model Gym {
   products  Product[]
   sales     Sale[]
   saleLines SaleLine[]
+
+  waiverTemplates WaiverTemplate[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
@@ -117,6 +119,27 @@ model Pass {
   @@index([gymId, climberId, expiresAt])
 }
 
+// The waiver wording a gym asks climbers to sign, one row per version. A
+// version is never edited once published: a change is a new row, and
+// Gym.waiverVersion points at the one climbers must sign. Signed waivers link
+// to the row they agreed to, so the exact text can always be shown.
+model WaiverTemplate {
+  id          String   @id @default(uuid())
+  gymId       String
+  version     String // "v1", "v2"... matches Gym.waiverVersion
+  title       String
+  body        String // the waiver text; blank lines separate paragraphs
+  clauses     String[] // short rules the climber ticks one by one
+  bodyHash    String // SHA-256 of title, body and clauses (features/waivers/hash.ts)
+  publishedAt DateTime @default(now())
+
+  gym     Gym      @relation(fields: [gymId], references: [id])
+  waivers Waiver[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, version])
+}
+
 // One signed waiver. Every version is kept, because it's a legal record.
 // For a minor, the parent or guardian is the one who signs.
 model Waiver {
@@ -129,8 +152,21 @@ model Waiver {
   signerRelation SignerRelation @default(SELF)
   externalId     String?
 
-  gym     Gym     @relation(fields: [gymId], references: [id])
-  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  // Set when signed in Elevate; empty for imported and older placeholder rows.
+  templateId            String? // the exact wording they agreed to
+  bodyHash              String? // the template's hash when they signed, to prove the text didn't change
+  signatureText         String? // the name they typed as their signature
+  signatureImage        String? // a drawn signature, as a PNG data URL
+  signedByAuthUserId    String? // the login that signed (the parent's, for a child)
+  ipAddress             String?
+  userAgent             String?
+  // Who to call if they get hurt, as given when they signed.
+  emergencyContactName  String?
+  emergencyContactPhone String? // saved like +12505551234
+
+  gym      Gym             @relation(fields: [gymId], references: [id])
+  climber  Climber         @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  template WaiverTemplate? @relation(fields: [templateId, gymId], references: [id, gymId], onDelete: Restrict)
 
   @@unique([gymId, externalId])
   @@index([gymId, climberId])

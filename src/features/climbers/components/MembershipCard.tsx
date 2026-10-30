@@ -7,7 +7,7 @@ import { formatDate } from "../format";
 import { getMyMembership, type Membership } from "../queries";
 import DemoQrCode from "./DemoQrCode";
 import LinkButton from "./LinkButton";
-import WaiverStep from "./WaiverStep";
+import LinkArrow from "@/components/ui/LinkArrow";
 import ScanButton from "@/features/check-ins/components/ScanButton";
 import { isOnlinePurchaseEnabled } from "@/features/purchase/queries";
 
@@ -95,6 +95,9 @@ export default async function MembershipCard() {
                 {waiverExpiry}
               </Typography>
             ) : null}
+            {membership.waiverStatus === "valid" ? (
+              <LinkArrow href="/me/waiver">View waiver</LinkArrow>
+            ) : null}
           </Box>
           {/* The code, its label and the scan button stay centred under the QR
               code, whatever the waiver or membership says on the left. */}
@@ -120,7 +123,9 @@ export default async function MembershipCard() {
         {needsWaiver || needsRenewal ? (
           <Box sx={{ mt: 5, display: "flex", flexDirection: "column", gap: 3 }}>
             {needsWaiver ? (
-              <WaiverStep climberId={membership.climberId} />
+              <LinkButton href="/me/waiver?next=/me">
+                {membership.waiverStatus === "expired" ? "Sign the waiver again" : "Sign the waiver"}
+              </LinkButton>
             ) : null}
             {needsRenewal ? (
               canPurchase ? (
