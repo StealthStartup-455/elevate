@@ -1,5 +1,13 @@
-// A QR-looking placeholder until the check-in ticket picks a real code
-// format. It has the three corner squares of a QR code, but it does NOT scan.
+// The climber's code on /me. In demo mode it is a real QR code that opens a
+// song, for the class demo (#146); anywhere else it is a QR-looking
+// placeholder with the three corner squares that does NOT scan, until the
+// check-in ticket picks a real code format. Nothing in the scan flow reads
+// either one: check-in goes through the "Simulate scan" button.
+import QRCode from "qrcode";
+import { isDemoMode } from "@/features/auth/demo-mode";
+
+/** What the demo code opens when a phone camera scans it. */
+export const DEMO_QR_LINK = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
 const SIZE = 25;
 
@@ -33,7 +41,57 @@ function Finder({ x, y }: { x: number; y: number }) {
   );
 }
 
-export default function DemoQrCode({ value, size = 104 }: { value: string; size?: number }) {
+// Always dark on white, even in dark mode, like a printed code. The 2-module
+// margin around it is the quiet zone a scanner needs.
+function CodeSvg({
+  size,
+  modules,
+  count,
+  label,
+  children,
+}: {
+  size: number;
+  modules: { x: number; y: number }[];
+  count: number;
+  label: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <svg
+      viewBox={`-2 -2 ${count + 4} ${count + 4}`}
+      width={size}
+      height={size}
+      role="img"
+      aria-label={label}
+      shapeRendering="crispEdges"
+      // eslint-disable-next-line no-restricted-syntax -- always white, like a printed code
+      style={{ background: "#fff", borderRadius: 6 }}
+    >
+      {/* eslint-disable-next-line no-restricted-syntax -- always dark, like a printed code */}
+      <g fill="#111">
+        {children}
+        {modules.map(({ x, y }) => (
+          <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+function ScannableCode({ value, size }: { value: string; size: number }) {
+  const { modules: bits } = QRCode.create(DEMO_QR_LINK, { errorCorrectionLevel: "M" });
+  const modules: { x: number; y: number }[] = [];
+  for (let y = 0; y < bits.size; y++) {
+    for (let x = 0; x < bits.size; x++) {
+      if (bits.get(x, y)) modules.push({ x, y });
+    }
+  }
+  return (
+    <CodeSvg size={size} modules={modules} count={bits.size} label={`Demo check-in code for ${value}`} />
+  );
+}
+
+function PlaceholderCode({ value, size }: { value: string; size: number }) {
   const random = seeded(value);
   const modules: { x: number; y: number }[] = [];
   for (let y = 0; y < SIZE; y++) {
@@ -41,28 +99,19 @@ export default function DemoQrCode({ value, size = 104 }: { value: string; size?
       if (!inFinder(x, y) && random() < 0.5) modules.push({ x, y });
     }
   }
-
   return (
-    // Always dark on white, even in dark mode, like a real code.
-    <svg
-      viewBox={`-2 -2 ${SIZE + 4} ${SIZE + 4}`}
-      width={size}
-      height={size}
-      role="img"
-      aria-label={`Demo check-in code for ${value}`}
-      shapeRendering="crispEdges"
-      // eslint-disable-next-line no-restricted-syntax -- always white, like a printed code
-      style={{ background: "#fff", borderRadius: 6 }}
-    >
-      {/* eslint-disable-next-line no-restricted-syntax -- always dark, like a printed code */}
-      <g fill="#111">
-        <Finder x={0} y={0} />
-        <Finder x={SIZE - 7} y={0} />
-        <Finder x={0} y={SIZE - 7} />
-        {modules.map(({ x, y }) => (
-          <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />
-        ))}
-      </g>
-    </svg>
+    <CodeSvg size={size} modules={modules} count={SIZE} label={`Demo check-in code for ${value}`}>
+      <Finder x={0} y={0} />
+      <Finder x={SIZE - 7} y={0} />
+      <Finder x={0} y={SIZE - 7} />
+    </CodeSvg>
+  );
+}
+
+export default function DemoQrCode({ value, size = 128 }: { value: string; size?: number }) {
+  return isDemoMode() ? (
+    <ScannableCode value={value} size={size} />
+  ) : (
+    <PlaceholderCode value={value} size={size} />
   );
 }

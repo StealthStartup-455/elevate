@@ -230,11 +230,16 @@ export default function ManualCheckIn() {
                   Membership
                 </Typography>
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600 }}
+                    color={selected.membershipStatus === "expired" ? "error" : undefined}
+                  >
+                    {selected.membershipStatus === "expired" ? "✕ " : ""}
                     {MEMBERSHIP_LABEL[selected.membershipStatus]}
                   </Typography>
                   {membershipDetail(selected) ? (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color={selected.membershipStatus === "expired" ? "error" : "text.secondary"}>
                       {membershipDetail(selected)}
                     </Typography>
                   ) : null}

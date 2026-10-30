@@ -1,0 +1,31 @@
+# 2026-10-30 21:25 UTC: Release candidate fixes from SethMess's issues (#142 to #148)
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#142, #143, #144, #145, #146, #147, #148 (sub-issues of #149) / PR pending
+- **Branch:** `fix/149-seth-release-candidate-fixes` (one branch for the epic #149, at the developer's request: one PR for all seven)
+- **What the agent did:**
+  - **#142** `demoLogin` calls `clearSession()` before `setSession()` for a climber, so a leftover desk cookie no longer gives desk access.
+  - **#144** `/me` shows "Signed in as <first> <last>" under the page title (`Membership` gained `lastName`).
+  - **#145** Red for Revoke membership (button and confirm) and for every expired membership (POS pill and "Ended …", scan popup, Manual check in, `/me` card and Purchase tab, desk climber page); amber for Renew (the "Renew membership" button and the POS renewals rows). The theme's `MuiButton` variants now cover `error` and `warning`; `STYLE_GUIDE.md` says when to use them.
+  - **#146** In demo mode `DemoQrCode` draws a real QR code (`qrcode` library, new dependency) for a song link; outside demo mode it keeps the placeholder. Nothing reads its content; check-in still goes through "Simulate scan".
+  - **#147** The desk climber page has a waiver panel (status pill, signed date, expiry, wording version) and a working **Look at waiver** link to the new `/desk/waivers/[waiverId]`, which only opens waivers from the staff member's own gym. The signed-waiver body moved to `SignedWaiverDetails`, shared with `/me/waiver/[id]`. The page also shows the membership status.
+  - **#148** **Open in POS** on the climber page opens `/desk/pos?climber=<id>` with that climber picked; a bad or other-gym id opens the POS with nobody picked.
+  - **#143** The Purchase tab is now one order: rentals and chalk get a quantity stepper each (0 to 20), memberships and passes are toggle tiles (at most one, picking another replaces it), a "Your order" card has **Checkout**, and one sale is saved. `buyOnline` takes `items` and refuses an order with more than one membership, day pass or punch card.
+- **Files touched:** `src/features/purchase/{actions,catalog}.ts`, `components/PurchaseOptions.tsx`, `src/features/waivers/{queries.ts,components/SignedWaiverDetails.tsx}`, `src/app/desk/{climbers/[climberId],waivers/[waiverId],pos}/page.tsx`, `src/features/climbers/components/{DeskWaiverPanel,DemoQrCode,LinkButton,MembershipCard,ManualCheckIn}.tsx`, `src/features/pos/components/{ClimberPanel,PointOfSale}.tsx`, `src/features/check-ins/components/ScanWatcher.tsx`, `src/features/auth/actions.ts`, `src/components/ui/theme/theme.ts`, `STYLE_GUIDE.md`, READMEs, `e2e/{release-fixes,purchase,desk-add-climber}.spec.ts`, `package.json`.
+- **Decisions and why:**
+  - **One pass per order, in the app only.** The desk may still sell one of each pass in a sale (`checkCart`); `buyOnline` is stricter (`ONE_PASS_NOTICE`), as #143 asks.
+  - **A new `/desk/waivers/[waiverId]` page** and `getSignedWaiverForStaff`, because `/me/waiver/[id]` is the climber's and `getSignedWaiver` uses the default gym. The staff versions take the gym from `getStaffContext()` (#34, #123). #139 (open a signed waiver and emergency contact from the desk, assigned to Khanh150104) overlaps: the page shows the emergency contact already; coordinate before building more.
+  - **Red and amber buttons are the only status-colored actions** (revoke, renew); the style guide says so. Everything else stays teal.
+  - **The QR link is demo mode only.** Staging runs in demo mode, so gym owners opening staging would also scan it (the warning in #146). Switch it off or flag it before a pilot gym sees staging.
+  - **Paused is not shown a renewal date** on the new desk membership line (that is #124, left alone elsewhere).
+- **Gotchas:**
+  - A string like `(#143)` inside a test name trips the raw-colour lint rule; keep issue numbers out of string literals in `src/`.
+  - Do not run two Playwright suites against one database at once: scans and new climbers leak between them and give false failures (it happened here).
+  - `getByText("valid")` in `desk-add-climber.spec.ts` became "Valid" because the badge is now the panel's status pill.
+  - After pulling: `npm ci` (new `qrcode`, `@types/qrcode`).
+- **Open follow-ups:**
+  - Other sub-issues of #149 (#124, #125, #128 to #139) are not in this PR.
+  - Rentals bought online still have no pick-up list at the desk.
+  - Decide whether the song QR stays on staging before pilot gyms see it.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 181 passed (2 todo); `npm run test:db` 54 passed; `npm run build` passed. Playwright against `next dev` (`DEV_AUTH_BYPASS=false`): the new `release-fixes.spec.ts` (6) and `purchase.spec.ts` (7) passed; the accessibility (light and dark), release, scan-delivery, desk-add-climber, climber-details, sample-data and POS specs passed run on their own. One full-suite run also had 3 failures while a second suite ran at the same time on the same database; those 3 passed alone after fixing `desk-add-climber`. No single clean full-suite run was recorded after the last edit.

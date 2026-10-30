@@ -1,5 +1,60 @@
 import { describe, expect, it } from "vitest";
-import { ACTIVE_MEMBERSHIP_NOTICE, canBuyOnline, purchaseWarnings, showsMembershipSection } from "./catalog";
+import type { Product } from "@/features/pos/types";
+import {
+  ACTIVE_MEMBERSHIP_NOTICE,
+  canBuyOnline,
+  choosePass,
+  purchaseWarnings,
+  setGoodsQuantity,
+  showsMembershipSection,
+} from "./catalog";
+
+const product = (id: string, kind: Product["kind"]): Product => ({
+  id,
+  name: id,
+  kind,
+  priceCents: 1000,
+  punches: null,
+  durationMonths: null,
+  recurring: false,
+  chargesPst: false,
+});
+const month = product("month", "MEMBERSHIP");
+const day = product("day", "DAY");
+const punch = product("punch", "PUNCH");
+const shoes = product("shoes", "RENTAL");
+const chalk = product("chalk", "RETAIL");
+const all = [month, day, punch, shoes, chalk];
+
+describe("choosePass", () => {
+  it("replaces the membership or pass already in the order, and keeps the goods", () => {
+    const withGoods = [{ productId: "shoes", quantity: 2 }];
+    const first = choosePass(withGoods, month, all);
+    expect(first).toEqual([{ productId: "shoes", quantity: 2 }, { productId: "month", quantity: 1 }]);
+    const second = choosePass(first, day, all);
+    expect(second).toEqual([{ productId: "shoes", quantity: 2 }, { productId: "day", quantity: 1 }]);
+    // A day pass and a punch card are passes too: still only one.
+    expect(choosePass(second, punch, all).map((i) => i.productId)).toEqual(["shoes", "punch"]);
+  });
+
+  it("takes the pass out when it is picked again", () => {
+    const cart = [{ productId: "month", quantity: 1 }, { productId: "chalk", quantity: 1 }];
+    expect(choosePass(cart, month, all)).toEqual([{ productId: "chalk", quantity: 1 }]);
+  });
+});
+
+describe("setGoodsQuantity", () => {
+  it("adds, changes and removes rentals and chalk, up to 20", () => {
+    let cart = setGoodsQuantity([], shoes, 2);
+    cart = setGoodsQuantity(cart, chalk, 3);
+    expect(cart).toEqual([{ productId: "shoes", quantity: 2 }, { productId: "chalk", quantity: 3 }]);
+    cart = setGoodsQuantity(cart, shoes, 25);
+    expect(cart[0]).toEqual({ productId: "shoes", quantity: 20 });
+    cart = setGoodsQuantity(cart, shoes, 0);
+    expect(cart).toEqual([{ productId: "chalk", quantity: 3 }]);
+    expect(setGoodsQuantity(cart, chalk, -1)).toEqual([]);
+  });
+});
 
 describe("canBuyOnline", () => {
   it("shuts an active member out of passes and memberships only", () => {

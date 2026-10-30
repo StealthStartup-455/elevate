@@ -1,8 +1,9 @@
 import { connection } from "next/server";
+import { getStaffContext } from "@/features/auth/staff";
 import { formatPhone } from "@/features/climbers/phone";
 import { summarizeWaiver, type WaiverSummary } from "@/features/climbers/status";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGym, getGymById } from "@/lib/gym";
 import { canActForClimber } from "./access";
 import { hashWaiver } from "./hash";
 
@@ -69,6 +70,7 @@ export async function getWaiverStatus(
 
 export type SignedWaiverView = {
   id: string;
+  climberId: string;
   climberName: string;
   version: string;
   signedAt: Date;
@@ -86,20 +88,73 @@ export type SignedWaiverView = {
 /** One signed waiver, only for the climber, their parent's login, or staff. */
 export async function getSignedWaiver(id: string): Promise<SignedWaiverView | null> {
   await connection();
-  if (!UUID.test(id)) return null;
   const gym = await getGym();
+  return findSignedWaiver(id, gym.id, canActForClimber);
+}
+
+/**
+ * One signed waiver for the desk (#147). Staff only, and only a waiver from
+ * the staff member's own gym (#34), never the default gym.
+ */
+export async function getSignedWaiverForStaff(id: string): Promise<SignedWaiverView | null> {
+  await connection();
+  const staff = await getStaffContext();
+  if (!staff) return null;
+  return findSignedWaiver(id, staff.gymId, async () => true);
+}
+
+export type StaffWaiverPanel = WaiverSummary & {
+  waiverId?: string;
+  /** When the latest waiver was signed, as a date in the gym's time zone. */
+  signedOn?: string;
+  version?: string;
+};
+
+/**
+ * A climber's waiver as the desk's climber page shows it: valid, expired or
+ * missing, with the latest waiver's id, signed date and wording version. Staff
+ * only, limited to the staff member's gym; anyone else sees it as missing.
+ */
+export async function getStaffWaiverPanel(climberId: string): Promise<StaffWaiverPanel> {
+  await connection();
+  const staff = await getStaffContext();
+  if (!staff || !UUID.test(climberId)) return { status: "missing" };
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return { status: "missing" };
+  const latest = await db.waiver.findFirst({
+    where: { gymId: gym.id, climberId },
+    orderBy: { signedAt: "desc" },
+    select: { id: true, signedAt: true, version: true },
+  });
+  return {
+    ...summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date()),
+    waiverId: latest?.id,
+    signedOn: latest
+      ? new Intl.DateTimeFormat("en-CA", { dateStyle: "long", timeZone: gym.timeZone }).format(latest.signedAt)
+      : undefined,
+    version: latest?.version,
+  };
+}
+
+async function findSignedWaiver(
+  id: string,
+  gymId: string,
+  mayRead: (climberId: string) => Promise<boolean>,
+): Promise<SignedWaiverView | null> {
+  if (!UUID.test(id)) return null;
   const waiver = await db.waiver.findFirst({
-    where: { id, gymId: gym.id },
+    where: { id, gymId },
     include: {
       template: true,
       climber: { select: { firstName: true, lastName: true } },
     },
   });
-  if (!waiver || !(await canActForClimber(waiver.climberId))) return null;
+  if (!waiver || !(await mayRead(waiver.climberId))) return null;
 
   const { template } = waiver;
   return {
     id: waiver.id,
+    climberId: waiver.climberId,
     climberName: `${waiver.climber.firstName} ${waiver.climber.lastName}`,
     version: waiver.version,
     signedAt: waiver.signedAt,

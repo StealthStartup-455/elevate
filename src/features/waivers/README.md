@@ -6,10 +6,10 @@ Elevate's own waiver tool (#35). Climbers sign the gym's waiver on `/me/waiver`;
 
 ## What's here
 
-- `queries.ts`: what other features call. `getCurrentWaiverTemplate()`, `getWaiverStatus(climberId)`, `getSignedWaiver(id)`.
+- `queries.ts`: what other features call. `getCurrentWaiverTemplate()`, `getWaiverStatus(climberId)`, `getSignedWaiver(id)`. For the desk (#147), which only sees its own gym: `getStaffWaiverPanel(climberId)` (status, signed date, wording version, waiver id) and `getSignedWaiverForStaff(id)`.
 - `actions.ts`: `submitWaiver`, the signing form's server action.
 - `validate.ts`, `hash.ts`, `access.ts`: the form rules, the wording's fingerprint, and who may act for a climber.
-- `components/WaiverForm.tsx`: the signing form.
+- `components/WaiverForm.tsx`: the signing form. `components/SignedWaiverDetails.tsx`: the signed waiver as read, shared by the climber's page (`/me/waiver/[id]`) and the desk's (`/desk/waivers/[id]`).
 - `sample-waiver.ts`: placeholder wording for the seed. Not a legal document.
 
 ## Rules

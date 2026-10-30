@@ -13,17 +13,20 @@ import ProductPanel from "./ProductPanel";
 // cart lives only in this page until Tender saves the sale; prices and totals
 // are worked out again on the server.
 export default function PointOfSale({
+  initialClimber = null,
   checkedInToday,
   renewalsDue,
   products,
   taxRates,
 }: {
+  /** Already picked, when opened from a climber's page (?climber=, #148). */
+  initialClimber?: PosClimber | null;
   checkedInToday: RecentCheckIn[];
   renewalsDue: RenewalDue[];
   products: Product[];
   taxRates: TaxRates;
 }) {
-  const [selected, setSelected] = useState<PosClimber | null>(null);
+  const [selected, setSelected] = useState<PosClimber | null>(initialClimber);
   // Picked from a list that only has their name, while their passes load.
   const [loading, setLoading] = useState<{ id: string; name: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
