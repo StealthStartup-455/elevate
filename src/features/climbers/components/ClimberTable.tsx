@@ -58,6 +58,9 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
               <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>Phone</TableCell>
               <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>Born</TableCell>
               <TableCell>Waiver</TableCell>
+              <TableCell>
+                <span className="sr-only">Actions</span>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -77,11 +80,21 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
                 <TableCell>
                   <WaiverBadge status={row.waiverStatus} />
                 </TableCell>
+                <TableCell align="right">
+                  {/* Opens the climber's page in the form (#89). */}
+                  <MuiLink
+                    component={Link}
+                    href={`/desk/climbers/${row.id}?edit=1`}
+                    aria-label={`Edit ${row.name}`}
+                  >
+                    Edit
+                  </MuiLink>
+                </TableCell>
               </TableRow>
             ))}
             {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   {rows.length === 0 ? "No climbers yet." : "No climbers match."}
                 </TableCell>
               </TableRow>

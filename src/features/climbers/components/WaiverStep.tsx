@@ -20,9 +20,11 @@ type Props = {
   climberId: string;
   /** Show a Continue button to this page once the waiver is signed. */
   nextHref?: string;
+  /** Show a Later button to this page, to skip signing for now. */
+  laterHref?: string;
 };
 
-export default function WaiverStep({ climberId, nextHref }: Props) {
+export default function WaiverStep({ climberId, nextHref, laterHref }: Props) {
   const [step, setStep] = useState<"idle" | "signing" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +84,11 @@ export default function WaiverStep({ climberId, nextHref }: Props) {
       >
         Sign a waiver now
       </Button>
+      {laterHref ? (
+        <Button component={Link} href={laterHref} variant="outlined" size="large">
+          Later
+        </Button>
+      ) : null}
     </Stack>
   );
 }

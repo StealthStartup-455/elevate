@@ -18,7 +18,7 @@ import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../acti
 import { useOtherDeskDialogOpen } from "../desk-dialogs";
 
 // How often the desk asks the server for a new scan. Short, so the popup
-// shows up right after the climber taps "Demo scan".
+// shows up right after the climber taps "Simulate scan".
 const POLL_MS = 2500;
 
 const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {

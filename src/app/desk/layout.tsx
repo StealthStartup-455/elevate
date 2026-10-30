@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
+import AppVersion from "@/components/ui/AppVersion";
 import Logo from "@/components/ui/Logo";
 import LogoutButton from "@/features/auth/components/LogoutButton";
 import { requireStaff } from "@/features/auth/staff";
@@ -16,11 +17,13 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             </Link>
             <Link href="/desk">Check-in</Link>
             <Link href="/desk/climbers">Climbers</Link>
-            <Link href="/desk/events">Events</Link>
-            <Link href="/desk/waivers">Waivers</Link>
+            {/* Events and Waivers are hidden until their pages have content
+                (#65). The routes stay, so work on them can continue: add the
+                links back in the same PR that fills the page. */}
             <LogoutButton />
           </nav>
           <main className="p-4 sm:p-6">{children}</main>
+          <AppVersion />
         </div>
       </StaffOnly>
     </Suspense>
