@@ -22,6 +22,7 @@ type Props = {
   waiverStatus: WaiverStatus;
   membershipStatus: MembershipStatus;
   hasDayPass: boolean;
+  punchesLeft: number;
 };
 
 export default function ScanButton(props: Props) {

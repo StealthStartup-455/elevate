@@ -1,0 +1,39 @@
+# 2026-10-30 00:18 UTC: Desk POS tab for selling passes, memberships, rentals and chalk
+
+- **Developer:** @zack122
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#56 / PR pending
+- **Branch:** `feature/56-mock-membership-purchase-workflow-staff-side`
+- **What the agent did:**
+  - New **POS** tab at `/desk/pos` (`src/features/pos/`), modelled on the Rock Gym Pro / Redpoint register. Staff pick a climber (search, "Checked in today" or "Renewals due"), add products to a cart with a running subtotal, open **Checkout** (lines, subtotal, GST 5%, total, Card or Cash) and press **Tender**, which saves the sale and gives the passes. Today's sales sit under it, with **Void**.
+  - Database: `Product`, `Sale`, `SaleLine` tables, `Gym.taxRateBps` (default 500, GST 5%), `Pass.renews` and `Pass.saleLineId`. One additive migration with Row Level Security on the new tables. The seed adds 10 products with rough mock prices and makes Agam Kamran a monthly recurring member due in 3 days. Seven more team-list climbers have no active membership (Maya Patel, Liam Chen: none; Sofia Rossi, Noah Fraser: expired; Ava Thompson: no waiver, none; Ethan Brooks: expired waiver and membership; Chloe Nguyen: paused), for trying sales on the POS.
+  - Punch cards now work at check-in: `checkInClimber` uses one when there's no active membership or day pass and takes a punch atomically. `Climber.punchesLeft` is shown in the manual check-in dialog, the scan popup and on `/me`.
+  - **BC PST (review on PR #119):** second migration `20261030050308_pos_pst`. `Gym.taxRateBps` → `gstRateBps` and new `pstRateBps` (default 700); `Product.chargesPst` (set for rentals and retail, backfilled in the migration and the seed); `Sale.taxRateBps`/`taxCents` → `gstRateBps`/`gstCents` plus `pstRateBps`/`pstCents` (0 for older sales); `SaleLine.chargesPst` copied at sale time. `priceCart` takes `{ gstRateBps, pstRateBps }`; the checkout popup shows a PST line when there is any.
+  - Tests: `cart.test.ts`, `passes.test.ts` (unit), `actions.db.test.ts` (sales, double Tender, renewals, voids, punch cards), `e2e/pos.spec.ts`, and `/desk/pos` added to the axe checks.
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261029235741_pos_sales/`, `prisma/seed.ts`, `prisma/DATABASE.md`, `src/features/pos/`, `src/app/desk/pos/page.tsx`, `src/app/desk/layout.tsx`, `src/features/climbers/{actions,queries,status,types}.ts`, the check-in dialogs, `src/components/ui/DisabledReason.tsx` (new `fullWidth` prop), `e2e/`
+- **Decisions and why:** (zack's answers, in the thread and the plan doc)
+  - Prices are stored now; `DATABASE.md` said they weren't, and is updated. Money is integer cents; GST is added once on the subtotal, at the end.
+  - No in-app card processing: Tender only records the sale after the gym's own card machine (or till) has the money. Tender types are Card and Cash. No discounts for now.
+  - One climber per sale; one of each pass and one membership per sale (picking another membership replaces it). A missing waiver only warns.
+  - The server re-reads prices and recalculates; the browser's numbers are never saved. The checkout popup's idempotency key (unique per gym) makes a double Tender return the first sale.
+  - A new membership starts when the current one (or an early renewal) ends, so buying early never loses days.
+  - Voids keep the row (`VOIDED`, `voidedAt`, `voidReason`) and end the sale's passes; any desk staff member can void. The void reason is typed text, so it isn't logged.
+  - Monthly recurring stores no card: the pass is marked `renews`, and the POS lists it under "Renewals due" (7 days before to 14 days after) for staff to ring up.
+  - The POS tab and page only exist when `Gym.system` is `ELEVATE`.
+  - PST: GST 5% on the whole subtotal; PST 7% only on products with `chargesPst` (rentals and chalk), since BC PST applies to goods and rentals, not to admissions or memberships. Each tax is rounded once on its own total. A per-product flag rather than a tax category, to keep the mock-up simple; a gym with no PST sets `pstRateBps` to 0. Not confirmed with a gym or accountant yet.
+  - The tax columns were renamed in a new migration rather than by editing `pos_sales`: reviewers had already applied it, and `check-migrations.sh` treats migrations as append-only.
+  - "Checked in today" merges the desk's saved check-ins with the busyness mock's check-ins (the same ones the front desk list shows).
+- **Gotchas:**
+  - Dates on the POS use `isoDay` (UTC) like the rest of the desk, so a membership bought after about 5 p.m. Pacific shows tomorrow's date. Fixing it means moving `toClimber`'s dates to the gym's time zone everywhere.
+  - Wrap MUI `ListItemButton` in `ListItem` inside a `List`, or axe fails the page (`list` rule).
+  - Locally, `npm ci` with npm 10 fails on the lock file (`Missing: yaml`); npm 11 (Node 24, as `engines` says) works.
+  - tzdata 2026e (Node 24.22) keeps `America/Vancouver` on UTC-7 all year from Nov 2026, so tests that need a clocks-go-back day use `America/Los_Angeles`.
+  - After pulling a schema change, run `npx prisma generate` (and `prisma migrate dev`); a stale `src/generated/prisma` shows up as dozens of "Property 'sale' does not exist" errors.
+- **Open follow-ups:**
+  - Retire the #62 "Give free day pass" stopgap now that day passes can be sold (open PR #117 builds on that button, so it was left alone).
+  - Record `staffId` on sales and voids once auth exposes the staff member (`TODO(auth)`).
+  - A manager screen to edit products and prices; end-of-day totals for reconciling with the card machine.
+  - `/desk/pos` loads the full climber list twice (`listClimbers` and `getCheckInClimbers`), the same cost #85 is about.
+  - Review on PR #119 not done here: the branch carries elevate-docs#56 while this repo's #56 is SOC2 (#53 matches; needs a new branch and PR, the developer's call); switch the POS climber search to #108's server search once #108 merges; screenshots; reply on #44 (this PR covers its catalog, not the staff editing screen). Agam's unlinked row in the front desk Recent check-ins is pre-existing on dev (`getCheckInClimbers` skips climbers without a `climber-` externalId) and #108 rewrites it.
+  - Likely small merge conflicts with open PRs #81 (desk nav), #108 and #117 (check-in dialogs).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 117 passed (2 todo); `npm run test:db` 26 passed; `npm run build` passed; `scripts/check-migrations.sh origin/dev` OK; `prisma migrate diff` against the schema: no difference; `npx playwright test` 15 passed, 3 skipped (real-login, no Supabase keys), including the new POS test and the axe checks on `/desk/pos` in light and dark. Checked the POS in light, dark and at 375px wide, with axe clean on the cart and the checkout popup. Re-run after the seed climbers, the time zone test fix and PST: `npx tsc --noEmit` clean, `npm run lint` clean, `npm test` 119 passed (2 todo), `npm run build` passed, `scripts/check-migrations.sh origin/dev` OK; `test:db`, Playwright and `prisma migrate diff` (needs a shadow database) not run, since the local database wasn't migrated in that session. Earlier, after the seed climbers and the time zone test fix: `npx tsc --noEmit` clean, `npm run lint` clean, `npm test` 117 passed (2 todo), `npm run build` passed; `test:db` and Playwright not re-run (local migration not applied in that session).

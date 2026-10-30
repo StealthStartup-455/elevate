@@ -69,6 +69,15 @@ export function hasDayPass(passes: DayPass[], now: Date): boolean {
   return passes.some((p) => p.startsAt <= now && (!p.expiresAt || p.expiresAt > now));
 }
 
+type PunchPass = { startsAt: Date; expiresAt: Date | null; visitsLeft: number | null };
+
+/** Visits left on the climber's punch cards that are in effect at `now`. */
+export function punchesLeft(passes: PunchPass[], now: Date): number {
+  return passes
+    .filter((p) => p.startsAt <= now && (!p.expiresAt || p.expiresAt > now))
+    .reduce((sum, p) => sum + Math.max(p.visitsLeft ?? 0, 0), 0);
+}
+
 // How far `timeZone` is ahead of UTC at `date`, in milliseconds.
 function zoneOffsetMs(timeZone: string, date: Date): number {
   const parts = Object.fromEntries(

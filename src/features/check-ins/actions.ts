@@ -17,6 +17,7 @@ export type ScannedClimber = {
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
   hasDayPass: boolean;
+  punchesLeft: number;
 };
 
 async function getGymForClimberId(climberId: string): Promise<string | null> {
@@ -100,5 +101,6 @@ async function takeLatestScanNow(watchingSince?: string): Promise<ScannedClimber
     membershipStatus: climber.membershipStatus,
     membershipRenewsOn: climber.membershipRenewsOn,
     hasDayPass: climber.hasDayPass,
+    punchesLeft: climber.punchesLeft,
   };
 }

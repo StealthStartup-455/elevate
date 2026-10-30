@@ -8,7 +8,14 @@ export type ScanStatus = {
   waiverStatus: WaiverStatus;
   membershipStatus: MembershipStatus;
   hasDayPass: boolean;
+  /** Visits left on punch cards; one lets them in without a membership. */
+  punchesLeft?: number;
 };
+
+// A day pass or a punch card lets them in without an active membership.
+function needsPass(s: ScanStatus): boolean {
+  return s.membershipStatus !== "active" && !s.hasDayPass && !((s.punchesLeft ?? 0) > 0);
+}
 
 const WAIVER_MESSAGE: Record<Exclude<WaiverStatus, "valid">, string> = {
   missing: "They'll help you sign a waiver.",
@@ -31,8 +38,7 @@ const MEMBERSHIP_FIX: Record<Exclude<MembershipStatus, "active">, string> = {
 export function climberScanMessages(s: ScanStatus): string[] {
   const list: string[] = [];
   if (s.waiverStatus !== "valid") list.push(WAIVER_MESSAGE[s.waiverStatus]);
-  // A day pass from the desk (#62 stopgap) lets them in today anyway.
-  if (s.membershipStatus !== "active" && !s.hasDayPass) {
+  if (needsPass(s) && s.membershipStatus !== "active") {
     list.push(MEMBERSHIP_MESSAGE[s.membershipStatus]);
   }
   return list;
@@ -42,11 +48,10 @@ export function climberScanMessages(s: ScanStatus): string[] {
 // comes first: the day pass stopgap needs a valid waiver (#62).
 export function deskNextStep(s: ScanStatus): string | null {
   const needsWaiver = s.waiverStatus !== "valid";
-  const needsPass = s.membershipStatus !== "active" && !s.hasDayPass;
   const sign = s.waiverStatus === "expired" ? "sign a new waiver" : "sign the waiver";
-  if (needsWaiver && needsPass) return `Next: ${sign} with them, then give a day pass.`;
+  if (needsWaiver && needsPass(s)) return `Next: ${sign} with them, then give a day pass.`;
   if (needsWaiver) return `Next: ${sign} with them.`;
-  if (needsPass && s.membershipStatus !== "active") {
+  if (needsPass(s) && s.membershipStatus !== "active") {
     return `Next: give a day pass, or ${MEMBERSHIP_FIX[s.membershipStatus]}.`;
   }
   return null;

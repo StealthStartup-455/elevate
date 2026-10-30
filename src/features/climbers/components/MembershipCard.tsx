@@ -16,7 +16,10 @@ const WAIVER_TEXT = {
 } as const;
 
 function renewalLine(membership: Membership): string {
-  if (membership.hasDayPass && membership.status !== "active") return "Free day pass for today";
+  if (membership.hasDayPass && membership.status !== "active") return "Day pass for today";
+  if (membership.punchesLeft > 0 && membership.status !== "active") {
+    return `Punch card · ${membership.punchesLeft} ${membership.punchesLeft === 1 ? "visit" : "visits"} left`;
+  }
   if (membership.status === "none" || !membership.renewsOn) {
     return "Buy a membership to start climbing";
   }
@@ -86,6 +89,7 @@ export default async function MembershipCard() {
                 waiverStatus={membership.waiverStatus}
                 membershipStatus={membership.status}
                 hasDayPass={membership.hasDayPass}
+                punchesLeft={membership.punchesLeft}
             />            
           </Box>
         </Box>

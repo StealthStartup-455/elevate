@@ -84,6 +84,7 @@ src/
     auth/             Logins, roles and permissions
     check-ins/        Scanning, check-in and green/red status
     climbers/         Profiles, memberships and incidents
+    pos/              Desk POS: selling passes, memberships, rentals and chalk
     waivers/          CSV import, matching and duplicate checks
     events/           Calendar, wall resets, bookings and announcements
     analytics/        Gym busyness and session stats

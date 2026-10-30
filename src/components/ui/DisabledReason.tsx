@@ -8,12 +8,22 @@ import Tooltip from "@mui/material/Tooltip";
 //   <DisabledReason reason="No waivers expire in the next 7 days">
 //     <Button variant="outlined" disabled>Send reminders</Button>
 //   </DisabledReason>
-export default function DisabledReason({ reason, children }: { reason: string; children: React.ReactElement }) {
+//
+// `fullWidth` stretches the wrapper (and a fullWidth child) across its column.
+export default function DisabledReason({
+  reason,
+  fullWidth = false,
+  children,
+}: {
+  reason: string;
+  fullWidth?: boolean;
+  children: React.ReactElement;
+}) {
   return (
     <Tooltip title={reason} describeChild>
       <span
         tabIndex={0}
-        className="inline-flex cursor-not-allowed rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav"
+        className={`${fullWidth ? "flex w-full" : "inline-flex"} cursor-not-allowed rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav`}
       >
         {children}
       </span>

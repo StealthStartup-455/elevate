@@ -3,7 +3,7 @@
 // removed.
 //
 // What it creates:
-// - the demo gym
+// - the demo gym, and what its desk sells on the POS tab (PRODUCTS below)
 // - the team's own climbers (CLIMBERS below)
 // - the climbers the busyness mock check-ins refer to (src/features/analytics/mock),
 //   saved with the mock's id (climber-12) as externalId so the desk can link
@@ -21,6 +21,7 @@ import { db } from "../src/lib/db";
 import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
 import { toStoredPhone } from "../src/features/climbers/phone";
 import { seedLogins } from "./seed-logins";
+import type { Prisma } from "../src/generated/prisma/client";
 import type {
   MembershipStatus,
   WaiverStatus,
@@ -38,13 +39,16 @@ type SeedClimber = {
   externalId?: string;
   waiver: WaiverStatus;
   membership: MembershipStatus;
+  // Monthly recurring member whose month ends in this many days, so the POS
+  // shows them under "Renewals due".
+  renewsInDays?: number;
 };
 
 // Same people as before, now with a waiver and membership each so every
 // state shows up on the desk list.
 const CLIMBERS: SeedClimber[] = [
   { firstName: "Tyler", lastName: "Le", phone: "+12505550101", email: "tyler.le@uvic.canada", dateOfBirth: "2003-08-15", waiver: "valid", membership: "active" },
-  { firstName: "Agam", lastName: "Kamran", phone: "+12505550102", email: "agam.kamran@uvic.canada", dateOfBirth: "2003-04-12", waiver: "valid", membership: "active" },
+  { firstName: "Agam", lastName: "Kamran", phone: "+12505550102", email: "agam.kamran@uvic.canada", dateOfBirth: "2003-04-12", waiver: "valid", membership: "active", renewsInDays: 3 },
   { firstName: "Ekam", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2002-11-21", waiver: "valid", membership: "active" },
   // Same last name + minor sharing parent/guardian's phone and email
   { firstName: "Nevin", lastName: "Gill", phone: "+12505550103", email: "ekam.gill@uvic.canada", dateOfBirth: "2015-01-17", waiver: "valid", membership: "none" },
@@ -54,6 +58,32 @@ const CLIMBERS: SeedClimber[] = [
   { firstName: "Khanh", lastName: "Truong", phone: "+12505550107", email: "khanh.truong@uvic.canada", dateOfBirth: "2003-02-28", waiver: "valid", membership: "paused" },
   { firstName: "Jose", lastName: "Garcia", phone: "+12505550108", email: "jose.garcia@uvic.canada", dateOfBirth: "2001-09-14", waiver: "valid", membership: "expired" },
   { firstName: "Zack", lastName: "Zhao", phone: "+12505550109", email: "zack.zhao@uvic.canada", dateOfBirth: "2008-07-23", waiver: "expired", membership: "active" },
+  // No active membership, for trying the POS: someone to sell a day pass,
+  // punch card or membership to.
+  { firstName: "Maya", lastName: "Patel", phone: "+12505550110", email: "maya.patel@example.test", dateOfBirth: "1998-03-09", waiver: "valid", membership: "none" },
+  { firstName: "Liam", lastName: "Chen", phone: "+12505550111", email: "liam.chen@example.test", dateOfBirth: "2004-10-27", waiver: "valid", membership: "none" },
+  { firstName: "Sofia", lastName: "Rossi", phone: "+12505550112", email: "sofia.rossi@example.test", dateOfBirth: "1995-07-18", waiver: "valid", membership: "expired" },
+  { firstName: "Noah", lastName: "Fraser", phone: "+12505550113", email: null, dateOfBirth: "1989-12-02", waiver: "valid", membership: "expired" },
+  { firstName: "Ava", lastName: "Thompson", phone: "+12505550114", email: "ava.thompson@example.test", dateOfBirth: "2000-05-30", waiver: "missing", membership: "none" },
+  { firstName: "Ethan", lastName: "Brooks", phone: "+12505550115", email: "ethan.brooks@example.test", dateOfBirth: "1993-01-14", waiver: "expired", membership: "expired" },
+  { firstName: "Chloe", lastName: "Nguyen", phone: "+12505550116", email: "chloe.nguyen@example.test", dateOfBirth: "1997-09-05", waiver: "valid", membership: "paused" },
+];
+
+// What the desk sells on the POS tab. Rough mock prices in cents, before
+// tax, roughly what climbing gyms around Victoria charge. Not real prices.
+// Rentals and chalk pay BC PST as well as GST; passes and memberships are
+// GST only.
+const PRODUCTS: Omit<Prisma.ProductCreateManyInput, "gymId">[] = [
+  { name: "Day pass", kind: "DAY", priceCents: 2500 },
+  { name: "10-punch card", kind: "PUNCH", priceCents: 20000, punches: 10 },
+  { name: "1 month membership", kind: "MEMBERSHIP", priceCents: 10000, durationMonths: 1 },
+  { name: "3 month membership", kind: "MEMBERSHIP", priceCents: 27000, durationMonths: 3 },
+  { name: "Monthly recurring membership", kind: "MEMBERSHIP", priceCents: 8500, durationMonths: 1, recurring: true },
+  { name: "Annual membership", kind: "MEMBERSHIP", priceCents: 90000, durationMonths: 12 },
+  { name: "Student membership (1 month)", kind: "MEMBERSHIP", priceCents: 7500, durationMonths: 1 },
+  { name: "Shoe rental", kind: "RENTAL", priceCents: 600, chargesPst: true },
+  { name: "Harness rental", kind: "RENTAL", priceCents: 500, chargesPst: true },
+  { name: "Chalk", kind: "RETAIL", priceCents: 800, chargesPst: true },
 ];
 
 type BusynessMockClimber = {
@@ -151,6 +181,11 @@ function passesFor(c: SeedClimber, gymId: string, n: number) {
     case "none":
       return [];
     case "active":
+      if (c.renewsInDays !== undefined) {
+        return [
+          { ...base, startsAt: daysFromNow(c.renewsInDays - 30), expiresAt: daysFromNow(c.renewsInDays), renews: true },
+        ];
+      }
       return [{ ...base, startsAt: daysFromNow(-40), expiresAt: daysFromNow(10 + (n % 20)) }];
     case "paused":
       return [
@@ -182,7 +217,24 @@ async function main() {
       await tx.checkIn.deleteMany({ where: { gymId: gym.id } });
       await tx.waiver.deleteMany({ where: { gymId: gym.id } });
       await tx.pass.deleteMany({ where: { gymId: gym.id } });
+      await tx.saleLine.deleteMany({ where: { gymId: gym.id } });
+      await tx.sale.deleteMany({ where: { gymId: gym.id } });
       await tx.climber.deleteMany({ where: { gymId: gym.id } });
+
+      // Products keep their ids across seeds; a product no longer listed
+      // here is switched off, never deleted.
+      await tx.product.updateMany({
+        where: { gymId: gym.id, name: { notIn: PRODUCTS.map((p) => p.name) } },
+        data: { active: false },
+      });
+      for (const [i, p] of PRODUCTS.entries()) {
+        const data = { ...p, gymId: gym.id, sortOrder: i, active: true };
+        await tx.product.upsert({
+          where: { gymId_name: { gymId: gym.id, name: p.name } },
+          update: data,
+          create: data,
+        });
+      }
 
       const waivers = [];
       const passes = [];
@@ -211,7 +263,8 @@ async function main() {
 
   console.log(
     `Seeded ${all.length} climbers into ${gym.name} ` +
-      `(${CLIMBERS.length} team, ${all.length - CLIMBERS.length - DEMO_ACCOUNTS.length} busyness, ${DEMO_ACCOUNTS.length} demo).`,
+      `(${CLIMBERS.length} team, ${all.length - CLIMBERS.length - DEMO_ACCOUNTS.length} busyness, ${DEMO_ACCOUNTS.length} demo), ` +
+      `and ${PRODUCTS.length} products for the POS.`,
   );
 
   await seedLogins(gym.id);

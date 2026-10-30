@@ -33,8 +33,8 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 function problems(c: ScannedClimber): string[] {
   const list: string[] = [];
   if (c.waiverStatus !== "valid") list.push("needs a valid waiver");
-  if (c.membershipStatus !== "active" && !c.hasDayPass) {
-    list.push("has no active membership or day pass");
+  if (c.membershipStatus !== "active" && !c.hasDayPass && c.punchesLeft === 0) {
+    list.push("has no active membership, day pass or punch card");
   }
   return list;
 }
@@ -42,7 +42,12 @@ function problems(c: ScannedClimber): string[] {
 // STOPGAP(#62): valid waiver but nothing to get in with, so staff can give a
 // free day pass. Replace with #44 to #46.
 function canGiveDayPass(c: ScannedClimber): boolean {
-  return c.waiverStatus === "valid" && c.membershipStatus !== "active" && !c.hasDayPass;
+  return (
+    c.waiverStatus === "valid" &&
+    c.membershipStatus !== "active" &&
+    !c.hasDayPass &&
+    c.punchesLeft === 0
+  );
 }
 
 // Front desk: pops up the climber who just scanned on /me, with their
@@ -162,7 +167,11 @@ export default function ScanWatcher() {
             </Typography>
             {climber.hasDayPass && climber.membershipStatus !== "active" ? (
               <Typography variant="caption" color="text.secondary">
-                Free day pass for today
+                Day pass for today
+              </Typography>
+            ) : climber.punchesLeft > 0 && climber.membershipStatus !== "active" ? (
+              <Typography variant="caption" color="text.secondary">
+                {climber.punchesLeft} {climber.punchesLeft === 1 ? "punch" : "punches"} left
               </Typography>
             ) : climber.membershipRenewsOn ? (
               <Typography variant="caption" color="text.secondary">
