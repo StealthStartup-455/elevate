@@ -27,6 +27,9 @@ import type {
   WaiverStatus,
 } from "../src/features/climbers/types";
 
+// Fictional on purpose: the repo is public, so no real gym's name (#67).
+const SEED_GYM_NAME = "Elevate Demo Gym";
+
 type SeedClimber = {
   firstName: string;
   lastName: string;
@@ -199,8 +202,8 @@ function passesFor(c: SeedClimber, gymId: string, n: number) {
 async function main() {
   const gym = await db.gym.upsert({
     where: { slug: DEFAULT_GYM_SLUG },
-    update: { name: "BoulderHouse Climbing Victoria" },
-    create: { name: "BoulderHouse Climbing Victoria", slug: DEFAULT_GYM_SLUG },
+    update: { name: SEED_GYM_NAME },
+    create: { name: SEED_GYM_NAME, slug: DEFAULT_GYM_SLUG },
   });
 
   const all: SeedClimber[] = [...CLIMBERS, ...busynessClimbers(), ...demoClimbers()];

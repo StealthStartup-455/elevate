@@ -12,8 +12,8 @@ import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
-import { searchScore } from "@/features/climbers/components/ClimberTable";
 import { formatDate } from "@/features/climbers/format";
+import { bestMatches } from "@/features/climbers/search";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
 
@@ -68,15 +68,7 @@ export default function ClimberPanel({
   const [query, setQuery] = useState("");
   const byId = useMemo(() => new Map(climbers.map((c) => [c.id, c])), [climbers]);
 
-  const results = useMemo(() => {
-    if (query.trim() === "") return [];
-    return climbers
-      .map((row) => ({ row, score: searchScore(row, query) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS)
-      .map(({ row }) => row);
-  }, [climbers, query]);
+  const results = useMemo(() => bestMatches(climbers, query, MAX_RESULTS), [climbers, query]);
 
   function pick(id: string) {
     setQuery("");

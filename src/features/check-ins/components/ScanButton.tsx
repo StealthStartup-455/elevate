@@ -12,7 +12,9 @@ import { useEffect, useState } from "react";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { recordScan } from "../actions";
 
-// Demo only: pretends the desk scanner just read this climber's QR code.
+// Demo only: stands in for the desk's scanner reading this climber's QR code,
+// and says so (#94). In a gym a USB scanner or a tablet camera at the desk
+// reads the code; the climber's phone doesn't send anything.
 const PROCESSING_MS = 3000;
 
 type Props = {
@@ -62,9 +64,13 @@ export default function ScanButton(props: Props) {
         {step === "processing" ? (
           <CircularProgress size={18} color="inherit" aria-label="Processing" />
         ) : (
-          "Demo Scan"
+          "Simulate scan"
         )}
       </Button>
+      {/* width 0 + minWidth 100%: wraps to the QR code's width instead of widening the column. */}
+      <Typography variant="secondary" component="p" sx={{ mt: 1, width: 0, minWidth: "100%" }}>
+        Demo only: at the gym, the desk scans your code.
+      </Typography>
 
       <Dialog open={step === "error"} onClose={() => setStep("idle")}>
         <DialogTitle>Couldn&apos;t scan</DialogTitle>

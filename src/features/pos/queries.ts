@@ -100,7 +100,7 @@ async function getCheckedInToday(
   since: Date,
   timeZone: string,
 ): Promise<RecentCheckIn[]> {
-  const [saved, busyness, mockClimbers] = await Promise.all([
+  const [saved, busyness] = await Promise.all([
     db.checkIn.findMany({
       where: { gymId, checkedInAt: { gte: since } },
       orderBy: { checkedInAt: "desc" },
@@ -108,8 +108,9 @@ async function getCheckedInToday(
       take: 100,
     }),
     getFrontDeskBusyness(DEMO_GYM_ID),
-    getCheckInClimbers(),
   ]);
+  // Only the climbers behind the mock's check-ins (#85).
+  const mockClimbers = await getCheckInClimbers(busyness.checkIns.map((c) => c.climberId));
 
   const seen = new Set<string>();
   const list: RecentCheckIn[] = [];

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { db } from "@/lib/db";
 
 const SLUG = "test-day-pass";
-const auth = vi.hoisted(() => ({ staff: true }));
+const auth = vi.hoisted(() => ({ staff: true, gymId: "" }));
 
 vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -17,16 +17,23 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => auth.staff,
+  getStaffContext: async () =>
+    auth.staff ? { id: null, gymId: auth.gymId, role: "DESK" } : null,
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
 }));
-vi.mock("@/features/auth/queries", () => ({ getSessionClimberId: async () => null }));
+vi.mock("@/features/auth/queries", () => ({
+  getCurrentUser: async () => null,
+  getSessionClimberId: async () => null,
+}));
 vi.mock("@/features/auth/session", () => ({ setSession: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.
 vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
+  // Uncached here, so each test sees the gym it just set up.
+  getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
 const { checkInClimber, giveDayPass } = await import("./actions");
@@ -37,6 +44,7 @@ let gymId = "";
 beforeAll(async () => {
   await cleanUp();
   gymId = (await db.gym.create({ data: { name: "Day pass test gym", slug: SLUG } })).id;
+  auth.gymId = gymId;
 });
 
 beforeEach(() => {
@@ -138,6 +146,30 @@ describe("giveDayPass", () => {
     auth.staff = false;
     await expect(giveDayPass(id)).rejects.toThrow("redirect /login");
     expect(await dayPasses(id)).toHaveLength(0);
+  });
+
+  it("does not expose or update another gym's climber", async () => {
+    const otherGym = await db.gym.create({
+      data: { name: "Other gym", slug: "test-day-pass-other" },
+    });
+    const { id } = await db.climber.create({
+      data: {
+        gymId: otherGym.id,
+        firstName: "Other",
+        lastName: "Climber",
+        dateOfBirth: new Date("1995-01-01T00:00:00Z"),
+      },
+    });
+    try {
+      expect(await getClimber(id)).toBeNull();
+      expect((await giveDayPass(id)).ok).toBe(false);
+      expect((await checkInClimber(id)).ok).toBe(false);
+      expect(await db.pass.findMany({ where: { gymId: otherGym.id, climberId: id } })).toHaveLength(0);
+      expect(await db.checkIn.findMany({ where: { gymId: otherGym.id, climberId: id } })).toHaveLength(0);
+    } finally {
+      await db.climber.delete({ where: { id } });
+      await db.gym.delete({ where: { id: otherGym.id } });
+    }
   });
 
   it("doesn't let yesterday's pass in", async () => {

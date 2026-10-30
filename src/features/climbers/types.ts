@@ -49,3 +49,16 @@ export type FormState = {
   /** Set after a successful sign up, so the next step can act on the new climber. */
   climberId?: string;
 };
+
+// A climber as manual check in shows them (#85: found on the server).
+export type CheckInCandidate = {
+  id: string;
+  name: string;
+  phone: string;
+  waiverStatus: WaiverStatus;
+  waiverExpiresOn?: string;
+  membershipStatus: MembershipStatus;
+  membershipRenewsOn?: string;
+  hasDayPass: boolean;
+  punchesLeft: number;
+};
