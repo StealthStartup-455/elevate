@@ -58,9 +58,15 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
             </Typography>
             <BusynessLevelChip level={busyness.level} />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: busyness.sampleCount ? 1 : 5 }}>
             Updated {formatTime(busyness.computedAt, timeZone)}
           </Typography>
+          {busyness.sampleCount > 0 && (
+            // Stopgap until #39: say plainly what is generated (#64).
+            <Typography variant="secondary" sx={{ mb: 5 }} data-testid="sample-check-ins">
+              Demo data: {busyness.sampleCount} of these {busyness.count} check-ins are samples, not real visits.
+            </Typography>
+          )}
           <Typography variant="subtitle2" component="h3" sx={{ mb: 2 }}>
             Typical week
           </Typography>

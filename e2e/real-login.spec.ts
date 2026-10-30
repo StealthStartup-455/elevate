@@ -22,9 +22,9 @@ test.describe("real logins", () => {
   test("a climber's login can't open the front desk", async ({ page }) => {
     await logIn(page, "climber@elevate.test", /\/me/);
     await page.goto("/desk");
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/staff-only/);
     await page.goto("/desk/climbers");
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/staff-only/);
   });
 
   test("a climber's login can't call a staff action", async ({ page }) => {

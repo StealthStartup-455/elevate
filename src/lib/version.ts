@@ -1,6 +1,7 @@
 // The running build's version, set at build time by next.config.ts from
-// scripts/app-version.mjs (#43). Shown in the page footer and at /api/version,
-// and added to every log line, so any screen, check or log points to one commit.
+// scripts/app-version.mjs (#43). Shown on the desk, in About on /me (#103) and
+// at /api/version, and added to every log line, so any screen, check or log
+// points to one commit.
 
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
 export const COMMIT_SHA = process.env.NEXT_PUBLIC_COMMIT_SHA ?? "";

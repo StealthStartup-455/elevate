@@ -35,7 +35,8 @@ The mock data is fixed: every timestamp is set relative to one reference time (a
 | `moderate` (default) | 28 | Moderate (medium) |
 | `busy` | 55 | Busy (high) |
 
-- **Switch scenario:** set `MOCK_BUSYNESS_SCENARIO` in `.env`. `next dev` reloads it, so just refresh the page.
+- **Switch scenario:** set `MOCK_BUSYNESS_SCENARIO` in `.env`. `next dev` reloads it, so just refresh the page. `none` turns generated check-ins off, leaving only real ones. With `APP_ENV=production` and no scenario set, `none` is the default.
+- **Labelled on screen (#64):** whenever generated check-ins are in the count, the desk and climber cards say how many ("Demo data: 28 of these 29 check-ins are samples"), and the heat map says the week is a sample. With `none` and real check-ins only, the count has no label; the heat map keeps its label until it uses real data (#39). Each result carries `sampleCount` (summaries), `sample` (each desk row) and `sample` (the week).
 - **Change the numbers:** `npm run mock:busyness -- busy 70` regenerates `mock/busy.json` with 70 climbers in the gym. Add a third number for older check-ins outside the window. Edit `SCENARIOS` in `scripts/generate-busyness-mock.ts` to change the defaults.
 - **Regenerate everything:** `npm run mock:busyness`. The output is deterministic, so regenerating with the same settings changes nothing.
 - `mock/week.json` holds the typical week for the heat map. When real data from Rock Gym Pro is available, it can replace these files in the same shape.

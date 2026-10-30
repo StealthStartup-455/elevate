@@ -31,7 +31,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
 | `PERF_LOG` | unset | `true` only while looking for slow requests: logs each query's and step's time (see "Finding slow requests") |
-| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39) |
+| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39). Generated check-ins are labelled on screen (#64); `none` shows real check-ins only. Leave it unset on production: with `APP_ENV=production` it defaults to `none` |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
 
@@ -84,7 +84,7 @@ In the Supabase dashboard:
    ```sql
    insert into "Staff" (id, "gymId", "authUserId", name, "updatedAt")
    select gen_random_uuid()::text, id, '<user uid>', '<their name>', now()
-   from "Gym" where slug = 'boulderhouse-victoria';
+   from "Gym" where slug = 'demo-gym';
    ```
 
    Or, for a climber who already exists: `update "Climber" set "authUserId" = '<user uid>' where id = '<climber id>';`
@@ -120,7 +120,7 @@ It follows Semantic Versioning 2.0 (after `-` is a pre-release, after `+` the co
 
 Where to see it:
 
-- **The footer of every page.** The version links to its commit on GitHub.
+- **The desk footer, and About at the bottom of `/me`** (#103). The version links to its commit on GitHub. Login, join and the other climber pages show no version.
 - **`/api/version`**: `{"version", "commit", "builtAt", "environment"}`. The deploy workflow checks it.
 - **The deploy run's summary** in Actions ("Deployed v0.1.0-dev.121+abc1234").
 - **Every log line** has a `version` field.
@@ -190,7 +190,7 @@ Queries on one page can run at the same time, so their times overlap; a query's 
 | Phone scans but the desk shows nothing | The `QrScan` migration isn't applied | Run the deploy workflow (Actions, Deploy staging, Run workflow) |
 | Deploy workflow says "Staging is not set up" | A secret is missing from the `staging` environment | Add it (see Environment variables) and run the workflow again |
 | Live check fails: "Expected commit ..." | The new build isn't serving yet, or Vercel's login sits in front of the site | Check the deployment's status in Vercel; set Deployment Protection to Standard |
-| Footer shows `+unknown` | Deployed without the version (an old checkout, or `vercel deploy` run by hand) | Redeploy through the workflow or `npm run staging:setup` |
+| The version shows `+unknown` | Deployed without the version (an old checkout, or `vercel deploy` run by hand) | Redeploy through the workflow or `npm run staging:setup` |
 | Run warns "STAGING_URL is empty" | `STAGING_URL` saved as a secret, or not saved | Add it as a variable of the `staging` environment |
 | `prisma migrate deploy` warns that migrations were modified | Someone edited a merged migration | Restore the original file; never reset staging |
 | Check in refused, "Already checked in" | The two hour rule from an earlier run | Reseed |

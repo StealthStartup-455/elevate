@@ -6,7 +6,7 @@ name: Deploy staging
 # 3. check the public address now runs this commit (/api/version) and shows
 #    Elevate's login.
 # Each deploy carries a version worked out from git, e.g. v0.1.0-dev.23+abc1234
-# (scripts/app-version.mjs, #43), shown in the site's footer and the run summary.
+# (scripts/app-version.mjs, #43), shown on the desk, in About on /me and in the run summary.
 # Migrations run first, so new code never meets an old database.
 #
 # Needs these in the repository's "staging" environment (Settings,

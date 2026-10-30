@@ -1,9 +1,10 @@
 "use server";
 
-import { getSessionClimberId } from "@/features/auth/queries";
-import { requireStaff } from "@/features/auth/staff";
+import { getCurrentUser, getSessionClimberId } from "@/features/auth/queries";
+import { getDemoClimberId } from "@/features/auth/session";
+import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimber } from "@/features/climbers/queries";
-import { getGym } from "@/lib/gym";
+import { db } from "@/lib/db";
 import { logEvent, logWarning } from "@/lib/log";
 import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
@@ -19,14 +20,30 @@ export type ScannedClimber = {
   hasDayPass: boolean;
 };
 
-// /me "Demo scan": remembers that the signed-in climber just scanned, so the
+async function getGymForClimberId(climberId: string): Promise<string | null> {
+  const record = await db.climber.findUnique({
+    where: { id: climberId },
+    select: { gymId: true },
+  });
+  return record?.gymId ?? null;
+}
+
+// /me "Simulate scan" (#94): remembers that the signed-in climber just scanned, so the
 // front desk can show them.
 export async function recordScan(): Promise<{ ok: boolean }> {
   const climberId = await getSessionClimberId();
   if (!climberId) return { ok: false };
-  const gym = await getGym();
-  await saveScan(gym.id, climberId);
-  logEvent("scan_saved", { gymId: gym.id, climberId });
+  const user = await getCurrentUser();
+  const demoClimberId = await getDemoClimberId();
+  const gymId =
+    user?.staff?.gymId ??
+    (user && user.climberIds.includes(climberId)
+      ? (await getGymForClimberId(climberId))
+      : null) ??
+    (demoClimberId === climberId ? (await getGymForClimberId(climberId)) : null);
+  if (!gymId) return { ok: false };
+  await saveScan(gymId, climberId);
+  logEvent("scan_saved", { gymId, climberId });
   return { ok: true };
 }
 
@@ -39,18 +56,20 @@ export async function takeLatestScan(): Promise<ScannedClimber | null> {
 
 async function takeLatestScanNow(): Promise<ScannedClimber | null> {
   await requireStaff();
-  const gym = await getGym();
-  const scan = await takeScan(gym.id);
+  const staff = await getStaffContext();
+  if (!staff) return null;
+  const gymId = staff.gymId;
+  const scan = await takeScan(gymId);
   if (!scan) return null;
   const climber = await getClimber(scan.climberId);
-  if (!climber) {
-    logWarning("scan_climber_missing", { gymId: gym.id, climberId: scan.climberId });
+  if (!climber || climber.id !== scan.climberId) {
+    logWarning("scan_climber_missing", { gymId, climberId: scan.climberId });
     return null;
   }
   // Time from the climber's tap to the desk showing them: the number behind
   // any "faster check-in" claim.
   logEvent("scan_taken", {
-    gymId: gym.id,
+    gymId,
     climberId: climber.id,
     waitMs: Date.now() - scan.scannedAt.getTime(),
     waiverStatus: climber.waiverStatus,
