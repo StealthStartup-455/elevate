@@ -22,6 +22,7 @@ import StatusPill from "@/components/ui/StatusPill";
 import { voidSale } from "../actions";
 import { formatMoney } from "../cart";
 import type { SaleSummary } from "../types";
+import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 const TENDER_LABEL = { CARD: "Card", CASH: "Cash", ONLINE: "Online" } as const;
 
@@ -29,6 +30,8 @@ const TENDER_LABEL = { CARD: "Card", CASH: "Cash", ONLINE: "Online" } as const;
 // sales only, so they match what the card machine and till should hold.
 export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
   const [voiding, setVoiding] = useState<SaleSummary | null>(null);
+  // Hold the scan popup while voiding (#92, #127).
+  useDeskDialogOpen(voiding !== null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

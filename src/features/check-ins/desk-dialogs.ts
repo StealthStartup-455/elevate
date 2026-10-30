@@ -1,7 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 // One dialog at a time on the front desk (#92). Other desk dialogs (manual
-// check in) report while they're open; the scan popup waits until they close.
+// check in, POS checkout, void, revoke) report while they're open; the scan
+// popup waits until they close.
 // A waiting scan stays in the database untaken, so nothing is lost: it pops
 // up as soon as the other dialog closes.
 

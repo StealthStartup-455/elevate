@@ -34,7 +34,7 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
 
   await phone.getByRole("button", { name: /scan/i }).click();
   const phoneDialog = phone.getByRole("dialog");
-  await expect(phoneDialog).toContainText("Your scan reached the desk", { timeout: 10_000 });
+  await expect(phoneDialog).toContainText("Sent to the desk", { timeout: 10_000 });
   await expect(phoneDialog).toContainText("They'll help you sign a waiver.");
   await expect(phoneDialog).toContainText("They'll help you with a day pass or membership.");
 

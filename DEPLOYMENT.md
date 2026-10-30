@@ -186,7 +186,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `climber_created` / `climber_updated` | Join, desk add, desk edit | `climberId`, `source`: `self` or `desk` |
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
-| `scan_saved` / `scan_taken` | Phone scan saved; the desk showed it | `climberId`; `waitMs` (time from tap to desk), `waiverStatus`, `membershipStatus` |
+| `scan_saved` / `scan_taken` | Phone scan saved; staff dealt with it at the desk (checked in or closed the popup) | `climberId`; `waitMs` (time from tap to staff dealing with it), `outcome` (`checked_in` or `closed`) |
 | `perf_db` / `perf_auth` / `perf_action` | Only when `PERF_LOG="true"` (see "Finding slow requests") | `model` and `operation`, or `where` (`proxy`, `page`), or `name`; `ms` |
 | `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |
 | `day_pass_given` / `day_pass_refused` | Desk gave a no-charge day pass (stopgap, #62) | `climberId`, `charge`: `none`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_active`, `not_found`, `invalid_id` |
@@ -204,13 +204,13 @@ Timing logs are off by default (#84). To see where a slow page spends its time:
 3. In Vercel, Logs, open a slow request and search `perf_`. Every line that request wrote is grouped under it:
    - `perf_db`: one line per database query, with `model`, `operation` and `ms`.
    - `perf_auth`: asking Supabase who is signed in, in the proxy and in the page.
-   - `perf_action`: the desk's scan check (`takeLatestScan`) end to end.
+   - `perf_action`: the desk's scan check (`nextDeskScan`) end to end.
 4. Compare the request's total time (shown by Vercel) with the sum of the `perf_` lines: if the queries add up to most of it, fix the queries; if not, the time is elsewhere (startup, rendering, the network).
 5. Remove `PERF_LOG` and redeploy when done, so the logs stay readable.
 
 Queries on one page can run at the same time, so their times overlap; a query's `ms` includes waiting for a free database connection.
 
-**Useful numbers from the logs during a pilot:** `waitMs` on `scan_taken` (how fast the desk sees a scan), and `check_in_refused` by `reason` (which rule turns people away).
+**Useful numbers from the logs during a pilot:** `waitMs` on `scan_taken` (how long from a scan until staff deal with it), and `check_in_refused` by `reason` (which rule turns people away).
 
 ## If something breaks
 

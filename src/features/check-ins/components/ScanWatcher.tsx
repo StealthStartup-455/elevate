@@ -14,13 +14,20 @@ import { checkInClimber, giveDayPass, signWaiver } from "@/features/climbers/act
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
-import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../actions";
+import {
+  finishDeskScan,
+  isDeskScanWaiting,
+  nextDeskScan,
+  type ScannedClimber,
+} from "../actions";
 import { useOtherDeskDialogOpen } from "../desk-dialogs";
 import { deskNextStep } from "../scan-messages";
 
 // How often the desk asks the server for a new scan. Short, so the popup
 // shows up right after the climber taps "Simulate scan".
 const POLL_MS = 2500;
+
+const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
 
 const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
   none: "No membership",
@@ -53,71 +60,102 @@ function canGiveDayPass(c: ScannedClimber): boolean {
 // Front desk: pops up the climber who just scanned on /me, with their
 // membership and waiver. A warning when something is missing; otherwise a
 // green button that checks them in with the same rules as manual check in.
+//
+// In the desk layout, so it runs on every desk page (Check-in, POS, Climbers),
+// not only Check-in (#127). A scan stays waiting until staff check the person
+// in or close the popup: a reload shows it again, and every open desk shows it
+// until one of them deals with it.
 export default function ScanWatcher() {
   const router = useRouter();
+  const [scanId, setScanId] = useState<string | null>(null);
   const [climber, setClimber] = useState<ScannedClimber | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
-  // When this desk started watching (server time). Scans from before then are
-  // never shown, so opening the desk doesn't pop up an old scan (#91).
-  const [watchingSince, setWatchingSince] = useState<string | null>(null);
-  // Another desk dialog (manual check in) is open: hold scans until it
-  // closes, so two dialogs never stack (#92). They wait in the database.
+  // Another desk dialog (manual check in, POS checkout, void) is open: hold
+  // scans until it closes, so two dialogs never stack (#92). They wait in
+  // the database.
   const otherDialogOpen = useOtherDeskDialogOpen();
 
+  // Look for a waiting scan while nothing is showing.
   useEffect(() => {
-    let active = true;
-    startWatchingScans().then((at) => {
-      if (active) setWatchingSince(at);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    // Don't look for a new scan before the desk knows when it started, while
-    // one is already showing, or while another dialog is open.
-    if (!watchingSince || climber || otherDialogOpen) return;
+    if (scanId || otherDialogOpen) return;
     const id = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
-      const scanned = await takeLatestScan(watchingSince);
-      if (scanned) setClimber(scanned);
+      try {
+        const next = await nextDeskScan();
+        if (next) {
+          setScanId(next.scanId);
+          setClimber(next.climber);
+        }
+      } catch {
+        // Offline or the server didn't answer: try again on the next tick.
+      }
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [climber, otherDialogOpen, watchingSince]);
+  }, [scanId, otherDialogOpen]);
 
-  function close() {
+  // While showing a scan, close it if another desk deals with it first.
+  useEffect(() => {
+    if (!scanId || done) return;
+    const id = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        if (!(await isDeskScanWaiting(scanId))) reset();
+      } catch {
+        // Offline: keep showing it.
+      }
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [scanId, done]);
+
+  function reset() {
+    setScanId(null);
     setClimber(null);
     setError(null);
     setDone(false);
   }
 
+  // Closing deals with the scan, so it doesn't pop up again on any desk.
+  function close() {
+    const id = scanId;
+    reset();
+    if (id && !done) finishDeskScan(id, "closed").catch(() => {});
+  }
+
   function checkIn(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
-      const result = await checkInClimber(c.id);
-      if (result.ok) {
-        setDone(true);
-        router.refresh(); // update the check-in list and count
-      } else {
-        setError(result.message ?? "Couldn't check in. Try again.");
+      try {
+        const result = await checkInClimber(c.id);
+        if (result.ok) {
+          setDone(true);
+          if (scanId) await finishDeskScan(scanId, "checked_in").catch(() => {});
+          router.refresh(); // update the check-in list and count
+        } else {
+          setError(result.message ?? "Couldn't check in. Try again.");
+        }
+      } catch {
+        setError(OFFLINE);
       }
     });
   }
 
   // STOPGAP like the climber page's waiver step, until #35/#36: staff sign
-  // for the climber right here, so the scan doesn't dead-end (#90).
+  // for the climber right here, so the scan doesn't dead-end (#90, #131).
   function waiver(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
-      const result = await signWaiver(c.id);
-      if (result.ok) {
-        setClimber({ ...c, waiverStatus: "valid", waiverExpiresOn: undefined });
-        router.refresh();
-      } else {
-        setError(result.message ?? "Couldn't sign the waiver. Try again.");
+      try {
+        const result = await signWaiver(c.id);
+        if (result.ok) {
+          setClimber({ ...c, waiverStatus: "valid", waiverExpiresOn: undefined });
+          router.refresh();
+        } else {
+          setError(result.message ?? "Couldn't sign the waiver. Try again.");
+        }
+      } catch {
+        setError(OFFLINE);
       }
     });
   }
@@ -125,9 +163,13 @@ export default function ScanWatcher() {
   function dayPass(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
-      const result = await giveDayPass(c.id);
-      if (result.ok) setClimber({ ...c, hasDayPass: true });
-      else setError(result.message ?? "Couldn't give a day pass. Try again.");
+      try {
+        const result = await giveDayPass(c.id);
+        if (result.ok) setClimber({ ...c, hasDayPass: true });
+        else setError(result.message ?? "Couldn't give a day pass. Try again.");
+      } catch {
+        setError(OFFLINE);
+      }
     });
   }
 
@@ -136,7 +178,15 @@ export default function ScanWatcher() {
   const nextStep = deskNextStep(climber);
 
   return (
-    <Dialog open onClose={close} fullWidth maxWidth="xs">
+    <Dialog
+      open
+      // A stray click outside shouldn't dismiss an arrival; Close and Escape do.
+      onClose={(_event, reason) => {
+        if (reason !== "backdropClick") close();
+      }}
+      fullWidth
+      maxWidth="xs"
+    >
       {issues.length ? (
         <Alert severity="warning" variant="filled" sx={{ borderRadius: 0 }}>
           {climber.name} {issues.join(" and ")}.

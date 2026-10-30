@@ -20,6 +20,8 @@ import { formatDate } from "../format";
 import type { CheckInCandidate, MembershipStatus } from "../types";
 import WaiverBadge from "./WaiverBadge";
 
+const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
+
 export type { CheckInCandidate };
 
 // Wait this long after the last keystroke before searching (#85).
@@ -120,18 +122,27 @@ export default function ManualCheckIn() {
   function checkIn(climber: CheckInCandidate) {
     setError(null);
     startTransition(async () => {
-      const result = await checkInClimber(climber.id);
-      if (result.ok) setDone(`${climber.name} is checked in.`);
-      else setError(result.message ?? "Couldn't check in. Try again.");
+      try {
+        const result = await checkInClimber(climber.id);
+        if (result.ok) setDone(`${climber.name} is checked in.`);
+        else setError(result.message ?? "Couldn't check in. Try again.");
+      } catch {
+        // Offline: say so here instead of the whole desk failing (#130).
+        setError(OFFLINE);
+      }
     });
   }
 
   function dayPass(climber: CheckInCandidate) {
     setError(null);
     startTransition(async () => {
-      const result = await giveDayPass(climber.id);
-      if (result.ok) setSelected({ ...climber, hasDayPass: true });
-      else setError(result.message ?? "Couldn't give a day pass. Try again.");
+      try {
+        const result = await giveDayPass(climber.id);
+        if (result.ok) setSelected({ ...climber, hasDayPass: true });
+        else setError(result.message ?? "Couldn't give a day pass. Try again.");
+      } catch {
+        setError(OFFLINE);
+      }
     });
   }
 

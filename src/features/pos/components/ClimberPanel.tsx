@@ -21,6 +21,7 @@ import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { findPosClimbers, revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
+import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 // Wait for a pause in typing before searching, as Manual check in does.
 const SEARCH_DELAY_MS = 200;
@@ -247,6 +248,8 @@ export default function ClimberPanel({
 // refund, staff void the sale under Today's sales.
 function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevoked: () => void }) {
   const [open, setOpen] = useState(false);
+  // Hold the scan popup while revoking (#92, #127).
+  useDeskDialogOpen(open);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
