@@ -8,7 +8,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { paths: ["/login", "/join"], phone: true },
-  { user: "demo-valid-active", paths: ["/me", "/me/stats", "/me/events"], phone: true },
+  { user: "demo-valid-active", paths: ["/me", "/me/stats", "/me/events", "/me/membership"], phone: true },
   {
     user: "desk",
     paths: ["/desk", "/desk/pos", "/desk/climbers", "/desk/climbers/new", "/desk/waivers"],

@@ -197,7 +197,7 @@ The seed adds the demo gym's products with rough mock prices.
 | `staffId` | text | no | Who rang it up, once auth exposes the staff member |
 | `subtotalCents`, `taxCents`, `totalCents` | integer | yes | `taxCents` is the subtotal times `taxRateBps`, rounded once |
 | `taxRateBps` | integer | yes | The gym's rate at the time |
-| `tender` | `Tender` | yes | `CARD` (the gym's own card machine) or `CASH` |
+| `tender` | `Tender` | yes | `CARD` (the gym's own card machine), `CASH`, or `ONLINE` (the climber bought it in the app; a mock, no money moves) |
 | `status` | `SaleStatus` | yes | `PAID`, or `VOIDED` |
 | `idempotencyKey` | text | yes | Made by the checkout popup. Unique per gym, so pressing Tender twice saves one sale |
 | `voidedAt`, `voidReason` | | no | Set when the sale is voided |

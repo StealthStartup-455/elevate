@@ -1,11 +1,11 @@
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { formatDate } from "../format";
 import { getMyMembership, type Membership } from "../queries";
 import DemoQrCode from "./DemoQrCode";
+import LinkButton from "./LinkButton";
 import WaiverStep from "./WaiverStep";
 import ScanButton from "@/features/check-ins/components/ScanButton";
 
@@ -100,16 +100,14 @@ export default async function MembershipCard() {
               <WaiverStep climberId={membership.climberId} />
             ) : null}
             {needsPurchase ? (
-              // Placeholder until memberships and payments exist.
-              <Button variant="contained" size="large" disabled title="Coming soon">
+              <LinkButton href="/me/membership" size="large">
                 Buy membership
-              </Button>
+              </LinkButton>
             ) : null}
             {needsRenewal ? (
-              // Placeholder until memberships and payments exist.
-              <Button variant="outlined" size="large" disabled title="Coming soon">
+              <LinkButton href="/me/membership" variant="outlined" size="large">
                 Renew membership
-              </Button>
+              </LinkButton>
             ) : null}
           </Box>
         ) : null}

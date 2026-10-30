@@ -1,0 +1,34 @@
+# 2026-10-30 04:41 UTC: Climber Membership tab: buy and see a plan
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate-docs#58 / PR pending
+- **Branch:** `feature/58-climber-membership-purchase` (stacked on `feature/56-mock-membership-purchase-workflow-staff-side`, PR #119)
+- **What the agent did:**
+  - New **Membership** tab next to Stats (`/me/membership`, `src/features/membership/`). A signed-in climber sees their plan (membership in effect, one bought early, day pass, punch card, waiver), buys a pass or membership through a checkout popup (subtotal, GST, total, warnings, **Pay**), and sees their last 10 purchases. A missing or expired waiver shows the sign step but never blocks a purchase.
+  - The dashboard's two disabled "Coming soon" buttons (**Buy membership**, **Renew membership**) now link to the tab.
+  - Moved the sale saving out of the staff-only `recordSale` into `src/features/pos/sale.ts` (`saveSale`), so the desk and the climber share one code path for prices, GST and passes. `recordSale` is now: `requireStaff`, check the input, `saveSale`.
+  - New `Tender` value `ONLINE` (additive migration `20261030050000_online_tender`). The desk's own Tender still accepts only `CARD` and `CASH`; Today's sales shows `ONLINE` as "Online".
+  - Tests: `catalog.test.ts` (unit), `actions.db.test.ts` (8 DB tests: session-only climber, double press, another climber's key, rentals and inactive products refused, desk refuses `ONLINE`), `e2e/membership.spec.ts`, and `/me/membership` added to the axe checks.
+- **Files touched:** `src/features/membership/`, `src/features/pos/{sale,actions,key}.ts`, `src/features/pos/components/{CheckoutDialog,TodaysSales}.tsx`, `src/app/me/{layout.tsx,membership/page.tsx}`, `src/features/climbers/components/{MembershipCard,LinkButton}.tsx`, `prisma/schema.prisma`, `prisma/migrations/20261030050000_online_tender/`, `prisma/DATABASE.md`, `e2e/`
+- **Decisions and why:**
+  - **Same products as the desk, minus rentals and chalk:** those are handed over at the desk, so a climber can't buy them in the app. `buyOnline` checks this on the server too, since `saveSale` would sell any product.
+  - **One item per purchase, no cart.** A climber buys one pass or membership at a time; the popup is the review step. The pure cart rules and `priceCart` are reused.
+  - **The climber id comes from the session, never the request.** The action takes only a product id and a key.
+  - **`ONLINE` is a separate tender,** not `CARD`, so the desk can reconcile the card machine and till without online mock sales mixed in.
+  - **It is a mock:** no card details are asked for, nothing is charged, and the popup says so. Real payments are #31 and #45.
+  - **`saveSale` refuses a replayed key that belongs to another climber** (found while sharing the code; the desk's replay never checked who the sale was for).
+  - Hidden for gyms whose `system` isn't `ELEVATE`, like the desk POS tab.
+- **Gotchas:**
+  - Passing `component={Link}` to a MUI `Button` from a Server Component crashes the page ("Functions cannot be passed directly to Client Components"). Use `LinkButton` (it gained an optional `size`). The e2e caught this on `/me`.
+  - This branch is stacked on #119, which adds the POS code and the `pos_sales` migration. Until #119 merges, a PR into `dev` also shows its diff.
+  - After pulling, run `npx prisma migrate deploy` and `npx prisma generate`, or the new enum value is unknown.
+  - Under `next dev` with `DEV_AUTH_BYPASS=true`, the smoke test "protected pages send logged-out visitors to log in" fails because the bypass skips the redirect. It is unrelated to this change.
+  - The seeded demo memberships have no sale, so their plan name shows as "Membership"; real purchases show the product name.
+- **Open follow-ups:**
+  - Merge #119 first, then retarget or rebase this branch onto `dev`.
+  - Tax is still GST 5% only (the question on #119 about BC PST on chalk and rentals is open; chalk and rentals aren't sold in the app, so passes are unaffected).
+  - The dashboard card still says the plan is "Monthly" (`getMyMembership`); the new tab uses the product name.
+  - Real payment provider and retry-safe confirmation (#31, #45); product catalog management (#44).
+  - A climber can't cancel or pause a membership from the tab, and recurring memberships still depend on the desk ringing up each month (#124).
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean for `src/`; `npm test` 122 passed (2 todo); `npm run test:db` 34 passed; `npm run build` passed; `prisma migrate diff` against the schema: no difference. Playwright against `next dev`: membership spec 2 passed, POS spec and smoke passed except the `DEV_AUTH_BYPASS` redirect test above, axe on the climber screens (including `/me/membership`) passed in light and dark. Checked the tab in light and dark at 390px wide.

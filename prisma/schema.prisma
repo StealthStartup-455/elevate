@@ -262,6 +262,7 @@ enum ProductKind {
 enum Tender {
   CARD // on the gym's own card machine
   CASH
+  ONLINE // bought by the climber in the app (a mock until real payments, #31)
 }
 
 enum SaleStatus {

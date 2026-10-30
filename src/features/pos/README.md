@@ -26,7 +26,8 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 
 ```
 features/pos/
-├── actions.ts     # recordSale, voidSale (Server Actions)
+├── actions.ts     # recordSale, voidSale (Server Actions, staff only)
+├── sale.ts        # saveSale: the one place a sale is saved, shared with features/membership
 ├── queries.ts     # getPosData, isPosEnabled
 ├── cart.ts        # cart rules and totals, shared by the screen and the server
 ├── passes.ts      # what each product gives the climber
@@ -38,3 +39,5 @@ features/pos/
 The tab only shows for gyms whose `system` is `ELEVATE`; a gym on Rock Gym Pro or Redpoint already sells there.
 
 Reads `Climber`, `Pass` and `CheckIn` through the climbers feature where it can (`listClimbers`, `getClimber`); "Checked in today" and the renewals list read `CheckIn` and `Pass` directly.
+
+A climber buying their own pass in the app (`features/membership`, elevate-docs#58) goes through the same `saveSale`, so the prices, GST and passes are the same as at the desk. Those sales are tendered `ONLINE`; the desk's own Tender only accepts `CARD` and `CASH`.
