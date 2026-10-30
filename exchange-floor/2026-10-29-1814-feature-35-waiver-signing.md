@@ -1,6 +1,23 @@
 # 2026-10-29 18:14 UTC: Customer waiver signing (our own waiver tool)
 
-This branch's work in two steps, newest first. They were written in `EXCHANGE_FLOOR.md` before #102 and moved here after `dev` was merged in (#105).
+This branch's work in three steps, newest first. They were written in `EXCHANGE_FLOOR.md` before #102 and moved here after `dev` was merged in (#105).
+
+## 2026-10-30 05:50 UTC: Review fixes for PR #118
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#35, #36 / #118
+- **Branch:** `feature/35-waiver-signing`
+- **What the agent did:**
+  - Moved this entry out of `EXCHANGE_FLOOR.md` into this file (#102) and reverted the archive.
+  - Merged `dev`. `prisma/seed.ts` keeps `SEED_GYM_NAME` from #112 and adds `waiverVersion` and the v1 `waiverTemplate`; `e2e/accessibility.spec.ts` keeps `/staff-only` and `/me/waiver`.
+  - `e2e/sign-waiver.ts`: shared helper that fills in `/me/waiver`. `smoke.spec.ts` and `release.spec.ts` use it; the release check now signs the real form instead of the placeholder button. `scan-next-step.spec.ts` (#117) looks for the "Sign the waiver" link.
+  - `DEPLOYMENT.md`: reseed staging once after #118 merges; the known-limitations line now says only the desk button is a placeholder.
+- **Files touched:** `prisma/seed.ts`, `e2e/{sign-waiver.ts,smoke,release,scan-next-step,accessibility}.spec.ts`, `DEPLOYMENT.md`, `EXCHANGE_FLOOR.md`, `exchange-floor/`
+- **Decisions and why:** A doc step instead of a data migration for staging: a migration would also put the placeholder (non-legal) wording into production.
+- **Gotchas:** Playwright's `locator.all()` doesn't wait; the helper waits for the first rule checkbox before ticking, or a fast run ticks nothing.
+- **Open follow-ups:** The desk's "Sign a waiver now" and #117's "Sign waiver" button still create a valid waiver with no wording or signature; the team should decide when they go.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 19 files, 131 passed (2 todo); `npm run build` passed; `npx playwright test` 29 passed, 3 skipped (real Supabase logins).
 
 ## 2026-10-29 01:55 UTC: Drawn signature and emergency contact on the waiver
 

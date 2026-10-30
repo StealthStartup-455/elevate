@@ -151,13 +151,15 @@ It adds a climber and a check in, so reseed a hosted demo afterwards. The full s
 **Known limitations** (what the journey uses today, and what replaces it):
 
 - **Sign in is the demo login.** A climber logs back in with `firstname.lastname` as both username and password, and nothing tells them so. Real sign in for climbers is #26 and #33.
-- **The waiver is a placeholder.** One button marks it signed, with no wording or signature. The real waiver tool is #35 (PR #118).
+- **The desk's waiver button is a placeholder.** Climbers sign the real waiver on their phone at `/me/waiver` (#35), but "Sign a waiver now" on the desk still marks it signed with no wording or signature.
 - **Purchase is a free day pass from the desk** (#62). Selling passes and memberships is #53 (PR #119).
 - **The scan is simulated** from the climber's phone, standing in for a scanner at the desk (#94).
 - **Busyness mixes in generated check-ins** unless `MOCK_BUSYNESS_SCENARIO=none` (#64), and the typical week is always a sample until #39.
 - **No emails.** Nothing is sent after joining or signing (#95).
 
 When one of these is replaced, change the matching step in `e2e/release.spec.ts` in the same pull request, so the check keeps following the real journey.
+
+**Once, after PR #118 merges:** reseed staging (`DATABASE_URL="<session url>" npm run db:seed`). A deploy only applies migrations, and the waiver wording (template `v1`) and the gym's `waiverVersion` come from the seed. Until then every climber sees "Your gym hasn't set up its online waiver yet".
 
 ## Before a demo
 

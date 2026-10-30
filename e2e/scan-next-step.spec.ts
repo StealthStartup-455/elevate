@@ -29,7 +29,7 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
   await phone.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
   await phone.getByLabel("Date of birth").fill("1994-06-06");
   await phone.getByRole("button", { name: "Create account" }).click();
-  await expect(phone.getByRole("button", { name: /sign a waiver/i })).toBeVisible();
+  await expect(phone.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
   await phone.goto("/me");
 
   await phone.getByRole("button", { name: /scan/i }).click();
