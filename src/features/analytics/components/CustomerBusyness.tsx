@@ -56,10 +56,16 @@ export default async function CustomerBusyness({ gymId }: { gymId: string }) {
           color="text.secondary"
           component="p"
           title={`Updated ${formatTime(busyness.computedAt, timeZone)}`}
-          sx={{ mb: 5 }}
+          sx={{ mb: busyness.sampleCount ? 1 : 5 }}
         >
           Based on check-ins in the last {formatWindow(busyness.windowMinutes)}
         </Typography>
+        {busyness.sampleCount > 0 && (
+          // Stopgap until #39: say plainly what is generated (#64).
+          <Typography variant="secondary" sx={{ mb: 5 }} data-testid="sample-check-ins">
+            Demo data: includes {busyness.sampleCount} sample check-ins, not real visits.
+          </Typography>
+        )}
 
         {/* Today only by default; the full week is one tap away. */}
         <BusynessHeatMap gymId={gymId} view="today" />
