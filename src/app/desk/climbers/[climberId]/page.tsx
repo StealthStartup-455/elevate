@@ -1,3 +1,4 @@
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -17,6 +18,7 @@ import { getClimber } from "@/features/climbers/queries";
 
 export default function ClimberPage({
   params,
+  searchParams,
 }: PageProps<"/desk/climbers/[climberId]">) {
   return (
     <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
@@ -26,7 +28,7 @@ export default function ClimberPage({
         </LinkButton>
       </div>
       <Suspense fallback={<p>Loading...</p>}>
-        <ClimberDetails params={params} />
+        <ClimberDetails params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -34,8 +36,11 @@ export default function ClimberPage({
 
 async function ClimberDetails({
   params,
-}: Pick<PageProps<"/desk/climbers/[climberId]">, "params">) {
+  searchParams,
+}: Pick<PageProps<"/desk/climbers/[climberId]">, "params" | "searchParams">) {
   const { climberId } = await params;
+  // ?added=1: staff just created this climber at the desk (#88).
+  const justAdded = (await searchParams).added === "1";
   // getClimber is shared with /me, so it doesn't check for staff itself.
   // connection() first: the Supabase check reads the clock.
   await connection();
@@ -46,6 +51,12 @@ async function ClimberDetails({
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
       <CardContent>
+        {justAdded ? (
+          <Alert severity="success" sx={{ mb: 4 }}>
+            Climber added.
+            {climber.waiverStatus !== "valid" ? " Next, their waiver." : null}
+          </Alert>
+        ) : null}
         <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
           {climber.firstName} {climber.lastName}
         </Typography>
@@ -87,7 +98,10 @@ async function ClimberDetails({
 
         {climber.waiverStatus !== "valid" ? (
           <Box sx={{ mb: 5 }}>
-            <WaiverStep climberId={climber.id} />
+            <WaiverStep
+              climberId={climber.id}
+              laterHref={justAdded ? "/desk/climbers" : undefined}
+            />
           </Box>
         ) : null}
 
