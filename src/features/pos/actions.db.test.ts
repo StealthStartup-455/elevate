@@ -22,6 +22,10 @@ vi.mock("@/features/auth/staff", () => ({
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
+  getStaffContext: async () =>
+    auth.staff
+      ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: "DESK" }
+      : null,
 }));
 vi.mock("@/features/auth/queries", () => ({ getSessionClimberId: async () => null }));
 vi.mock("@/features/auth/session", () => ({ setSession: vi.fn() }));

@@ -1,7 +1,6 @@
 import { cache } from "react";
 import type { StaffRole } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
 import { createClient } from "@/lib/supabase/server";
 import { timed } from "@/lib/timing";
 import { getDemoClimberId } from "./session";
@@ -11,7 +10,7 @@ import { getDemoClimberId } from "./session";
 
 export type CurrentUser = {
   authUserId: string;
-  staff: { id: string; name: string; role: StaffRole } | null;
+  staff: { id: string; name: string; role: StaffRole; gymId: string } | null;
   // A parent's login can manage more than one climber.
   climberIds: string[];
 };
@@ -19,23 +18,22 @@ export type CurrentUser = {
 // The staff row and climbers behind a Supabase login. The login action already
 // has the user from signInWithPassword, so it calls this directly.
 export async function findAccount(authUserId: string): Promise<CurrentUser> {
-  const gym = await getGym();
   const [staff, climbers] = await Promise.all([
-    db.staff.findUnique({
-      where: { gymId_authUserId: { gymId: gym.id, authUserId } },
-      select: { id: true, name: true, role: true, active: true },
+    db.staff.findFirst({
+      where: { authUserId, active: true },
+      select: { id: true, gymId: true, name: true, role: true, active: true },
+      orderBy: { createdAt: "asc" },
     }),
     db.climber.findMany({
-      where: { gymId: gym.id, authUserId },
-      select: { id: true },
+      where: { authUserId },
+      select: { id: true, gymId: true },
       orderBy: { createdAt: "asc" },
     }),
   ]);
 
   return {
     authUserId,
-    // Staff who left keep their row, so check active.
-    staff: staff?.active ? { id: staff.id, name: staff.name, role: staff.role } : null,
+    staff: staff ? { id: staff.id, name: staff.name, role: staff.role, gymId: staff.gymId } : null,
     climberIds: climbers.map((c) => c.id),
   };
 }

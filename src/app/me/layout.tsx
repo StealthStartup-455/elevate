@@ -12,8 +12,9 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
           <Logo />
         </Link>
         <Link href="/me">Home</Link>
-        <Link href="/me/events">Events</Link>
-        <Link href="/me/stats">Stats</Link>
+        {/* Events and Stats are hidden until their pages have content (#65).
+            The routes stay, so work on them can continue: add the links back
+            in the same PR that fills the page. */}
         <Suspense fallback={null}>
           <MembershipLink />
         </Suspense>

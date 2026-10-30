@@ -16,12 +16,22 @@ vi.mock("next/navigation", () => ({
     throw new Error(`redirect ${url}`);
   },
 }));
-vi.mock("@/features/auth/queries", () => ({ getSessionClimberId: async () => session.climberId }));
+vi.mock("@/features/auth/queries", () => ({
+  getSessionClimberId: async () => session.climberId,
+  // getClimber lets a signed-in climber read their own record.
+  getCurrentUser: async () =>
+    session.climberId ? { authUserId: "test", staff: null, climberIds: [session.climberId] } : null,
+}));
+vi.mock("@/features/auth/session", () => ({ getDemoClimberId: async () => null }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => session.staff,
   requireStaff: async () => {
     if (!session.staff) throw new Error("redirect /login");
   },
+  getStaffContext: async () =>
+    session.staff
+      ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: "DESK" }
+      : null,
 }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 // Every query runs against the test gym, not the seeded one.

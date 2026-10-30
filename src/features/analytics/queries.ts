@@ -15,10 +15,11 @@ import type {
 // ACTIVE_WINDOW_MINUTES after checking in. There is no checked-out state.
 
 /**
- * The current time for busyness. Returns the mock data's fixed clock so
- * results are the same on every request.
+ * The current time for busyness. With a mock scenario, the scenario's fixed
+ * clock, so its results are the same on every request; with `none`, the real
+ * clock (see mockNow).
  *
- * When the real query lands, return `new Date()` instead.
+ * When the mock goes (#39), return `new Date()` instead.
  */
 async function busynessNow(): Promise<Date> {
   // Render per request, never at build time.
@@ -44,7 +45,7 @@ export async function getActiveCheckIns(
     .filter((c) => c.gymId === gymId && c.timestamp > since && c.timestamp <= now)
     .flatMap((c) => {
       const climber = climbers.get(c.climberId);
-      return climber ? [{ ...c, climber }] : [];
+      return climber ? [{ ...c, climber, sample: true }] : [];
     });
 
   // Visits saved by the front desk happen on the real clock, not the mock's,
@@ -64,6 +65,7 @@ export async function getActiveCheckIns(
       phone: c.phone,
       waiverStatus: c.waiverStatus,
     },
+    sample: false,
   }));
 
   return [...live, ...mock].sort(
@@ -73,16 +75,17 @@ export async function getActiveCheckIns(
 
 function summarize(
   gymId: string,
-  activeCount: number,
+  checkIns: ActiveCheckIn[],
   now: Date,
 ): BusynessSummary {
   const { thresholds } = getGymBusynessSettings(gymId);
   return {
     gymId,
-    count: activeCount,
-    level: getBusynessLevel(activeCount, thresholds),
+    count: checkIns.length,
+    level: getBusynessLevel(checkIns.length, thresholds),
     windowMinutes: ACTIVE_WINDOW_MINUTES,
     computedAt: now,
+    sampleCount: checkIns.filter((c) => c.sample).length,
   };
 }
 
@@ -94,7 +97,7 @@ export async function getFrontDeskBusyness(
   // Names and phone numbers: staff only.
   await requireStaff();
   const checkIns = await getActiveCheckIns(gymId, now);
-  return { ...summarize(gymId, checkIns.length, now), checkIns };
+  return { ...summarize(gymId, checkIns, now), checkIns };
 }
 
 // Climber view: the same numbers with no personal data, so nothing about
@@ -104,7 +107,7 @@ export async function getBusynessSummary(
 ): Promise<BusynessSummary> {
   const now = await busynessNow();
   const checkIns = await getActiveCheckIns(gymId, now);
-  return summarize(gymId, checkIns.length, now);
+  return summarize(gymId, checkIns, now);
 }
 
 /**
@@ -117,5 +120,6 @@ export async function getWeeklyBusyness(gymId: string): Promise<WeeklyBusyness> 
   const now = await busynessNow();
   const { timeZone } = getGymBusynessSettings(gymId);
   const { startHour, endHour, days, values } = mockWeek();
-  return { gymId, startHour, endHour, days, values, now: gymClock(now, timeZone) };
+  // Always generated for now, so always labelled (#64); real once #39 lands.
+  return { gymId, startHour, endHour, days, values, now: gymClock(now, timeZone), sample: true };
 }
