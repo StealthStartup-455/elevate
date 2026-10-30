@@ -27,8 +27,8 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 
 ```
 features/pos/
-├── actions.ts     # recordSale, voidSale, revokeMembership (Server Actions)
-├── queries.ts     # getPosData, isPosEnabled
+├── actions.ts     # recordSale, voidSale, revokeMembership, findPosClimbers, getPosClimber
+├── queries.ts     # getPosData, isPosEnabled, getStaffGym
 ├── cart.ts        # cart rules and totals, shared by the screen and the server
 ├── passes.ts      # what each product gives the climber
 ├── day.ts         # start of the gym's day
@@ -38,4 +38,6 @@ features/pos/
 
 The tab only shows for gyms whose `system` is `ELEVATE`; a gym on Rock Gym Pro or Redpoint already sells there.
 
-Reads `Climber`, `Pass` and `CheckIn` through the climbers feature where it can (`listClimbers`, `getClimber`); "Checked in today" and the renewals list read `CheckIn` and `Pass` directly.
+Every query and action uses the signed-in staff member's gym (`getStaffGym`: `getStaffContext()` then the cached `getGymById`, #34), never `getGym()`. `recordSale` saves the staff member's id on the sale (empty for the demo desk login).
+
+The climber search runs on the server (`findPosClimbers`, the same `searchClimbers` as Manual check in, 8 results, #85), so the page never carries every climber. Picking someone loads them fresh (`getPosClimber`), and they load again after Tender, Check in now and Revoke, so the card shows their new passes. "Checked in today" and the renewals list read `CheckIn` and `Pass` directly and carry just the name.

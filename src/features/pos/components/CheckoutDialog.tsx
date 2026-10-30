@@ -52,6 +52,7 @@ export default function CheckoutDialog({
   items,
   cart,
   onClose,
+  onSaved,
   onFinished,
 }: {
   open: boolean;
@@ -59,6 +60,8 @@ export default function CheckoutDialog({
   items: CartItem[];
   cart: PricedCart;
   onClose: () => void;
+  /** After Tender or Check in now: reload the climber's passes. */
+  onSaved: () => void;
   /** After a saved sale: clear the cart and start again. */
   onFinished: () => void;
 }) {
@@ -96,8 +99,10 @@ export default function CheckoutDialog({
     startTransition(async () => {
       try {
         const result = await recordSale({ climberId: climber.id, items, tender, idempotencyKey: key });
-        if (result.ok) setDone(result);
-        else setError(result.message);
+        if (result.ok) {
+          setDone(result);
+          onSaved();
+        } else setError(result.message);
       } catch {
         // Same key on the retry, so a sale that did save isn't saved twice.
         setError("Couldn't reach the server. Check the connection and press Tender again.");
@@ -108,6 +113,7 @@ export default function CheckoutDialog({
   function checkInNow() {
     startTransition(async () => {
       const result = await checkInClimber(climber.id);
+      if (result.ok) onSaved();
       setCheckIn(
         result.ok
           ? { ok: true, message: `${climber.name} is checked in.` }

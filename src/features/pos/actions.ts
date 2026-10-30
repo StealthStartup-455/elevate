@@ -1,17 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "@/features/auth/staff";
+import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { formatDate } from "@/features/climbers/format";
-import { getClimber } from "@/features/climbers/queries";
+import { getClimber, searchClimbers } from "@/features/climbers/queries";
 import { isoDay } from "@/features/climbers/status";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { checkCart, priceCart } from "./cart";
 import { membershipStartsAt, passFor, voidedExpiry } from "./passes";
-import { sellsInElevate } from "./queries";
-import type { CartItem, Tender } from "./types";
+import { getStaffGym, sellsInElevate, toPosClimber } from "./queries";
+import type { CartItem, PosClimber, Tender } from "./types";
 
 // Server actions are public POST endpoints, so each one checks for staff
 // itself and trusts nothing from the browser: prices, totals and passes are
@@ -88,14 +88,16 @@ async function describeSale(saleId: string, gymId: string): Promise<string[]> {
  */
 export async function recordSale(input: SaleInput): Promise<SaleResult> {
   await requireStaff();
-  // TODO(auth): set staffId from the logged-in staff member.
   const refuse = (reason: string, message: string): SaleResult => {
     logEvent("sale_refused", { reason });
     return { ok: false, message };
   };
   if (!validInput(input)) return refuse("invalid_input", "Something went wrong. Start the sale again.");
 
-  const gym = await getGym();
+  // The signed-in staff member's gym (#34); null id for the demo desk login.
+  const staff = await getStaffContext();
+  const gym = staff ? await getGymById(staff.gymId) : null;
+  if (!staff || !gym) return refuse("no_staff_gym", "Log in again to sell.");
   if (!sellsInElevate(gym)) return refuse("gym_not_elevate", "This gym sells passes in its own system.");
 
   const replay = async (): Promise<SaleResult | null> => {
@@ -159,6 +161,7 @@ export async function recordSale(input: SaleInput): Promise<SaleResult> {
           totalCents: priced.totalCents,
           tender: input.tender,
           idempotencyKey: input.idempotencyKey,
+          staffId: staff.id,
         },
         select: { id: true },
       });
@@ -228,7 +231,8 @@ export async function voidSale(
   if (why === "") return refuse("no_reason", "Say why the sale is being voided.");
   if (why.length > 200) return refuse("reason_too_long", "Keep the reason under 200 characters.");
 
-  const gym = await getGym();
+  const gym = await getStaffGym();
+  if (!gym) return refuse("no_staff_gym", "Log in again to void.");
   const sale = await db.sale.findFirst({
     where: { id: saleId, gymId: gym.id },
     select: {
@@ -284,7 +288,8 @@ export async function revokeMembership(climberId: string): Promise<{ ok: boolean
   };
   if (!UUID.test(String(climberId))) return refuse("invalid_id", "Climber not found.");
 
-  const gym = await getGym();
+  const gym = await getStaffGym();
+  if (!gym) return refuse("no_staff_gym", "Log in again to revoke.");
   const climber = await getClimber(climberId);
   if (!climber) return refuse("climber_not_found", "Climber not found.");
 
@@ -313,4 +318,20 @@ export async function revokeMembership(climberId: string): Promise<{ ok: boolean
   logEvent("membership_revoked", { gymId: gym.id, climberId: climber.id, passes: passes.length });
   refreshPosPages(climber.id);
   return { ok: true };
+}
+
+// The POS climber search: the same server search as Manual check in (#85),
+// so the page never carries every climber. Staff only (searchClimbers checks).
+const MAX_RESULTS = 8;
+
+export async function findPosClimbers(query: string): Promise<PosClimber[]> {
+  const climbers = await searchClimbers(String(query ?? ""), MAX_RESULTS);
+  return climbers.map(toPosClimber);
+}
+
+/** One climber, fresh, for the POS's climber card. Null if not in this gym. */
+export async function getPosClimber(climberId: string): Promise<PosClimber | null> {
+  await requireStaff();
+  const climber = await getClimber(String(climberId ?? ""));
+  return climber ? toPosClimber(climber) : null;
 }

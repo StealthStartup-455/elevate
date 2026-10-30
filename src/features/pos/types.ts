@@ -79,6 +79,8 @@ export type SaleSummary = {
 // Someone on the "Checked in today" list, newest first.
 export type RecentCheckIn = {
   climberId: string;
+  name: string;
+  phone: string;
   /** "4:12 p.m.", in the gym's time zone. */
   time: string;
 };
@@ -87,6 +89,7 @@ export type RecentCheckIn = {
 // is stored, so the desk rings up the next month on the POS.
 export type RenewalDue = {
   climberId: string;
+  name: string;
   /** ISO calendar date the current month ends. */
   dueOn: string;
   overdue: boolean;

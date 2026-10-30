@@ -2,11 +2,13 @@ import { connection } from "next/server";
 import { formatTime } from "@/features/analytics/components/format";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
 import { getFrontDeskBusyness } from "@/features/analytics/queries";
-import { requireStaff } from "@/features/auth/staff";
-import { getCheckInClimbers, listClimbers } from "@/features/climbers/queries";
+import { getStaffContext, requireStaff } from "@/features/auth/staff";
+import { getCheckInClimbers } from "@/features/climbers/queries";
+import type { Climber } from "@/features/climbers/types";
+import { formatPhone } from "@/features/climbers/phone";
 import { isoDay } from "@/features/climbers/status";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import { startOfGymDay } from "./day";
 import type { PosClimber, Product, RecentCheckIn, RenewalDue, SaleSummary, TaxRates } from "./types";
 
@@ -20,15 +22,39 @@ export function sellsInElevate(gym: { system: string }): boolean {
   return gym.system === "ELEVATE";
 }
 
+/**
+ * The signed-in staff member's gym (#34), never one from the browser. Null if
+ * they aren't staff or the gym is gone. Callers check requireStaff first.
+ */
+export async function getStaffGym() {
+  const staff = await getStaffContext();
+  return staff ? getGymById(staff.gymId) : null;
+}
+
 /** Whether the desk shows the POS tab. Staff only. */
 export async function isPosEnabled(): Promise<boolean> {
   await connection();
   await requireStaff();
-  return sellsInElevate(await getGym());
+  const gym = await getStaffGym();
+  return !!gym && sellsInElevate(gym);
+}
+
+/** A climber as the POS shows them. */
+export function toPosClimber(c: Climber): PosClimber {
+  return {
+    id: c.id,
+    name: `${c.firstName} ${c.lastName}`,
+    phone: c.phone,
+    waiverStatus: c.waiverStatus,
+    waiverExpiresOn: c.waiverExpiresOn,
+    membershipStatus: c.membershipStatus,
+    membershipRenewsOn: c.membershipRenewsOn,
+    hasDayPass: c.hasDayPass,
+    punchesLeft: c.punchesLeft,
+  };
 }
 
 export type PosData = {
-  climbers: PosClimber[];
   checkedInToday: RecentCheckIn[];
   products: Product[];
   taxRates: TaxRates;
@@ -40,13 +66,12 @@ export type PosData = {
 export async function getPosData(): Promise<PosData | null> {
   await connection();
   await requireStaff();
-  const gym = await getGym();
-  if (!sellsInElevate(gym)) return null;
+  const gym = await getStaffGym();
+  if (!gym || !sellsInElevate(gym)) return null;
 
   const now = new Date();
   const since = startOfGymDay(now, gym.timeZone);
-  const [climbers, checkedInToday, products, sales, renewalsDue] = await Promise.all([
-    listClimbers(),
+  const [checkedInToday, products, sales, renewalsDue] = await Promise.all([
     getCheckedInToday(gym.id, since, gym.timeZone),
     listProducts(gym.id),
     listSales(gym.id, since, gym.timeZone),
@@ -54,17 +79,6 @@ export async function getPosData(): Promise<PosData | null> {
   ]);
 
   return {
-    climbers: climbers.map((c) => ({
-      id: c.id,
-      name: `${c.firstName} ${c.lastName}`,
-      phone: c.phone,
-      waiverStatus: c.waiverStatus,
-      waiverExpiresOn: c.waiverExpiresOn,
-      membershipStatus: c.membershipStatus,
-      membershipRenewsOn: c.membershipRenewsOn,
-      hasDayPass: c.hasDayPass,
-      punchesLeft: c.punchesLeft,
-    })),
     checkedInToday,
     products,
     taxRates: { gstRateBps: gym.gstRateBps, pstRateBps: gym.pstRateBps },
@@ -105,7 +119,11 @@ async function getCheckedInToday(
     db.checkIn.findMany({
       where: { gymId, checkedInAt: { gte: since } },
       orderBy: { checkedInAt: "desc" },
-      select: { climberId: true, checkedInAt: true },
+      select: {
+        climberId: true,
+        checkedInAt: true,
+        climber: { select: { firstName: true, lastName: true, phone: true } },
+      },
       take: 100,
     }),
     getFrontDeskBusyness(DEMO_GYM_ID),
@@ -115,13 +133,20 @@ async function getCheckedInToday(
 
   const seen = new Set<string>();
   const list: RecentCheckIn[] = [];
-  const add = (climberId: string | undefined, at: Date) => {
+  const add = (climberId: string | undefined, name: string, phone: string, at: Date) => {
     if (!climberId || seen.has(climberId)) return;
     seen.add(climberId);
-    list.push({ climberId, time: formatTime(at, timeZone) });
+    list.push({ climberId, name, phone, time: formatTime(at, timeZone) });
   };
-  for (const c of saved) add(c.climberId, c.checkedInAt);
-  for (const c of busyness.checkIns) add(mockClimbers.get(c.climberId)?.id, c.timestamp);
+  for (const c of saved) {
+    const { firstName, lastName, phone } = c.climber;
+    add(c.climberId, `${firstName} ${lastName}`, phone ? formatPhone(phone) : "", c.checkedInAt);
+  }
+  // The mock's names and phones, already formatted.
+  for (const c of busyness.checkIns) {
+    const { firstName, lastName, phone } = c.climber;
+    add(mockClimbers.get(c.climberId)?.id, `${firstName} ${lastName}`, phone, c.timestamp);
+  }
   return list;
 }
 
@@ -169,9 +194,10 @@ async function getRenewalsDue(gymId: string, now: Date): Promise<RenewalDue[]> {
         lte: new Date(now.getTime() + RENEWAL_LEAD_DAYS * DAY_MS),
       },
     },
-    select: { climberId: true },
+    select: { climberId: true, climber: { select: { firstName: true, lastName: true } } },
   });
   if (due.length === 0) return [];
+  const names = new Map(due.map((p) => [p.climberId, `${p.climber.firstName} ${p.climber.lastName}`]));
 
   const memberships = await db.pass.findMany({
     where: { gymId, kind: "MEMBERSHIP", climberId: { in: [...new Set(due.map((p) => p.climberId))] } },
@@ -204,6 +230,7 @@ async function getRenewalsDue(gymId: string, now: Date): Promise<RenewalDue[]> {
       const productId = m.saleLine?.productId;
       return {
         climberId: m.climberId,
+        name: names.get(m.climberId) ?? "",
         // Same date as "Renews" on the climber (isoDay in status.ts).
         dueOn: isoDay(m.expiresAt!),
         overdue: m.expiresAt! <= now,

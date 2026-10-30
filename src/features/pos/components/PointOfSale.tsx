@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { getPosClimber } from "../actions";
 import { addToCart, cartWarnings, priceCart, setQuantity } from "../cart";
 import type { CartItem, PosClimber, Product, RecentCheckIn, RenewalDue, TaxRates } from "../types";
 import CartPanel from "./CartPanel";
@@ -12,36 +13,67 @@ import ProductPanel from "./ProductPanel";
 // cart lives only in this page until Tender saves the sale; prices and totals
 // are worked out again on the server.
 export default function PointOfSale({
-  climbers,
   checkedInToday,
   renewalsDue,
   products,
   taxRates,
 }: {
-  climbers: PosClimber[];
   checkedInToday: RecentCheckIn[];
   renewalsDue: RenewalDue[];
   products: Product[];
   taxRates: TaxRates;
 }) {
-  const [climberId, setClimberId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<PosClimber | null>(null);
+  // Picked from a list that only has their name, while their passes load.
+  const [loading, setLoading] = useState<{ id: string; name: string } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
-
-  // From the latest server data, so a sale's new passes show straight away.
-  const selected = climbers.find((c) => c.id === climberId) ?? null;
+  // The climber the last load was for, so a slow answer for someone staff
+  // already moved on from is dropped.
+  const loadingId = useRef<string | null>(null);
   const priced = useMemo(() => priceCart(cart, products, taxRates), [cart, products, taxRates]);
   const warnings = selected ? cartWarnings(selected, priced) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
 
+  // Loads the climber fresh from the server, so new passes, a revoke or a
+  // check-in show straight away. `shown` is what to show meanwhile.
+  async function load(id: string, name: string, shown: PosClimber | null) {
+    loadingId.current = id;
+    setSelected(shown);
+    setLoading(shown ? null : { id, name });
+    setLoadError(null);
+    let climber: PosClimber | null = null;
+    try {
+      climber = await getPosClimber(id);
+    } catch {
+      // Handled below like a climber that wasn't found.
+    }
+    if (loadingId.current !== id) return;
+    setLoading(null);
+    if (climber) setSelected(climber);
+    else if (!shown) setLoadError(`Couldn't load ${name}. Search for them instead.`);
+  }
+
   // One climber per sale: switching climber starts a new cart.
-  function selectClimber(id: string | null) {
-    setClimberId(id);
+  function selectClimber(climber: PosClimber | { id: string; name: string } | null) {
     setCart([]);
+    if (!climber) {
+      loadingId.current = null;
+      setSelected(null);
+      setLoading(null);
+      setLoadError(null);
+      return;
+    }
+    void load(climber.id, climber.name, "waiverStatus" in climber ? climber : null);
+  }
+
+  function refreshSelected() {
+    if (selected) void load(selected.id, selected.name, selected);
   }
 
   function renew(renewal: RenewalDue) {
-    selectClimber(renewal.climberId);
+    selectClimber({ id: renewal.climberId, name: renewal.name });
     const product = renewal.productId ? byId.get(renewal.productId) : undefined;
     if (product) setCart(addToCart([], product, products));
   }
@@ -54,13 +86,15 @@ export default function PointOfSale({
   return (
     <div className="grid items-start gap-3 lg:grid-cols-3">
       <ClimberPanel
-        climbers={climbers}
         checkedInToday={checkedInToday}
         renewalsDue={renewalsDue}
         selected={selected}
+        loadingName={loading?.name ?? null}
+        loadError={loadError}
         onSelect={selectClimber}
         onRenew={renew}
         onChange={() => selectClimber(null)}
+        onUpdated={refreshSelected}
       />
       <ProductPanel
         products={products}
@@ -85,6 +119,7 @@ export default function PointOfSale({
           items={cart}
           cart={priced}
           onClose={() => setCheckingOut(false)}
+          onSaved={refreshSelected}
           onFinished={() => selectClimber(null)}
         />
       ) : null}

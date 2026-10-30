@@ -37,7 +37,7 @@ vi.mock("@/lib/gym", () => ({
   getGymById: async (id: string) => db.gym.findUnique({ where: { id } }),
 }));
 
-const { recordSale, revokeMembership, voidSale } = await import("./actions");
+const { findPosClimbers, getPosClimber, recordSale, revokeMembership, voidSale } = await import("./actions");
 const { checkInClimber } = await import("@/features/climbers/actions");
 const { getClimber } = await import("@/features/climbers/queries");
 
@@ -280,5 +280,33 @@ describe("revokeMembership", () => {
     const id = await newClimber();
     auth.staff = false;
     await expect(revokeMembership(id)).rejects.toThrow("redirect /login");
+  });
+});
+
+describe("POS climber search", () => {
+  it("finds climbers in the staff member's gym only, with their passes", async () => {
+    const id = await newClimber();
+    await db.climber.update({ where: { id }, data: { firstName: "Searchable", lastName: "Zephyr" } });
+    await sell(id, [["10-punch card", 1]]);
+    const otherGym = await db.gym.create({ data: { name: "Other gym", slug: "test-pos-other" } });
+    const other = await db.climber.create({
+      data: { gymId: otherGym.id, firstName: "Searchable", lastName: "Zephyr", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+    });
+    try {
+      const found = await findPosClimbers("Searchable Zephyr");
+      expect(found.some((c) => c.id === id && c.punchesLeft === 10)).toBe(true);
+      expect(found.some((c) => c.id === other.id)).toBe(false);
+      expect(await getPosClimber(other.id)).toBeNull();
+      expect((await getPosClimber(id))?.punchesLeft).toBe(10);
+    } finally {
+      await db.climber.delete({ where: { id: other.id } });
+      await db.gym.delete({ where: { id: otherGym.id } });
+    }
+  });
+
+  it("is staff only", async () => {
+    auth.staff = false;
+    await expect(findPosClimbers("New")).rejects.toThrow("redirect /login");
+    await expect(getPosClimber(randomUUID())).rejects.toThrow("redirect /login");
   });
 });
