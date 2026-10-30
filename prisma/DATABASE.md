@@ -16,25 +16,35 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Staff` | Someone who works the desk | Sam, closing shift |
 | `Climber` | A customer | Kim Lee, 12, youth team |
 | `Pass` | Whatever gets them in | 10-punch card, 7 left |
+| `WaiverTemplate` | One version of a gym's waiver wording | `v2`, published 1 March |
 | `Waiver` | One signed waiver | `v2`, signed by Kim's dad |
 | `CheckIn` | One visit | Kim, 4:12 pm, scanned QR |
 | `QrScan` | A QR scan waiting for the desk | Kim tapped scan at 4:11 pm |
+| `Product` | Something the desk sells on the POS | 10-punch card, $200 |
+| `Sale` | One POS sale, for one climber | Kim, $217.35 by card |
+| `SaleLine` | One line of a sale | 10-punch card ×1, $200 |
 
 ```text
 Gym
  ├── Staff
+ ├── Product
+ ├── WaiverTemplate
  └── Climber
-      ├── Pass
-      ├── Waiver
+      ├── Pass ── SaleLine (the sale that paid for it)
+      ├── Waiver ── WaiverTemplate
       ├── CheckIn ── Staff
-      └── QrScan
+      ├── QrScan
+      └── Sale ── Staff
+           └── SaleLine ── Product
 ```
 
 ### Intentional design choices
 
 - Phone and email are not unique. Families often share one, so a phone search can return several climbers. One login can also manage several climbers.
-- Prices are not stored. Payments happen in the gym's own POS; a `Pass` only records what the climber has.
-- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row.
+- Prices are stored (agreed 2026-10-29, elevate-docs#56; this used to say they weren't). The desk POS sells `Product`s and records each `Sale`. The money itself is taken on the gym's own card machine or in cash: Elevate never sees card details.
+- Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added at checkout and each tax is rounded once: GST on the whole subtotal at the gym's `gstRateBps`, and BC PST at `pstRateBps` only on the lines whose product has `chargesPst` (rentals and retail goods; admissions and memberships are GST only).
+- A sale copies each product's name and price onto its `SaleLine`, so changing a price never rewrites old sales.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end.
 
 ## Gym isolation
 
@@ -61,8 +71,8 @@ It does not protect reads. A query without a `gymId` filter returns every gym's 
 
 1. Find them by QR, phone or name, within this gym only.
 2. Waiver: they need one whose `version` matches the gym's `waiverVersion`. If the gym hasn't set one, any signed waiver is fine.
-3. Pass: started, not expired, and visits left if it's a punch card.
-4. Punch card? Take a punch.
+3. Pass: an active membership or a day pass for today. Otherwise a punch card that has started, hasn't ended and has visits left.
+4. Using a punch card? Take a punch (only while `visitsLeft > 0`, so two desks can't both use the last one). A climber with a membership keeps their punches.
 5. Save the `CheckIn`. Turned-away visits aren't saved.
 
 Busyness counts check-ins from the last 120 minutes.
@@ -80,6 +90,10 @@ Every table has an `id` (a UUID made by Prisma). Most also have `createdAt` and 
 | `timeZone` | text | yes | Default `America/Vancouver` |
 | `system` | `GymSystem` | yes | Where passes and waivers really live: `ELEVATE` (default), `REDPOINT`, `ROCK_GYM_PRO` |
 | `waiverVersion` | text | no | The waiver version climbers must have signed. Empty means any signed waiver counts |
+| `gstRateBps` | integer | yes | GST added at POS checkout, in hundredths of a percent. Default `500` (5%) |
+| `pstRateBps` | integer | yes | BC PST on products with `chargesPst`. Default `700` (7%); `0` for a gym with no PST |
+
+Only gyms whose `system` is `ELEVATE` get the POS tab: a gym on Rock Gym Pro or Redpoint sells there, and a sale here would never reach that system.
 
 ### Staff
 
@@ -118,6 +132,8 @@ Searchable by phone, email and last name within a gym.
 | `expiresAt` | timestamp | no | Empty means no end date |
 | `visitsLeft` | integer | no | Punch cards only |
 | `pausedAt` | timestamp | no | Memberships only. Set while the membership is on hold |
+| `renews` | boolean | yes | Monthly recurring membership. No card is stored, so the POS lists it under "Renewals due" and the desk rings up the next month |
+| `saleLineId` | text | no | The POS sale line that paid for it. Empty for passes from before the POS, the #62 free day pass, or another system |
 | `externalId` | text | no | Its id in the gym's own system. Unique per gym |
 
 ### How the app shows waiver and membership status
@@ -138,6 +154,27 @@ Nothing stores a status. `src/features/climbers/status.ts` works it out from the
 | `signedByName` | text | yes | |
 | `signerRelation` | `SignerRelation` | yes | `SELF` (default), `PARENT`, `GUARDIAN` |
 | `externalId` | text | no | Its id in Smartwaiver or similar. Unique per gym |
+| `templateId` | text | no | The `WaiverTemplate` they agreed to. Empty for imported and older placeholder rows |
+| `bodyHash` | text | no | The template's `bodyHash` at signing, to prove the wording didn't change |
+| `signatureText` | text | no | The name they typed as their signature |
+| `signatureImage` | text | no | A drawn signature, as a PNG data URL |
+| `signedByAuthUserId` | text | no | The login that signed (a parent's, for a child) |
+| `ipAddress`, `userAgent` | text | no | The signer's device, as evidence |
+| `emergencyContactName`, `emergencyContactPhone` | text | no | Who to call if they get hurt, as given when they signed. Phone saved like `+12505551234` |
+
+### WaiverTemplate
+
+The waiver wording a gym asks climbers to sign. One row per version, never edited after publishing. `Gym.waiverVersion` names the current one.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `version` | text | yes | `v1`, `v2`... Unique per gym |
+| `title` | text | yes | |
+| `body` | text | yes | The waiver text. Blank lines separate paragraphs |
+| `clauses` | text[] | yes | Short rules the climber ticks one by one |
+| `bodyHash` | text | yes | SHA-256 of title, body and clauses (`src/features/waivers/hash.ts`) |
+| `publishedAt` | timestamp | yes | Set automatically |
 
 ### CheckIn
 
@@ -159,6 +196,46 @@ Searchable by gym and time (busyness) and by climber and time (visit history).
 | `takenAt` | timestamp | no | Set when the desk shows it. Empty means still waiting |
 
 The climber's phone saves one per scan; the desk takes the oldest waiting scan for its gym, once (a conditional update, so two desks never show the same scan). Scans older than two minutes are ignored. Kept in the database rather than server memory so it works when the app runs on several servers.
+
+### Product
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `name` | text | yes | Unique per gym |
+| `kind` | `ProductKind` | yes | `DAY`, `PUNCH`, `MEMBERSHIP` give a `Pass`; `RENTAL` and `RETAIL` don't |
+| `priceCents` | integer | yes | Before tax |
+| `punches` | integer | no | Punch cards only: visits on a new card |
+| `durationMonths` | integer | no | Memberships only |
+| `recurring` | boolean | yes | Monthly recurring membership |
+| `chargesPst` | boolean | yes | Pays PST as well as GST: rentals and retail goods. Default `false` |
+| `active` | boolean | yes | Off means not for sale; old sales still point at it |
+| `sortOrder` | integer | yes | Tile order on the POS |
+
+The seed adds the demo gym's products with rough mock prices.
+
+### Sale
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `climberId` | text | yes | One climber per sale |
+| `staffId` | text | no | Who rang it up, once auth exposes the staff member |
+| `subtotalCents`, `gstCents`, `pstCents`, `totalCents` | integer | yes | `gstCents` is the subtotal times `gstRateBps`; `pstCents` is the PST lines' total times `pstRateBps`; each rounded once |
+| `gstRateBps`, `pstRateBps` | integer | yes | The gym's rates at the time. Sales from before PST have `pstRateBps` 0 |
+| `tender` | `Tender` | yes | `CARD` (the gym's own card machine), `CASH`, or `ONLINE` (the climber bought it in the app; a mock, no money moves) |
+| `status` | `SaleStatus` | yes | `PAID`, or `VOIDED` |
+| `idempotencyKey` | text | yes | Made by the checkout popup. Unique per gym, so pressing Tender twice saves one sale |
+| `voidedAt`, `voidReason` | | no | Set when the sale is voided |
+
+### SaleLine
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `saleId`, `productId` | text | yes | |
+| `name`, `kind`, `unitPriceCents` | | yes | Copied from the product at the time of sale |
+| `quantity` | integer | yes | Always 1 for passes; up to 20 for rentals and chalk |
+| `lineTotalCents` | integer | yes | Before tax |
+| `chargesPst` | boolean | yes | Copied from the product at the time of sale |
 
 The full SQL is in [`migrations/`](migrations/), one folder per change, applied in order.
 

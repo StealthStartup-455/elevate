@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endOfGymDay, hasDayPass, summarizeMembership, summarizeWaiver } from "./status";
+import { endOfGymDay, hasDayPass, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
 
 const NOW = new Date("2026-10-20T18:00:00Z");
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -108,5 +108,23 @@ describe("endOfGymDay", () => {
   it("uses the gym's day, not the UTC day, late in the evening", () => {
     const lateEvening = new Date("2026-10-21T05:30:00Z"); // 10:30pm Oct 20 in Victoria
     expect(endOfGymDay(lateEvening, "America/Vancouver")).toEqual(new Date("2026-10-21T07:00:00Z"));
+  });
+});
+
+describe("punchesLeft", () => {
+  const now = new Date("2026-10-29T20:00:00Z");
+  const card = (visitsLeft: number | null, expiresAt: Date | null = null) => ({
+    startsAt: new Date("2026-10-01T00:00:00Z"),
+    expiresAt,
+    visitsLeft,
+  });
+
+  it("adds up the visits on every card in effect", () => {
+    expect(punchesLeft([card(7), card(10)], now)).toBe(17);
+  });
+
+  it("leaves out ended, unstarted and empty cards", () => {
+    const later = { startsAt: new Date("2026-11-01T00:00:00Z"), expiresAt: null, visitsLeft: 10 };
+    expect(punchesLeft([card(5, new Date("2026-10-28T00:00:00Z")), later, card(0), card(null)], now)).toBe(0);
   });
 });

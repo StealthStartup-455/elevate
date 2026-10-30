@@ -8,10 +8,14 @@ import { expect, test, type Page } from "@playwright/test";
 
 const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { paths: ["/login", "/join"], phone: true },
-  { user: "demo-valid-active", paths: ["/me", "/me/stats", "/me/events", "/staff-only"], phone: true },
+  { user: "demo-valid-active", paths: ["/me", "/me/stats", "/me/events", "/me/purchase", "/staff-only"], phone: true },
+  // No membership: the Membership section and the Purchase Membership button.
+  { user: "demo-valid-none", paths: ["/me", "/me/purchase"], phone: true },
+  // Never signs in these tests, so /me/waiver always shows the signing form.
+  { user: "demo-missing-none", paths: ["/me/waiver"], phone: true },
   {
     user: "desk",
-    paths: ["/desk", "/desk/climbers", "/desk/climbers/new", "/desk/waivers"],
+    paths: ["/desk", "/desk/pos", "/desk/climbers", "/desk/climbers/new", "/desk/waivers"],
     phone: false,
   },
 ];

@@ -9,13 +9,15 @@ export default function LinkButton({
   href,
   children,
   variant = "contained",
+  size,
 }: {
   href: string;
   children: React.ReactNode;
   variant?: "contained" | "outlined" | "text";
+  size?: "small" | "medium" | "large";
 }) {
   return (
-    <Button component={Link} href={href} variant={variant}>
+    <Button component={Link} href={href} variant={variant} size={size}>
       {children}
     </Button>
   );

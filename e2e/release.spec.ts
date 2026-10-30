@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signWaiverForm } from "./sign-waiver";
 
 // Release check (#43): the pilot journey from start to finish, in the order a
 // new climber meets it. One test, so a failure says which step of the journey
@@ -76,9 +77,12 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     // Scoped to <main>: while /me streams in, a second copy of the card can
     // briefly sit outside it (also seen on /desk/climbers/new in PR #115).
     await expect(phone.getByRole("main").getByText("No waiver on file")).toBeVisible();
-    // Placeholder signing until the real waiver tool (#35, PR #118) lands;
-    // then this step fills in the form on /me/waiver instead.
-    await phone.getByRole("button", { name: /sign a waiver/i }).click();
+    await phone.getByRole("main").getByRole("link", { name: "Sign the waiver" }).click();
+    await expect(phone).toHaveURL(/\/me\/waiver/);
+    await signWaiverForm(phone);
+    await expect(phone.getByText(/You.re all set/)).toBeVisible();
+    await phone.getByRole("link", { name: "Continue" }).click();
+    await expect(phone).toHaveURL(/\/me$/);
     await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible({ timeout: 5_000 });
     // Still signed after a fresh load: it was saved, not just shown.
     await phone.reload();

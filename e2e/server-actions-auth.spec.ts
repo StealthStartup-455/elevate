@@ -24,7 +24,7 @@ async function newClimberId(browser: Browser): Promise<string> {
   await page.getByLabel("Phone number").fill(`250556${unique.slice(-4)}`);
   await page.getByLabel("Date of birth").fill("1990-01-01");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("button", { name: /sign a waiver/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /sign the waiver/i })).toBeVisible();
   const cookie = (await context.cookies()).find((c) => c.name === "elevate_mock_user");
   await context.close();
   if (!cookie) throw new Error("Joining did not start a demo session");

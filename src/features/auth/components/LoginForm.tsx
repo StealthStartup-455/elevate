@@ -12,67 +12,117 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useActionState } from "react";
 import { type LoginState, login } from "../actions";
+import type { TestLoginGroup } from "../demo-logins";
 
-export type DemoLogin = {
-  username: string;
-  waiver?: string;
-  membership?: string;
-  // Shown instead of the waiver and membership columns, for example for staff.
-  note?: string;
-};
+// What to try as each kind of user, for whoever is testing. The steps follow
+// the desk POS (/desk/pos) and the climber's Purchase tab (/me/purchase).
+const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
+  {
+    title: "Front desk",
+    login: "desk",
+    steps: [
+      "Check-in: find a climber and check them in.",
+      "POS tab: pick a climber, add a pass or membership, press Checkout, then Tender (card or cash).",
+      "Under Today's sales, Void a sale to undo it.",
+    ],
+  },
+  {
+    title: "Climber who just joined (no waiver, no membership)",
+    login: "demo-missing-none",
+    steps: [
+      "Open the Purchase tab, open Membership, pick a plan and press Pay. It's a demo: nothing is charged.",
+      "Your plan turns Active, and the Membership section goes away. The waiver can still be signed from the dashboard.",
+      "Rentals and chalk can be bought too. Purchase history lists everything bought.",
+      "Log in as desk: the purchase is in the POS under Today's sales, as Online.",
+    ],
+  },
+  {
+    title: "Climber with an active membership",
+    login: "demo-valid-active",
+    steps: ["Open the Purchase tab: there is no Membership section, with a warning saying why. Rentals and chalk can still be bought."],
+  },
+];
 
-function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
+function TestingGuide() {
+  return (
+    <Box sx={{ p: 1, pb: 3 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Testing guide
+      </Typography>
+      {TEST_GUIDE.map((g) => (
+        <Box key={g.login} sx={{ mb: 2 }}>
+          <Typography variant="caption" component="p" sx={{ fontWeight: 700 }}>
+            {g.title}
+          </Typography>
+          <Typography variant="caption" component="p">
+            Log in as <code>{g.login}</code>, password <code>{g.login}</code>
+          </Typography>
+          <Box component="ol" sx={{ m: 0, pl: 5, fontSize: "0.75rem", listStyle: "decimal" }}>
+            {g.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+function TestLoginsHint({ groups }: { groups: TestLoginGroup[] }) {
   return (
     <Box sx={{ p: 1 }}>
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Demo accounts
+        Test logins
       </Typography>
       <Typography variant="caption" component="p" sx={{ mb: 2 }}>
-        Type the username in the Email box and use it as the password too.
+        Type the username in the Email box. For the demo logins the password is the same as the username.
       </Typography>
-      <Box component="table" sx={{ borderCollapse: "collapse", fontSize: "0.75rem" }}>
-        <thead>
-          <tr>
-            <Box component="th" sx={{ textAlign: "left", pr: 4, pb: 1 }}>
-              Username
-            </Box>
-            <Box component="th" sx={{ textAlign: "left", pr: 4, pb: 1 }}>
-              Waiver
-            </Box>
-            <Box component="th" sx={{ textAlign: "left", pb: 1 }}>
-              Membership
-            </Box>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((a) => (
-            <tr key={a.username}>
-              <Box
-                component="td"
-                sx={{ pr: 4, py: 0.5, fontFamily: "var(--font-geist-mono)", whiteSpace: "nowrap" }}
-              >
-                {a.username}
-              </Box>
-              {a.note ? (
-                <Box component="td" colSpan={2} sx={{ py: 0.5 }}>
-                  {a.note}
+      {groups.map((group) => (
+        <Box key={group.title} sx={{ mb: 3 }}>
+          <Typography variant="caption" component="p" sx={{ fontWeight: 700, mb: 1 }}>
+            {group.title}
+          </Typography>
+          <Box component="table" sx={{ borderCollapse: "collapse", fontSize: "0.75rem" }}>
+            <thead>
+              <tr>
+                <Box component="th" sx={{ textAlign: "left", pr: 3, pb: 0.5 }}>
+                  Username
                 </Box>
-              ) : (
-                <>
-                  <Box component="td" sx={{ pr: 4, py: 0.5 }}>
-                    {a.waiver}
+                <Box component="th" sx={{ textAlign: "left", pr: 3, pb: 0.5 }}>
+                  Password
+                </Box>
+                <Box component="th" sx={{ textAlign: "left", pb: 0.5 }}>
+                  What it is
+                </Box>
+              </tr>
+            </thead>
+            <tbody>
+              {group.logins.map((l) => (
+                <tr key={l.username}>
+                  <Box
+                    component="td"
+                    sx={{ pr: 3, py: 0.5, fontFamily: "var(--font-geist-mono)", whiteSpace: "nowrap" }}
+                  >
+                    {l.username}
+                  </Box>
+                  <Box
+                    component="td"
+                    sx={{ pr: 3, py: 0.5, fontFamily: "var(--font-geist-mono)", whiteSpace: "nowrap" }}
+                  >
+                    {l.password}
                   </Box>
                   <Box component="td" sx={{ py: 0.5 }}>
-                    {a.membership}
+                    {l.note}
                   </Box>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </Box>
-      <Typography variant="caption" component="p" sx={{ mt: 2 }}>
-        Any climber in the mock data also works as <code>first.last</code>.
+                </tr>
+              ))}
+            </tbody>
+          </Box>
+        </Box>
+      ))}
+      <Typography variant="caption" component="p">
+        Any climber in the mock data also works as <code>first.last</code>. The real logins use the{" "}
+        <code>SEED_LOGIN_PASSWORD</code> from the .env the seed ran with (see the README).
       </Typography>
     </Box>
   );
@@ -81,8 +131,9 @@ function DemoAccountsHint({ accounts }: { accounts: DemoLogin[] }) {
 // Log in fields with "Join the gym" right under them. The label always says
 // Email because this page is built ahead of time, but in demo mode a demo
 // username works there too (see actions.ts). The "i" next to the title lists
-// demo accounts for every waiver and membership state.
-export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] }) {
+// a testing guide (what to try as the desk and as a climber) and every test
+// login by kind of user, with its username and password (demo-logins.ts).
+export default function LoginForm({ testLogins }: { testLogins: TestLoginGroup[] }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     login,
     {},
@@ -96,11 +147,19 @@ export default function LoginForm({ demoAccounts }: { demoAccounts: DemoLogin[] 
             Log in
           </Typography>
           <Tooltip
-            title={<DemoAccountsHint accounts={demoAccounts} />}
+            title={
+              <>
+                <TestingGuide />
+                <TestLoginsHint groups={testLogins} />
+              </>
+            }
             placement="bottom-start"
             enterTouchDelay={0}
             leaveTouchDelay={15000}
-            slotProps={{ tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))" } } }}
+            // Long, so it scrolls; the tooltip stays open while the pointer is on it.
+            slotProps={{
+              tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } },
+            }}
           >
             <Box
               component="button"

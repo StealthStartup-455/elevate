@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signWaiverForm } from "./sign-waiver";
 
 // The Milestone 3 demo, end to end: a climber on a phone and the front desk
 // on a laptop, each in its own browser session. Needs the demo login
@@ -12,6 +13,7 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
   await expect(page).toHaveURL(landsOn);
 }
 
+// A wavy line across the signature box, with the mouse.
 async function newPage(browser: Browser, phone = false): Promise<Page> {
   const context = await browser.newContext(
     phone ? { viewport: { width: 390, height: 844 }, isMobile: true } : {},
@@ -114,12 +116,13 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await phone.getByLabel("Phone number").fill(`250555${unique.slice(-4)}`);
   await phone.getByLabel("Date of birth").fill("1995-03-03");
   await phone.getByRole("button", { name: "Create account" }).click();
-  await phone.getByRole("button", { name: /sign a waiver/i }).click();
-  // The placeholder waiver is a stopgap, but it shouldn't make anyone wait
-  // (#66). A generous bound, so a slow CI machine doesn't fail it.
-  await expect(phone.getByText("Waiver signed.")).toBeVisible({ timeout: 3_000 });
+  await phone.getByRole("link", { name: /sign the waiver/i }).click();
+  await expect(phone).toHaveURL(/\/me\/waiver/);
+  await signWaiverForm(phone);
+  await expect(phone.getByText(/You.re all set/)).toBeVisible();
   await phone.getByRole("link", { name: "Continue" }).click();
-  await expect(phone).toHaveURL(/\/me/);
+  await expect(phone).toHaveURL(/\/me$/);
+  await expect(phone.getByText("✓ Waiver signed")).toBeVisible();
 
   // Known gap (proposal item D1): a new climber has no membership yet, so the
   // desk is told why it can't check them in instead of offering Check in.

@@ -10,12 +10,13 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
+import { checkInClimber, giveDayPass, signWaiver } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
 import { startWatchingScans, takeLatestScan, type ScannedClimber } from "../actions";
 import { useOtherDeskDialogOpen } from "../desk-dialogs";
+import { deskNextStep } from "../scan-messages";
 
 // How often the desk asks the server for a new scan. Short, so the popup
 // shows up right after the climber taps "Simulate scan".
@@ -32,8 +33,8 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 function problems(c: ScannedClimber): string[] {
   const list: string[] = [];
   if (c.waiverStatus !== "valid") list.push("needs a valid waiver");
-  if (c.membershipStatus !== "active" && !c.hasDayPass) {
-    list.push("has no active membership or day pass");
+  if (c.membershipStatus !== "active" && !c.hasDayPass && c.punchesLeft === 0) {
+    list.push("has no active membership, day pass or punch card");
   }
   return list;
 }
@@ -41,7 +42,12 @@ function problems(c: ScannedClimber): string[] {
 // STOPGAP(#62): valid waiver but nothing to get in with, so staff can give a
 // free day pass. Replace with #44 to #46.
 function canGiveDayPass(c: ScannedClimber): boolean {
-  return c.waiverStatus === "valid" && c.membershipStatus !== "active" && !c.hasDayPass;
+  return (
+    c.waiverStatus === "valid" &&
+    c.membershipStatus !== "active" &&
+    !c.hasDayPass &&
+    c.punchesLeft === 0
+  );
 }
 
 // Front desk: pops up the climber who just scanned on /me, with their
@@ -101,6 +107,21 @@ export default function ScanWatcher() {
     });
   }
 
+  // STOPGAP like the climber page's waiver step, until #35/#36: staff sign
+  // for the climber right here, so the scan doesn't dead-end (#90).
+  function waiver(c: ScannedClimber) {
+    setError(null);
+    startTransition(async () => {
+      const result = await signWaiver(c.id);
+      if (result.ok) {
+        setClimber({ ...c, waiverStatus: "valid", waiverExpiresOn: undefined });
+        router.refresh();
+      } else {
+        setError(result.message ?? "Couldn't sign the waiver. Try again.");
+      }
+    });
+  }
+
   function dayPass(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
@@ -112,6 +133,7 @@ export default function ScanWatcher() {
 
   if (!climber) return null;
   const issues = problems(climber);
+  const nextStep = deskNextStep(climber);
 
   return (
     <Dialog open onClose={close} fullWidth maxWidth="xs">
@@ -145,7 +167,11 @@ export default function ScanWatcher() {
             </Typography>
             {climber.hasDayPass && climber.membershipStatus !== "active" ? (
               <Typography variant="caption" color="text.secondary">
-                Free day pass for today
+                Day pass for today
+              </Typography>
+            ) : climber.punchesLeft > 0 && climber.membershipStatus !== "active" ? (
+              <Typography variant="caption" color="text.secondary">
+                {climber.punchesLeft} {climber.punchesLeft === 1 ? "punch" : "punches"} left
               </Typography>
             ) : climber.membershipRenewsOn ? (
               <Typography variant="caption" color="text.secondary">
@@ -169,6 +195,11 @@ export default function ScanWatcher() {
           </Box>
         </Box>
 
+        {nextStep && !done ? (
+          <Typography variant="body" component="p" sx={{ mt: 3 }}>
+            {nextStep}
+          </Typography>
+        ) : null}
         {done ? (
           <Alert severity="success" sx={{ mt: 2.5 }}>
             {climber.name} is checked in.
@@ -182,6 +213,11 @@ export default function ScanWatcher() {
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Close</Button>
+        {climber.waiverStatus !== "valid" ? (
+          <Button variant="outlined" disabled={pending} onClick={() => waiver(climber)}>
+            Sign waiver
+          </Button>
+        ) : null}
         {canGiveDayPass(climber) ? (
           <Button variant="outlined" disabled={pending} onClick={() => dayPass(climber)}>
             Give free day pass
