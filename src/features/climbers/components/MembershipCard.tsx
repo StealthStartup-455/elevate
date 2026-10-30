@@ -9,6 +9,7 @@ import DemoQrCode from "./DemoQrCode";
 import LinkButton from "./LinkButton";
 import LinkArrow from "@/components/ui/LinkArrow";
 import ScanButton from "@/features/check-ins/components/ScanButton";
+import { isOnlinePurchaseEnabled } from "@/features/purchase/queries";
 
 const WAIVER_TEXT = {
   valid: { label: "✓ Waiver signed", color: "success.main" },
@@ -38,7 +39,8 @@ function waiverExpiryLine(membership: Membership): string | null {
 
 // Membership status and the code staff scan at check-in, plus what to do next:
 // sign a missing or expired waiver, buy a first membership, or renew one that
-// is paused or expired.
+// is paused or expired. A climber with no membership gets "Purchase Membership"
+// under "Buy a membership to start climbing", which opens the Purchase tab.
 // Layout follows the customer dashboard mock.
 export default async function MembershipCard() {
   const membership = await getMyMembership();
@@ -51,6 +53,9 @@ export default async function MembershipCard() {
   const needsWaiver = membership.waiverStatus !== "valid";
   const needsPurchase = membership.status === "none";
   const needsRenewal = membership.status === "paused" || membership.status === "expired";
+  // Buying in the app is a mock that is only open in demo mode; otherwise the
+  // buttons stay, switched off, until real payments (#31, #45).
+  const canPurchase = await isOnlinePurchaseEnabled();
 
   return (
     <Card
@@ -69,6 +74,19 @@ export default async function MembershipCard() {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {renewalLine(membership)}
             </Typography>
+            {needsPurchase ? (
+              <Box sx={{ mt: 2 }}>
+                {canPurchase ? (
+                  <LinkButton href="/me/purchase" variant="outlined">
+                    Purchase Membership
+                  </LinkButton>
+                ) : (
+                  <Button variant="outlined" disabled title="Coming soon">
+                    Purchase Membership
+                  </Button>
+                )}
+              </Box>
+            ) : null}
             <Typography variant="body2" sx={{ mt: 2, fontWeight: 600, color: waiver.color }}>
               {waiver.label}
             </Typography>
@@ -81,7 +99,11 @@ export default async function MembershipCard() {
               <LinkArrow href="/me/waiver">View waiver</LinkArrow>
             ) : null}
           </Box>
-          <Box sx={{ textAlign: "center", flexShrink: 0 }}>
+          {/* The code, its label and the scan button stay centred under the QR
+              code, whatever the waiver or membership says on the left. */}
+          <Box
+            sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0 }}
+          >
             <DemoQrCode value={membership.memberCode} />
             <Typography variant="caption" component="p" color="text.secondary">
               Scan at desk
@@ -94,28 +116,27 @@ export default async function MembershipCard() {
                 membershipStatus={membership.status}
                 hasDayPass={membership.hasDayPass}
                 punchesLeft={membership.punchesLeft}
-            />            
+            />
           </Box>
         </Box>
 
-        {needsWaiver || needsRenewal || needsPurchase ? (
+        {needsWaiver || needsRenewal ? (
           <Box sx={{ mt: 5, display: "flex", flexDirection: "column", gap: 3 }}>
             {needsWaiver ? (
               <LinkButton href="/me/waiver?next=/me">
                 {membership.waiverStatus === "expired" ? "Sign the waiver again" : "Sign the waiver"}
               </LinkButton>
             ) : null}
-            {needsPurchase ? (
-              // Placeholder until memberships and payments exist.
-              <Button variant="contained" size="large" disabled title="Coming soon">
-                Buy membership
-              </Button>
-            ) : null}
             {needsRenewal ? (
-              // Placeholder until memberships and payments exist.
-              <Button variant="outlined" size="large" disabled title="Coming soon">
-                Renew membership
-              </Button>
+              canPurchase ? (
+                <LinkButton href="/me/purchase" variant="outlined" size="large">
+                  Renew membership
+                </LinkButton>
+              ) : (
+                <Button variant="outlined" size="large" disabled title="Coming soon">
+                  Renew membership
+                </Button>
+              )
             ) : null}
           </Box>
         ) : null}

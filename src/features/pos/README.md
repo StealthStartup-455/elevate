@@ -27,7 +27,8 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 
 ```
 features/pos/
-├── actions.ts     # recordSale, voidSale, revokeMembership, findPosClimbers, getPosClimber
+├── actions.ts     # recordSale, voidSale, revokeMembership, findPosClimbers, getPosClimber (Server Actions, staff only)
+├── sale.ts        # saveSale: the one place a sale is saved, shared with features/purchase
 ├── queries.ts     # getPosData, isPosEnabled, getStaffGym
 ├── cart.ts        # cart rules and totals, shared by the screen and the server
 ├── passes.ts      # what each product gives the climber
@@ -41,3 +42,5 @@ The tab only shows for gyms whose `system` is `ELEVATE`; a gym on Rock Gym Pro o
 Every query and action uses the signed-in staff member's gym (`getStaffGym`: `getStaffContext()` then the cached `getGymById`, #34), never `getGym()`. `recordSale` saves the staff member's id on the sale (empty for the demo desk login).
 
 The climber search runs on the server (`findPosClimbers`, the same `searchClimbers` as Manual check in, 8 results, #85), so the page never carries every climber. Picking someone loads them fresh (`getPosClimber`), and they load again after Tender, Check in now and Revoke, so the card shows their new passes. "Checked in today" and the renewals list read `CheckIn` and `Pass` directly and carry just the name.
+
+A climber buying their own pass, rental or chalk in the app (`features/purchase`, elevate-docs#58) goes through the same `saveSale`, so the prices, tax and passes are the same as at the desk. `saveSale` takes the gym (and the staff member, if any) from its caller: the signed-in staff member's gym at the desk, the climber's own gym in the app. Those sales are tendered `ONLINE`; the desk's own Tender only accepts `CARD` and `CASH`.

@@ -23,7 +23,7 @@ import { voidSale } from "../actions";
 import { formatMoney } from "../cart";
 import type { SaleSummary } from "../types";
 
-const TENDER_LABEL = { CARD: "Card", CASH: "Cash" } as const;
+const TENDER_LABEL = { CARD: "Card", CASH: "Cash", ONLINE: "Online" } as const;
 
 // Today's sales under the POS, newest first, with Void. Totals count paid
 // sales only, so they match what the card machine and till should hold.
@@ -34,7 +34,7 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
   const [pending, startTransition] = useTransition();
 
   const paid = sales.filter((s) => s.status === "PAID");
-  const totals = (["CARD", "CASH"] as const).map((t) => ({
+  const totals = (["CARD", "CASH", "ONLINE"] as const).map((t) => ({
     tender: t,
     cents: paid.filter((s) => s.tender === t).reduce((sum, s) => sum + s.totalCents, 0),
   }));

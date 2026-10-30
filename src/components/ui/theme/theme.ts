@@ -346,6 +346,20 @@ const components: ThemeOptions["components"] = {
       root: { padding: space.cardPadding, "&:last-child": { paddingBottom: space.cardPadding } },
     },
   },
+  // An expandable section that looks like a card: outlined, rounded, no shadow.
+  MuiAccordion: {
+    defaultProps: { variant: "outlined", disableGutters: true },
+    styleOverrides: {
+      root: ({ theme }) => ({
+        borderRadius: radius.lg,
+        borderColor: theme.vars.palette.divider,
+        backgroundColor: theme.vars.palette.background.paper,
+        boxShadow: "none",
+        "&::before": { display: "none" },
+        "&:first-of-type, &:last-of-type": { borderRadius: radius.lg },
+      }),
+    },
+  },
   MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
   MuiPopover: {
     styleOverrides: {

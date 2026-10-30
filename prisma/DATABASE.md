@@ -222,7 +222,7 @@ The seed adds the demo gym's products with rough mock prices.
 | `staffId` | text | no | Who rang it up, once auth exposes the staff member |
 | `subtotalCents`, `gstCents`, `pstCents`, `totalCents` | integer | yes | `gstCents` is the subtotal times `gstRateBps`; `pstCents` is the PST lines' total times `pstRateBps`; each rounded once |
 | `gstRateBps`, `pstRateBps` | integer | yes | The gym's rates at the time. Sales from before PST have `pstRateBps` 0 |
-| `tender` | `Tender` | yes | `CARD` (the gym's own card machine) or `CASH` |
+| `tender` | `Tender` | yes | `CARD` (the gym's own card machine), `CASH`, or `ONLINE` (the climber bought it in the app; a mock, no money moves) |
 | `status` | `SaleStatus` | yes | `PAID`, or `VOIDED` |
 | `idempotencyKey` | text | yes | Made by the checkout popup. Unique per gym, so pressing Tender twice saves one sale |
 | `voidedAt`, `voidReason` | | no | Set when the sale is voided |
