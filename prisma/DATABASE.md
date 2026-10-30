@@ -12,7 +12,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 
 | Table | One row is | Example |
 |---|---|---|
-| `Gym` | A gym | BoulderHouse Victoria |
+| `Gym` | A gym | Elevate Demo Gym |
 | `Staff` | Someone who works the desk | Sam, closing shift |
 | `Climber` | A customer | Kim Lee, 12, youth team |
 | `Pass` | Whatever gets them in | 10-punch card, 7 left |
@@ -52,7 +52,7 @@ It does not protect reads. A query without a `gymId` filter returns every gym's 
 
 ## Database constraints
 
-- Gym slugs are unique. The slug is used in the sign-up link: `/join/boulderhouse-victoria`.
+- Gym slugs are unique. The slug is used in the sign-up link: `/join/demo-gym`.
 - A login can be staff at a gym only once.
 - A climber with passes, waivers or check-ins cannot be deleted.
 - Row Level Security is enabled on every table, so Supabase's public API cannot read them.
@@ -76,7 +76,7 @@ Every table has an `id` (a UUID made by Prisma). Most also have `createdAt` and 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | `name` | text | yes | |
-| `slug` | text | yes, unique | Used in the sign-up link: `/join/boulderhouse-victoria` |
+| `slug` | text | yes, unique | Used in the sign-up link: `/join/demo-gym` |
 | `timeZone` | text | yes | Default `America/Vancouver` |
 | `system` | `GymSystem` | yes | Where passes and waivers really live: `ELEVATE` (default), `REDPOINT`, `ROCK_GYM_PRO` |
 | `waiverVersion` | text | no | The waiver version climbers must have signed. Empty means any signed waiver counts |
