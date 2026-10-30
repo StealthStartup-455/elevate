@@ -8,8 +8,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { requireStaff } from "@/features/auth/staff";
-import { updateClimber } from "@/features/climbers/actions";
-import ClimberForm from "@/features/climbers/components/ClimberForm";
+import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
@@ -28,19 +27,22 @@ export default function ClimberPage({
         </LinkButton>
       </div>
       <Suspense fallback={<p>Loading...</p>}>
-        <ClimberDetails params={params} searchParams={searchParams} />
+        <ClimberCard params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function ClimberDetails({
+async function ClimberCard({
   params,
   searchParams,
 }: Pick<PageProps<"/desk/climbers/[climberId]">, "params" | "searchParams">) {
   const { climberId } = await params;
   // ?added=1: staff just created this climber at the desk (#88).
-  const justAdded = (await searchParams).added === "1";
+  const query = await searchParams;
+  const justAdded = query.added === "1";
+  // ?edit=1: opened from the climber table's Edit link (#89).
+  const startEditing = query.edit === "1";
   // getClimber is shared with /me, so it doesn't check for staff itself.
   // connection() first: the Supabase check reads the clock.
   await connection();
@@ -70,54 +72,44 @@ async function ClimberDetails({
           </Box>
         </Typography>
 
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 3,
-            mt: 3,
-            mb: 5,
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            Waiver
-          </Typography>
-          <WaiverBadge status={climber.waiverStatus} />
-          {climber.waiverExpiresOn ? (
-            <Typography variant="body2" color="text.secondary">
-              {climber.waiverStatus === "valid" ? "Expires" : "Expired"}{" "}
-              {formatDate(climber.waiverExpiresOn, true)}
-            </Typography>
-          ) : null}
-          {/* Placeholder until the waivers feature exists. */}
-          <Button variant="outlined" size="small" disabled title="Coming soon">
-            Look at waiver
-          </Button>
+        <Box sx={{ mt: 4 }}>
+          <ClimberDetails
+            // Remount with fresh details when the climber changes.
+            key={climber.id}
+            climberId={climber.id}
+            startEditing={startEditing}
+            details={{
+              firstName: climber.firstName,
+              lastName: climber.lastName,
+              phone: climber.phone,
+              email: climber.email,
+              dateOfBirth: climber.dateOfBirth,
+            }}
+          >
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3 }}>
+              <Typography variant="body2" color="text.secondary">
+                Waiver
+              </Typography>
+              <WaiverBadge status={climber.waiverStatus} />
+              {climber.waiverExpiresOn ? (
+                <Typography variant="body2" color="text.secondary">
+                  {climber.waiverStatus === "valid" ? "Expires" : "Expired"}{" "}
+                  {formatDate(climber.waiverExpiresOn, true)}
+                </Typography>
+              ) : null}
+              {/* Placeholder until the waivers feature exists. */}
+              <Button variant="outlined" size="small" disabled title="Coming soon">
+                Look at waiver
+              </Button>
+            </Box>
+            {climber.waiverStatus !== "valid" ? (
+              <WaiverStep
+                climberId={climber.id}
+                laterHref={justAdded ? "/desk/climbers" : undefined}
+              />
+            ) : null}
+          </ClimberDetails>
         </Box>
-
-        {climber.waiverStatus !== "valid" ? (
-          <Box sx={{ mb: 5 }}>
-            <WaiverStep
-              climberId={climber.id}
-              laterHref={justAdded ? "/desk/climbers" : undefined}
-            />
-          </Box>
-        ) : null}
-
-        <ClimberForm
-          // Remount with fresh defaults when the climber changes.
-          key={climber.id}
-          action={updateClimber.bind(null, climber.id)}
-          defaults={{
-            firstName: climber.firstName,
-            lastName: climber.lastName,
-            phone: climber.phone,
-            email: climber.email,
-            dateOfBirth: climber.dateOfBirth,
-          }}
-          submitLabel="Save changes"
-        />
       </CardContent>
     </Card>
   );
