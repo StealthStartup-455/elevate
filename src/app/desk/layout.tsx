@@ -17,8 +17,9 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             </Link>
             <Link href="/desk">Check-in</Link>
             <Link href="/desk/climbers">Climbers</Link>
-            <Link href="/desk/events">Events</Link>
-            <Link href="/desk/waivers">Waivers</Link>
+            {/* Events and Waivers are hidden until their pages have content
+                (#65). The routes stay, so work on them can continue: add the
+                links back in the same PR that fills the page. */}
             <LogoutButton />
           </nav>
           <main className="p-4 sm:p-6">{children}</main>
