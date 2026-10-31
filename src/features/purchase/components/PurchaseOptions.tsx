@@ -14,14 +14,17 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { useState, useTransition } from "react";
+import DisabledReason from "@/components/ui/DisabledReason";
 import { formatMoney, formatRate, isPass, MAX_QUANTITY, priceCart } from "@/features/pos/cart";
 import { newKey } from "@/features/pos/key";
 import type { SaleResult } from "@/features/pos/sale";
-import type { Product, ProductKind, TaxRates } from "@/features/pos/types";
+import type { CartItem, Product, ProductKind, TaxRates } from "@/features/pos/types";
 import { buyOnline } from "../actions";
 import {
   ACTIVE_MEMBERSHIP_NOTICE,
+  choosePass,
   purchaseWarnings,
+  setGoodsQuantity,
   showsMembershipSection,
   type PurchaseContext,
 } from "../catalog";
@@ -45,12 +48,22 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   );
 }
 
-// A tile, not a one-line button: as tall as its name and price need.
-function Tile({ product, onPick }: { product: Product; onPick: (p: Product) => void }) {
+// A tile that adds a membership or pass to the order, or takes it out again.
+// As tall as its name and price need, not a one-line button.
+function Tile({
+  product,
+  selected,
+  onPick,
+}: {
+  product: Product;
+  selected: boolean;
+  onPick: (p: Product) => void;
+}) {
   return (
     <Button
       variant="outlined"
       fullWidth
+      aria-pressed={selected}
       onClick={() => onPick(product)}
       sx={{
         height: "auto",
@@ -61,22 +74,71 @@ function Tile({ product, onPick }: { product: Product; onPick: (p: Product) => v
         textAlign: "left",
         whiteSpace: "normal",
         lineHeight: 1.3,
+        ...(selected ? { borderColor: "primary.main", bgcolor: "primary.softHover" } : {}),
       }}
     >
-      <span>{product.name}</span>
+      <span>
+        {selected ? <span aria-hidden="true">✓ </span> : null}
+        {product.name}
+      </span>
       <Typography variant="secondary" component="span">
         {formatMoney(product.priceCents)}
         {product.recurring ? " a month" : ""}
+        {selected ? " · in your order" : ""}
       </Typography>
     </Button>
   );
 }
 
-// The climber's side of the desk POS, one product at a time. Memberships (with
-// the day pass and punch card) sit in an expandable Membership section that
-// only climbers without an active membership get; everyone can buy rentals and
-// chalk. Picking a product opens the checkout popup with the full sum and GST.
-// Nothing is charged yet: it is a mock until real payments (#31).
+// A rental or chalk line: its price and how many are in the order.
+function GoodsRow({
+  product,
+  quantity,
+  onChange,
+}: {
+  product: Product;
+  quantity: number;
+  onChange: (p: Product, quantity: number) => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <Typography variant="body">{product.name}</Typography>
+        <Typography variant="secondary">{formatMoney(product.priceCents)} each</Typography>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outlined"
+          size="small"
+          aria-label={`One fewer ${product.name}`}
+          disabled={quantity <= 0}
+          onClick={() => onChange(product, quantity - 1)}
+        >
+          −
+        </Button>
+        <Typography variant="body" component="span" aria-live="polite" sx={{ minWidth: 24, textAlign: "center" }}>
+          {quantity}
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          aria-label={`One more ${product.name}`}
+          disabled={quantity >= MAX_QUANTITY}
+          onClick={() => onChange(product, quantity + 1)}
+        >
+          +
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+// The climber's side of the desk POS. One order: any number of rentals and
+// chalk, and at most one membership, day pass or punch card (#143). Memberships
+// (with the day pass and punch card) sit in an expandable Membership section
+// that only climbers without an active membership get; everyone can buy rentals
+// and chalk. "Checkout" opens a popup with the full sum, GST and PST. Nothing is
+// charged yet: it is a mock until real payments (#31).
 export default function PurchaseOptions({
   products,
   rates,
@@ -86,8 +148,7 @@ export default function PurchaseOptions({
   rates: TaxRates;
   context: PurchaseContext;
 }) {
-  const [picked, setPicked] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState(newKey);
   const [error, setError] = useState<string | null>(null);
@@ -97,22 +158,12 @@ export default function PurchaseOptions({
   const passes = products.filter((p) => isPass(p.kind));
   const goods = products.filter((p) => !isPass(p.kind));
   const showMembership = showsMembershipSection(context.membershipStatus);
+  const quantityOf = (id: string) => cart.find((i) => i.productId === id)?.quantity ?? 0;
 
-  function choose(product: Product) {
-    // A different product is a different checkout, so it gets its own key.
-    if (picked?.id !== product.id) {
-      setKey(newKey());
-      setQuantity(1);
-    }
-    setPicked(product);
-    setError(null);
-    setOpen(true);
-  }
-
-  function changeQuantity(next: number) {
-    // A new count is a different order, so a new key: the same key would give
-    // back the earlier one.
-    setQuantity(Math.min(Math.max(next, 1), MAX_QUANTITY));
+  // Any change makes a different order, so it gets its own key: the same key
+  // would give back the earlier purchase.
+  function update(next: CartItem[]) {
+    setCart(next);
     setKey(newKey());
   }
 
@@ -127,19 +178,18 @@ export default function PurchaseOptions({
       setError(null);
       if (done) {
         setDone(null);
-        setPicked(null);
-        setQuantity(1);
+        setCart([]);
         setKey(newKey());
       }
     }, 200);
   }
 
   function pay() {
-    if (!picked) return;
+    if (cart.length === 0) return;
     setError(null);
     startTransition(async () => {
       try {
-        const result = await buyOnline({ productId: picked.id, quantity, idempotencyKey: key });
+        const result = await buyOnline({ items: cart, idempotencyKey: key });
         if (result.ok) setDone(result);
         else setError(result.message);
       } catch {
@@ -149,10 +199,10 @@ export default function PurchaseOptions({
     });
   }
 
-  const cart = picked ? priceCart([{ productId: picked.id, quantity }], products, rates) : null;
-  const warnings = picked ? purchaseWarnings(picked.kind, context) : [];
-  const countable = picked ? !isPass(picked.kind) : false;
-  const pickup = picked?.kind === "RENTAL" || picked?.kind === "RETAIL";
+  const priced = priceCart(cart, products, rates);
+  const kinds = new Set(priced.lines.map((l) => l.kind));
+  const warnings = [...new Set([...kinds].flatMap((kind) => purchaseWarnings(kind, context)))];
+  const pickup = kinds.has("RENTAL") || kinds.has("RETAIL");
 
   return (
     <>
@@ -172,7 +222,9 @@ export default function PurchaseOptions({
           <AccordionDetails id="membership-section" className="flex flex-col gap-3">
             {passes.length === 0 ? (
               <Typography variant="secondary">No memberships are for sale yet. Ask at the front desk.</Typography>
-            ) : null}
+            ) : (
+              <Typography variant="secondary">One membership or pass per order. Picking another replaces it.</Typography>
+            )}
             {PASS_GROUPS.map((group) => {
               const items = passes.filter((p) => group.kinds.includes(p.kind));
               if (items.length === 0) return null;
@@ -184,7 +236,11 @@ export default function PurchaseOptions({
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {items.map((p) => (
                       <div key={p.id} className="flex">
-                        <Tile product={p} onPick={choose} />
+                        <Tile
+                          product={p}
+                          selected={quantityOf(p.id) > 0}
+                          onPick={(picked) => update(choosePass(cart, picked, products))}
+                        />
                       </div>
                     ))}
                   </div>
@@ -203,15 +259,62 @@ export default function PurchaseOptions({
           {goods.length === 0 ? (
             <Typography variant="secondary">Nothing is for sale here yet. Ask at the front desk.</Typography>
           ) : (
-            <section className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Rentals and chalk">
+            <ul className="flex flex-col gap-3" aria-label="Rentals and chalk">
               {goods.map((p) => (
-                <div key={p.id} className="flex">
-                  <Tile product={p} onPick={choose} />
-                </div>
+                <GoodsRow
+                  key={p.id}
+                  product={p}
+                  quantity={quantityOf(p.id)}
+                  onChange={(product, quantity) => update(setGoodsQuantity(cart, product, quantity))}
+                />
               ))}
-            </section>
+            </ul>
           )}
-          <Typography variant="secondary">Pay here, pick it up at the front desk. Prices are before tax: GST, plus PST on rentals and chalk.</Typography>
+          <Typography variant="secondary">
+            Add as many as you need, for a friend or the kids. Pay here, pick it up at the front desk. Prices are
+            before tax: GST, plus PST on rentals and chalk.
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <Typography variant="cardTitle" component="h2">
+            Your order
+          </Typography>
+          {priced.lines.length === 0 ? (
+            <Typography variant="secondary">
+              Nothing yet. Add rentals or chalk{showMembership ? ", or pick a membership" : ""}.
+            </Typography>
+          ) : (
+            <>
+              <ul className="flex flex-col gap-1" aria-label="Your order">
+                {priced.lines.map((line) => (
+                  <li key={line.productId} className="flex items-baseline justify-between gap-2">
+                    <Typography variant="body">
+                      {line.name}
+                      {line.quantity > 1 ? ` ×${line.quantity}` : ""}
+                    </Typography>
+                    <Typography variant="body">{formatMoney(line.lineTotalCents)}</Typography>
+                  </li>
+                ))}
+              </ul>
+              <Row label="Subtotal" value={formatMoney(priced.subtotalCents)} />
+            </>
+          )}
+          <div className="flex justify-end">
+            {priced.lines.length === 0 ? (
+              <DisabledReason reason="Add something to your order first">
+                <Button variant="contained" disabled>
+                  Checkout
+                </Button>
+              </DisabledReason>
+            ) : (
+              <Button variant="contained" onClick={() => setOpen(true)}>
+                Checkout
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -223,7 +326,7 @@ export default function PurchaseOptions({
               <Alert severity="success">{formatMoney(done.totalCents)} paid. Thanks for climbing with us.</Alert>
               <div>
                 <Typography variant="secondary">Your order</Typography>
-                <ul className="flex flex-col gap-1" aria-label="Your order">
+                <ul className="flex flex-col gap-1" aria-label="Order paid">
                   {done.added.map((line) => (
                     <li key={line}>
                       <Typography variant="body">{line}</Typography>
@@ -242,54 +345,24 @@ export default function PurchaseOptions({
         ) : (
           <>
             <DialogContent className="flex flex-col gap-3">
-              {cart ? (
-                <>
-                  <ul className="flex flex-col gap-1" aria-label="Items">
-                    {cart.lines.map((line) => (
-                      <li key={line.productId} className="flex items-baseline justify-between gap-2">
-                        <Typography variant="body">
-                          {line.name}
-                          {line.quantity > 1 ? ` ×${line.quantity}` : ""}
-                        </Typography>
-                        <Typography variant="body">{formatMoney(line.lineTotalCents)}</Typography>
-                      </li>
-                    ))}
-                  </ul>
-                  {countable && picked ? (
-                    <div className="flex items-center gap-2">
-                      <Typography variant="secondary">Quantity</Typography>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        aria-label={`One fewer ${picked.name}`}
-                        disabled={pending || quantity <= 1}
-                        onClick={() => changeQuantity(quantity - 1)}
-                      >
-                        −
-                      </Button>
-                      <Typography variant="body" aria-live="polite">
-                        {quantity}
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        aria-label={`One more ${picked.name}`}
-                        disabled={pending || quantity >= MAX_QUANTITY}
-                        onClick={() => changeQuantity(quantity + 1)}
-                      >
-                        +
-                      </Button>
-                    </div>
-                  ) : null}
-                  <Divider />
-                  <Row label="Subtotal" value={formatMoney(cart.subtotalCents)} />
-                  <Row label={`GST (${formatRate(cart.gstRateBps)})`} value={formatMoney(cart.gstCents)} />
-                  {cart.pstCents > 0 ? (
-                    <Row label={`PST (${formatRate(cart.pstRateBps)})`} value={formatMoney(cart.pstCents)} />
-                  ) : null}
-                  <Row label="Total" value={formatMoney(cart.totalCents)} strong />
-                </>
+              <ul className="flex flex-col gap-1" aria-label="Items">
+                {priced.lines.map((line) => (
+                  <li key={line.productId} className="flex items-baseline justify-between gap-2">
+                    <Typography variant="body">
+                      {line.name}
+                      {line.quantity > 1 ? ` ×${line.quantity}` : ""}
+                    </Typography>
+                    <Typography variant="body">{formatMoney(line.lineTotalCents)}</Typography>
+                  </li>
+                ))}
+              </ul>
+              <Divider />
+              <Row label="Subtotal" value={formatMoney(priced.subtotalCents)} />
+              <Row label={`GST (${formatRate(priced.gstRateBps)})`} value={formatMoney(priced.gstCents)} />
+              {priced.pstCents > 0 ? (
+                <Row label={`PST (${formatRate(priced.pstRateBps)})`} value={formatMoney(priced.pstCents)} />
               ) : null}
+              <Row label="Total" value={formatMoney(priced.totalCents)} strong />
               {warnings.map((w) => (
                 <Alert key={w} severity="warning">
                   {w}
@@ -305,8 +378,8 @@ export default function PurchaseOptions({
               <Button disabled={pending} onClick={close}>
                 Cancel
               </Button>
-              <Button variant="contained" disabled={pending || !cart} onClick={pay}>
-                {pending ? "Paying…" : cart ? `Pay ${formatMoney(cart.totalCents)}` : "Pay"}
+              <Button variant="contained" disabled={pending || cart.length === 0} onClick={pay}>
+                {pending ? "Paying…" : `Pay ${formatMoney(priced.totalCents)}`}
               </Button>
             </DialogActions>
           </>

@@ -176,7 +176,8 @@ const components: ThemeOptions["components"] = {
           variants: [
             { props: { size: "small" }, style: { height: controlHeight.sm, padding: "0 8px", fontSize: px(12) } },
             { props: { size: "large" }, style: { height: controlHeight.lg, padding: "0 16px", fontSize: px(14) } },
-            ...(["primary", "secondary"] as const).flatMap((color) => [
+            // error and warning are for destructive and renew buttons only (STYLE_GUIDE.md, Status).
+            ...(["primary", "secondary", "error", "warning"] as const).flatMap((color) => [
               {
                 props: { variant: "contained" as const, color },
                 style: {

@@ -9,9 +9,10 @@ The climber's **Purchase** tab (`/me/purchase`, elevate-docs#58): see your plan 
 - **Purchase history** (button, top right): a dialog laid out like the desk's "Manual check in", listing the last 50 purchases, newest first. A voided one shows **Refunded**.
 - **Your plan:** the membership in effect (name, end date), one bought early, any day pass or punch card, and the waiver. A missing or expired waiver shows a **Sign waiver** step, but never blocks a purchase.
 - **Membership** (expandable, open by default): memberships, the day pass and the punch card. It only exists for a climber **without an active membership** (none, expired or paused). An active member instead sees "You already have an active membership, so you don't need a day pass." and no Membership section.
-- **Rentals and chalk:** shoe rental, harness rental and chalk, for everyone, member or not. Quantity 1 to 20; pay here and pick it up at the front desk.
+- **Rentals and chalk:** shoe rental, harness rental and chalk, for everyone, member or not. Add as many as you need (each 0 to 20, for a friend or the kids); pay here and pick it up at the front desk.
+- **Your order:** what you have added so far, with a **Checkout** button. One order holds any rentals and chalk and **at most one** membership, day pass or punch card: picking another replaces it, and picking the same one again takes it out.
 
-Picking anything opens a checkout popup with the subtotal, GST (and PST on rentals and chalk, as at the desk), total and any warning (a paused membership's new one starts when it ends, a day pass already bought today), then **Pay**.
+**Checkout** opens a popup with the order, the subtotal, GST (and PST on rentals and chalk, as at the desk), total and any warning (a paused membership's new one starts when it ends, a day pass already bought today), then **Pay**.
 
 The dashboard (`/me`) shows **Purchase Membership** under the "Buy a membership to start climbing" text for a climber with no membership; it opens this tab. The QR column beside it stays centred whatever the waiver or membership status.
 
@@ -24,9 +25,9 @@ No card details are asked for and nothing is charged, yet **Pay** gives the pass
 ## How a purchase works
 
 1. `buyOnline` (`actions.ts`) takes the climber from the **session**, never from the request, so nobody can buy for another climber, and the gym from the **climber's own record** (`getMyGym` in `queries.ts`: the same lookup `getClimber` uses, then the cached `getGymById`, #34), never `getGym()`.
-2. `canBuyOnline` (`catalog.ts`): an active member can't buy a pass or membership (the section is hidden, and the server refuses a hand-made request); rentals and chalk are open to everyone.
-3. It calls `saveSale` from `features/pos/sale.ts` with that gym and no staff id. `saveSale` re-reads the price from the database, adds GST (and PST where the product charges it), checks the quantity (one for a pass, 1 to 20 otherwise), saves the sale and creates the pass, if any, in one transaction.
-4. The popup's key makes a double press or a retry save one purchase; changing the quantity makes a new key. A key that belongs to another climber's sale is refused.
+2. `buyOnline` takes the order as `items` (product and quantity). `canBuyOnline` (`catalog.ts`): an active member can't buy a pass or membership (the section is hidden, and the server refuses a hand-made request); rentals and chalk are open to everyone. An order with more than one membership, day pass or punch card is refused too (`ONE_PASS_NOTICE`), not only in the page; the desk may still sell one of each.
+3. It calls `saveSale` from `features/pos/sale.ts` with that gym and no staff id. `saveSale` re-reads the price from the database, adds GST (and PST where the product charges it), checks the quantities (one for a pass, 1 to 20 otherwise), saves the whole order as one sale and creates the pass, if any, in one transaction.
+4. The popup's key makes a double press or a retry save one purchase; changing the order makes a new key. A key that belongs to another climber's sale is refused.
 5. The page refreshes: the plan, the dashboard card, the history and the desk's views all show the new purchase.
 
 The tab only shows for gyms whose `system` is `ELEVATE`, like the desk POS tab, and only in demo mode.

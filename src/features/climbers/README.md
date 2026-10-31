@@ -21,4 +21,4 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 `/me` shows `components/MembershipCard.tsx`: plan, status, renewal date, waiver status and a check-in code.
 
 - `getMyMembership()` in `queries.ts` returns one demo member until auth and the memberships table exist.
-- `DemoQrCode` only looks like a QR code. It does **not** scan. Replace it once the check-in ticket picks a code format (QR or barcode) and a library.
+- `DemoQrCode` is a real, scannable QR code in demo mode (it opens a song, for the class demo, #146) and a placeholder that only looks like one everywhere else. Nothing reads its content: check-in goes through "Simulate scan". Replace it once the check-in ticket picks a code format.

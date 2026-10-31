@@ -212,7 +212,12 @@ export default function ScanWatcher() {
             Membership
           </Typography>
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600 }}
+              color={climber.membershipStatus === "expired" ? "error" : undefined}
+            >
+              {climber.membershipStatus === "expired" ? "✕ " : ""}
               {MEMBERSHIP_LABEL[climber.membershipStatus]}
             </Typography>
             {climber.hasDayPass && climber.membershipStatus !== "active" ? (
@@ -224,7 +229,7 @@ export default function ScanWatcher() {
                 {climber.punchesLeft} {climber.punchesLeft === 1 ? "punch" : "punches"} left
               </Typography>
             ) : climber.membershipRenewsOn ? (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color={climber.membershipStatus === "expired" ? "error" : "text.secondary"}>
                 {climber.membershipStatus === "expired" ? "Ended" : "Renews"}{" "}
                 {formatDate(climber.membershipRenewsOn, true)}
               </Typography>

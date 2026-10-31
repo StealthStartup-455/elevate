@@ -17,6 +17,7 @@ import type { Climber, MembershipStatus, WaiverStatus } from "./types";
 export type Membership = {
   climberId: string;
   firstName: string;
+  lastName: string;
   plan: string;
   status: MembershipStatus;
   // Calendar date, YYYY-MM-DD. The next renewal, or when it ended. Unset when
@@ -108,6 +109,7 @@ export async function getMyMembership(): Promise<Membership> {
   return {
     climberId: climber.id,
     firstName: climber.firstName,
+    lastName: climber.lastName,
     plan: "Monthly",
     status: climber.membershipStatus,
     renewsOn: climber.membershipRenewsOn,
