@@ -25,8 +25,10 @@ test("after joining, a reload says who is signed in and links to the dashboard (
   await expect(page.getByRole("link", { name: "Go to your dashboard" })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText(`You're signed in as Robin Reload${unique}`)).toBeVisible();
-  await page.getByRole("link", { name: "Go to your dashboard" }).click();
+  // In the page: while it streams in, React briefly keeps a hidden copy outside it.
+  const main = page.getByRole("main");
+  await expect(main.getByText(`You're signed in as Robin Reload${unique}`)).toBeVisible();
+  await main.getByRole("link", { name: "Go to your dashboard" }).click();
   await expect(page).toHaveURL(/\/me$/);
 });
 
