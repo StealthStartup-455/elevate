@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#124, #125, #132, #133, #134, #135, #137 (under #149) / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#124, #125, #132, #133, #134, #135, #137 (under #149) / #159
 - **Branch:** `fix/149-demo-display-fixes`
 - **What the agent did:**
   - **#137:** the login page lists test logins only in demo mode (`getLoginPageTestLogins`), read at request time (the login card is in a Suspense boundary after `connection()`), and hides the (i) when there are none.
