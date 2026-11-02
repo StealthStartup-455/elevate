@@ -18,4 +18,4 @@
   - Changing `staging:setup` doesn't change the existing Vercel project: set `MOCK_BUSYNESS_SCENARIO=none` there (or rerun `staging:setup`) and redeploy.
   - Without the staging Supabase values, `climber@elevate.test` loses its climber after a reset; the demo usernames still work.
 - **Open follow-ups:** None.
-- **Verification:** `npm run lint` clean. The script's refusals checked by hand (APP_ENV=production, `[YOUR-PASSWORD]`, the direct `db.` host, an empty answer). The seed itself runs in CI's e2e job (`npm run db:seed`); this session can't regenerate the Prisma client to run it.
+- **Verification:** `npm run lint` clean. The script's refusals checked by hand (APP_ENV=production, `[YOUR-PASSWORD]`, the direct `db.` host, an empty answer). The seed itself runs in CI's e2e job (`npm run db:seed`); this session can't regenerate the Prisma client to run it. CI passes (check and e2e on 7603ba0), and its seed printed "Removed 0 climbers (0 added since the last seed)" and "Seeded 96 climbers".
