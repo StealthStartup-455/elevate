@@ -10,7 +10,7 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { useActionState } from "react";
+import { type ReactNode, useActionState } from "react";
 import { type LoginState, login } from "../actions";
 import type { TestLoginGroup } from "../demo-logins";
 
@@ -39,7 +39,9 @@ const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
   {
     title: "Climber with an active membership",
     login: "demo-valid-active",
-    steps: ["Open the Purchase tab: there is no Membership section, with a warning saying why. Rentals and chalk can still be bought."],
+    steps: [
+      "Open the Purchase tab: there is no Membership section, with a warning saying why. Rentals and chalk can still be bought.",
+    ],
   },
 ];
 
@@ -75,7 +77,8 @@ function TestLoginsHint({ groups }: { groups: TestLoginGroup[] }) {
         Test logins
       </Typography>
       <Typography variant="caption" component="p" sx={{ mb: 2 }}>
-        Type the username in the Email box. For the demo logins the password is the same as the username.
+        Type the username in the Email box. For the demo logins the password is the same as the
+        username.
       </Typography>
       {groups.map((group) => (
         <Box key={group.title} sx={{ mb: 3 }}>
@@ -101,13 +104,23 @@ function TestLoginsHint({ groups }: { groups: TestLoginGroup[] }) {
                 <tr key={l.username}>
                   <Box
                     component="td"
-                    sx={{ pr: 3, py: 0.5, fontFamily: "var(--font-geist-mono)", whiteSpace: "nowrap" }}
+                    sx={{
+                      pr: 3,
+                      py: 0.5,
+                      fontFamily: "var(--font-geist-mono)",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {l.username}
                   </Box>
                   <Box
                     component="td"
-                    sx={{ pr: 3, py: 0.5, fontFamily: "var(--font-geist-mono)", whiteSpace: "nowrap" }}
+                    sx={{
+                      pr: 3,
+                      py: 0.5,
+                      fontFamily: "var(--font-geist-mono)",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {l.password}
                   </Box>
@@ -128,16 +141,68 @@ function TestLoginsHint({ groups }: { groups: TestLoginGroup[] }) {
   );
 }
 
+/**
+ * The (i) next to "Log in": a testing guide and every test login by kind of
+ * user. Only in demo mode, decided at request time by the login page (#137).
+ */
+export function TestLoginsInfo({ testLogins }: { testLogins: TestLoginGroup[] }) {
+  if (testLogins.length === 0) return null;
+  return (
+    <Tooltip
+      title={
+        <>
+          <TestingGuide />
+          <TestLoginsHint groups={testLogins} />
+        </>
+      }
+      placement="bottom-start"
+      enterTouchDelay={0}
+      leaveTouchDelay={15000}
+      // Long, so it scrolls; the tooltip stays open while the pointer is on it.
+      slotProps={{
+        tooltip: {
+          sx: {
+            maxWidth: "min(440px, calc(100vw - 32px))",
+            maxHeight: "80vh",
+            overflowY: "auto",
+          },
+        },
+      }}
+    >
+      <Box
+        component="button"
+        type="button"
+        aria-label="Show demo accounts"
+        sx={{
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          border: "1.5px solid",
+          borderColor: "text.secondary",
+          color: "text.secondary",
+          background: "none",
+          font: "italic 700 0.8rem Georgia, serif",
+          lineHeight: 1,
+          cursor: "help",
+          p: 0,
+          "&:hover, &:focus-visible": {
+            borderColor: "primary.main",
+            color: "primary.main",
+          },
+        }}
+      >
+        i
+      </Box>
+    </Tooltip>
+  );
+}
+
 // Log in fields with "Join the gym" right under them. The label always says
 // Email because this page is built ahead of time, but in demo mode a demo
 // username works there too (see actions.ts). The "i" next to the title lists
-// a testing guide (what to try as the desk and as a climber) and every test
-// login by kind of user, with its username and password (demo-logins.ts).
-export default function LoginForm({ testLogins }: { testLogins: TestLoginGroup[] }) {
-  const [state, formAction, pending] = useActionState<LoginState, FormData>(
-    login,
-    {},
-  );
+// a testing guide and the test logins (TestLoginsInfo, passed in as `info`).
+export default function LoginForm({ info }: { info?: ReactNode }) {
+  const [state, formAction, pending] = useActionState<LoginState, FormData>(login, {});
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 420, borderRadius: 3 }}>
@@ -146,46 +211,7 @@ export default function LoginForm({ testLogins }: { testLogins: TestLoginGroup[]
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             Log in
           </Typography>
-          {/* Only in demo mode: a real deployment has no test logins to list (#137). */}
-          {testLogins.length > 0 ? (
-            <Tooltip
-              title={
-                <>
-                  <TestingGuide />
-                  <TestLoginsHint groups={testLogins} />
-                </>
-              }
-              placement="bottom-start"
-              enterTouchDelay={0}
-              leaveTouchDelay={15000}
-              // Long, so it scrolls; the tooltip stays open while the pointer is on it.
-              slotProps={{
-                tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } },
-              }}
-            >
-              <Box
-                component="button"
-                type="button"
-                aria-label="Show demo accounts"
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "1.5px solid",
-                  borderColor: "text.secondary",
-                  color: "text.secondary",
-                  background: "none",
-                  font: "italic 700 0.8rem Georgia, serif",
-                  lineHeight: 1,
-                  cursor: "help",
-                  p: 0,
-                  "&:hover, &:focus-visible": { borderColor: "primary.main", color: "primary.main" },
-                }}
-              >
-                i
-              </Box>
-            </Tooltip>
-          ) : null}
+          {info}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
           Welcome back to Elevate.
@@ -200,7 +226,9 @@ export default function LoginForm({ testLogins }: { testLogins: TestLoginGroup[]
               required
               fullWidth
               autoComplete="username"
-              slotProps={{ htmlInput: { autoCapitalize: "none", spellCheck: false } }}
+              slotProps={{
+                htmlInput: { autoCapitalize: "none", spellCheck: false },
+              }}
             />
             <TextField
               name="password"

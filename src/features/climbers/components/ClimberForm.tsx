@@ -5,7 +5,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import { useActionState } from "react";
+import { type ReactNode, useActionState } from "react";
 import type { ClimberInput, FormState } from "../types";
 import LinkButton from "./LinkButton";
 
@@ -15,6 +15,8 @@ type Props = {
   submitLabel: string;
   /** Replace the form with the success message once it submits (customer flow). */
   hideOnSuccess?: boolean;
+  /** Shown above the form, but not once it has submitted (the join page's "signed in as", #133). */
+  notice?: ReactNode;
 };
 
 const EMPTY: ClimberInput = {
@@ -32,11 +34,11 @@ export default function ClimberForm({
   defaults = EMPTY,
   submitLabel,
   hideOnSuccess = false,
+  notice,
 }: Props) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(
-    action,
-    { status: "idle" },
-  );
+  const [state, formAction, pending] = useActionState<FormState, FormData>(action, {
+    status: "idle",
+  });
 
   if (hideOnSuccess && state.status === "success") {
     return (
@@ -57,77 +59,82 @@ export default function ClimberForm({
   const errors = state.errors ?? {};
 
   return (
-    <Box component="form" action={formAction} noValidate>
-      <Stack spacing={4}>
-        <Stack spacing={4} direction={{ xs: "column", sm: "row" }}>
+    <>
+      {notice}
+      <Box component="form" action={formAction} noValidate>
+        <Stack spacing={4}>
+          <Stack spacing={4} direction={{ xs: "column", sm: "row" }}>
+            <TextField
+              name="firstName"
+              label="First name"
+              required
+              fullWidth
+              defaultValue={values.firstName}
+              error={Boolean(errors.firstName)}
+              helperText={errors.firstName}
+              slotProps={{ htmlInput: { autoComplete: "given-name" } }}
+            />
+            <TextField
+              name="lastName"
+              label="Last name"
+              required
+              fullWidth
+              defaultValue={values.lastName}
+              error={Boolean(errors.lastName)}
+              helperText={errors.lastName}
+              slotProps={{ htmlInput: { autoComplete: "family-name" } }}
+            />
+          </Stack>
           <TextField
-            name="firstName"
-            label="First name"
+            name="phone"
+            label="Phone number"
+            type="tel"
             required
             fullWidth
-            defaultValue={values.firstName}
-            error={Boolean(errors.firstName)}
-            helperText={errors.firstName}
-            slotProps={{ htmlInput: { autoComplete: "given-name" } }}
+            defaultValue={values.phone}
+            error={Boolean(errors.phone)}
+            helperText={errors.phone}
+            slotProps={{ htmlInput: { autoComplete: "tel", inputMode: "tel" } }}
           />
           <TextField
-            name="lastName"
-            label="Last name"
+            name="email"
+            label="Email (optional)"
+            type="email"
+            fullWidth
+            defaultValue={values.email}
+            error={Boolean(errors.email)}
+            helperText={errors.email}
+            slotProps={{
+              htmlInput: { autoComplete: "email", inputMode: "email" },
+            }}
+          />
+          <TextField
+            name="dateOfBirth"
+            label="Date of birth"
+            type="date"
             required
             fullWidth
-            defaultValue={values.lastName}
-            error={Boolean(errors.lastName)}
-            helperText={errors.lastName}
-            slotProps={{ htmlInput: { autoComplete: "family-name" } }}
+            defaultValue={values.dateOfBirth}
+            error={Boolean(errors.dateOfBirth)}
+            helperText={errors.dateOfBirth}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { autoComplete: "bday" },
+            }}
           />
+
+          {state.status === "error" && state.message ? (
+            <Alert severity="error">{state.message}</Alert>
+          ) : null}
+          {state.status === "success" && state.message ? (
+            <Alert severity="success">{state.message}</Alert>
+          ) : null}
+
+          <Button type="submit" variant="contained" size="large" disabled={pending}>
+            {pending ? "Saving…" : submitLabel}
+          </Button>
         </Stack>
-        <TextField
-          name="phone"
-          label="Phone number"
-          type="tel"
-          required
-          fullWidth
-          defaultValue={values.phone}
-          error={Boolean(errors.phone)}
-          helperText={errors.phone}
-          slotProps={{ htmlInput: { autoComplete: "tel", inputMode: "tel" } }}
-        />
-        <TextField
-          name="email"
-          label="Email (optional)"
-          type="email"
-          fullWidth
-          defaultValue={values.email}
-          error={Boolean(errors.email)}
-          helperText={errors.email}
-          slotProps={{ htmlInput: { autoComplete: "email", inputMode: "email" } }}
-        />
-        <TextField
-          name="dateOfBirth"
-          label="Date of birth"
-          type="date"
-          required
-          fullWidth
-          defaultValue={values.dateOfBirth}
-          error={Boolean(errors.dateOfBirth)}
-          helperText={errors.dateOfBirth}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { autoComplete: "bday" },
-          }}
-        />
-
-        {state.status === "error" && state.message ? (
-          <Alert severity="error">{state.message}</Alert>
-        ) : null}
-        {state.status === "success" && state.message ? (
-          <Alert severity="success">{state.message}</Alert>
-        ) : null}
-
-        <Button type="submit" variant="contained" size="large" disabled={pending}>
-          {pending ? "Saving…" : submitLabel}
-        </Button>
-      </Stack>
-    </Box>
+      </Box>
+    </>
   );
 }

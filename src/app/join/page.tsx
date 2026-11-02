@@ -22,13 +22,15 @@ export default function JoinPage() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
             Tell us a bit about yourself to create your account.
           </Typography>
-          <Suspense fallback={null}>
-            <AlreadySignedIn />
-          </Suspense>
           <ClimberForm
             action={joinAsCustomer}
             submitLabel="Create account"
             hideOnSuccess
+            notice={
+              <Suspense fallback={null}>
+                <AlreadySignedIn />
+              </Suspense>
+            }
           />
         </CardContent>
       </Card>
@@ -38,7 +40,8 @@ export default function JoinPage() {
 
 // Someone already signed in, for example after joining and reloading: say who,
 // and link to their dashboard, so a blank form doesn't invite a second account
-// (#133). The form stays, so a parent can still sign up someone else.
+// (#133). The form stays, so a parent can still sign up someone else. Not shown
+// once the form has submitted: its success view has the same link.
 async function AlreadySignedIn() {
   await connection();
   const climberId = await getSessionClimberId();
