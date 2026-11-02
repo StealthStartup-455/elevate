@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#138 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#138 / #160
 - **Branch:** `chore/138-staging-reset`
 - **What the agent did:**
   - `npm run staging:reset` (`scripts/staging-reset.mjs`): asks for the staging session pooler URL (or `STAGING_SESSION_URL`), makes the same URL checks as `staging:setup`, and runs the seed against it.
