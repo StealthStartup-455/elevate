@@ -1,0 +1,21 @@
+# 2026-11-02 15:13 UTC: Reset staging to the seed before demos
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#138 / PR pending
+- **Branch:** `chore/138-staging-reset`
+- **What the agent did:**
+  - `npm run staging:reset` (`scripts/staging-reset.mjs`): asks for the staging session pooler URL (or `STAGING_SESSION_URL`), makes the same URL checks as `staging:setup`, and runs the seed against it.
+  - The seed refuses `APP_ENV=production` and prints how many climbers it removed, and how many of those were added since the last seed.
+  - Staging's busyness is now real check-ins only: `staging:setup` sets `MOCK_BUSYNESS_SCENARIO=none`.
+  - DEPLOYMENT.md: "Reset before a demo" (what goes, what stays, how to check), the variable table and "Before a demo".
+- **Files touched:** `scripts/staging-reset.mjs`, `prisma/seed.ts`, `scripts/staging-setup.mjs`, `package.json`, `DEPLOYMENT.md`.
+- **Decisions and why:**
+  - The seed already deleted every climber in the demo gym (and their passes, waivers, sales, check-ins and scans) in one transaction, since it was first written. The duplicates in #138 were there because staging hadn't been reseeded since the test runs, not because the seed kept them. So the reset is the seed with guard rails, not a second delete script.
+  - The reset blanks `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY` for the seed unless `STAGING_SUPABASE_URL` and `STAGING_SECRET_KEY` are given: the seed loads `.env`, and a local project's keys would otherwise make logins on the local project and link them to staging's climbers.
+  - `MOCK_BUSYNESS_SCENARIO=none` on staging, so the class feedback sessions see the same busyness as production (Jose: staging as close to prod as possible). The team can switch back to `moderate` in Vercel.
+- **Gotchas:**
+  - Changing `staging:setup` doesn't change the existing Vercel project: set `MOCK_BUSYNESS_SCENARIO=none` there (or rerun `staging:setup`) and redeploy.
+  - Without the staging Supabase values, `climber@elevate.test` loses its climber after a reset; the demo usernames still work.
+- **Open follow-ups:** None.
+- **Verification:** `npm run lint` clean. The script's refusals checked by hand (APP_ENV=production, `[YOUR-PASSWORD]`, the direct `db.` host, an empty answer). The seed itself runs in CI's e2e job (`npm run db:seed`); this session can't regenerate the Prisma client to run it.

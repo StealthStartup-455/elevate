@@ -145,7 +145,8 @@ const settings = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
   DEMO_MODE: "true",
   APP_ENV: "staging",
-  MOCK_BUSYNESS_SCENARIO: "moderate",
+  // Real check ins only, like production (#138). "moderate" mixes in a sample.
+  MOCK_BUSYNESS_SCENARIO: "none",
 };
 for (const [name, value] of Object.entries(settings)) {
   // Production target: the trial is deployed with --prod, because preview
