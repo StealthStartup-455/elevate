@@ -146,43 +146,46 @@ export default function LoginForm({ testLogins }: { testLogins: TestLoginGroup[]
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             Log in
           </Typography>
-          <Tooltip
-            title={
-              <>
-                <TestingGuide />
-                <TestLoginsHint groups={testLogins} />
-              </>
-            }
-            placement="bottom-start"
-            enterTouchDelay={0}
-            leaveTouchDelay={15000}
-            // Long, so it scrolls; the tooltip stays open while the pointer is on it.
-            slotProps={{
-              tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } },
-            }}
-          >
-            <Box
-              component="button"
-              type="button"
-              aria-label="Show demo accounts"
-              sx={{
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                border: "1.5px solid",
-                borderColor: "text.secondary",
-                color: "text.secondary",
-                background: "none",
-                font: "italic 700 0.8rem Georgia, serif",
-                lineHeight: 1,
-                cursor: "help",
-                p: 0,
-                "&:hover, &:focus-visible": { borderColor: "primary.main", color: "primary.main" },
+          {/* Only in demo mode: a real deployment has no test logins to list (#137). */}
+          {testLogins.length > 0 ? (
+            <Tooltip
+              title={
+                <>
+                  <TestingGuide />
+                  <TestLoginsHint groups={testLogins} />
+                </>
+              }
+              placement="bottom-start"
+              enterTouchDelay={0}
+              leaveTouchDelay={15000}
+              // Long, so it scrolls; the tooltip stays open while the pointer is on it.
+              slotProps={{
+                tooltip: { sx: { maxWidth: "min(440px, calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } },
               }}
             >
-              i
-            </Box>
-          </Tooltip>
+              <Box
+                component="button"
+                type="button"
+                aria-label="Show demo accounts"
+                sx={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "1.5px solid",
+                  borderColor: "text.secondary",
+                  color: "text.secondary",
+                  background: "none",
+                  font: "italic 700 0.8rem Georgia, serif",
+                  lineHeight: 1,
+                  cursor: "help",
+                  p: 0,
+                  "&:hover, &:focus-visible": { borderColor: "primary.main", color: "primary.main" },
+                }}
+              >
+                i
+              </Box>
+            </Tooltip>
+          ) : null}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
           Welcome back to Elevate.

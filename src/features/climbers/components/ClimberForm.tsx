@@ -45,6 +45,10 @@ export default function ClimberForm({
         {state.climberId ? (
           <LinkButton href="/me/waiver?next=/me">Sign the waiver</LinkButton>
         ) : null}
+        {/* Always a way to the account, so nobody is left on the join page (#133). */}
+        <LinkButton href="/me" variant="outlined">
+          Go to your dashboard
+        </LinkButton>
       </Stack>
     );
   }

@@ -1,4 +1,5 @@
 import { DEMO_ACCOUNTS } from "@/features/climbers/demo-accounts";
+import { isDemoMode } from "./demo-mode";
 import { DESK_USERNAME } from "./mock-users";
 
 // The logins listed behind the "i" on the login card, by kind of user, each
@@ -51,4 +52,13 @@ export function getTestLogins(): TestLoginGroup[] {
       ],
     },
   ];
+}
+
+/**
+ * What the login page lists: every test login in demo mode, and nothing on a
+ * real deployment, where these logins don't work and a list of usernames and
+ * passwords would only confuse a gym (#137).
+ */
+export function getLoginPageTestLogins(): TestLoginGroup[] {
+  return isDemoMode() ? getTestLogins() : [];
 }

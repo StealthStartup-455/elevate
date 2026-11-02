@@ -22,13 +22,15 @@ function renewalLine(membership: Membership): string {
   if (membership.punchesLeft > 0 && membership.status !== "active") {
     return `Punch card · ${membership.punchesLeft} ${membership.punchesLeft === 1 ? "visit" : "visits"} left`;
   }
+  // Paused has no renewal date while it's paused (#124).
+  if (membership.status === "paused") return "Paused";
   if (membership.status === "none" || !membership.renewsOn) {
     return "Buy a membership to start climbing";
   }
   const date = formatDate(membership.renewsOn);
   if (membership.status === "expired") return `Expired ${date}`;
-  if (membership.status === "paused") return `Paused · renews ${date}`;
-  return `Renews ${date}`;
+  // A one-off plan runs until a date; only a recurring one renews (#132).
+  return membership.recurring ? `Renews ${date}` : `Runs until ${date}`;
 }
 
 function waiverExpiryLine(membership: Membership): string | null {

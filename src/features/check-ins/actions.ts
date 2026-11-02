@@ -18,6 +18,7 @@ export type ScannedClimber = {
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
+  membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
 };
@@ -83,6 +84,7 @@ async function nextDeskScanNow(): Promise<DeskScan | null> {
       waiverExpiresOn: climber.waiverExpiresOn,
       membershipStatus: climber.membershipStatus,
       membershipRenewsOn: climber.membershipRenewsOn,
+      membershipRecurring: climber.membershipRecurring,
       hasDayPass: climber.hasDayPass,
       punchesLeft: climber.punchesLeft,
     },
