@@ -16,6 +16,6 @@
   - Seeded memberships keep `renews = false`, so they now read "Runs until" and "Membership" rather than "Renews" and "Monthly". Marking them recurring would have filled the POS "Renewals due" list with every seeded member.
   - `/join` doesn't redirect a signed-in person, because a parent signing up their family uses the same phone (staging test report item 11).
   - Membership end dates still come from `isoDay` in UTC; only waivers moved to the gym's time zone here.
-- **Gotchas:** Lint treats "#" plus three digits in a string as a raw colour, so test names say "issue 133", not "#133".
+- **Gotchas:** Lint treats "#" plus three digits in a string as a raw colour, so test names say "issue 133", not "#133". Don't put a form in a Suspense fallback: while the real one streams in, the page briefly has two (two Email fields broke every e2e login). Suspend only the part that waits. A streamed boundary also leaves a hidden copy outside `<main>` for a moment, so e2e looks inside `getByRole("main")`.
 - **Open follow-ups:** None for these issues. Other #149 items (#128, #129, #131, #136, #138, #151) are separate.
-- **Verification:** `npm run lint` clean; unit tests 190 passed (2 todo), 9 new. `tsc`, the build, database tests and e2e can't run in this session (the Prisma client can't be regenerated here), so they run in CI on the PR.
+- **Verification:** `npm run lint` clean; unit tests 190 passed (2 todo), 9 new. `tsc`, the build, database tests and e2e can't run in this session (the Prisma client can't be regenerated here), so they run in CI on the PR: check (tsc, build, database tests) and e2e (55 tests) pass on 390f251.
