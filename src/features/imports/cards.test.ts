@@ -58,6 +58,17 @@ describe("findCardNumberColumn", () => {
     if (!result.ok) throw new Error(result.issue.message);
     expect(findCardNumberColumn(result.table)).toBe("note");
   });
+
+  it("skips long key tag barcodes in RGP's ID columns", () => {
+    // 13 digit barcodes; 4000000000006 passes Luhn by chance.
+    const result = parseCsv(
+      "f.csv",
+      `BARCODE,RESPONSIBLE_PARTY_ID,FIRST_NAME\n4000000000006,4000000000006,Ann\n4000000000014,,Bo\n`,
+    );
+    if (!result.ok) throw new Error(result.issue.message);
+    expect(isCardNumber("4000000000006")).toBe(true);
+    expect(findCardNumberColumn(result.table)).toBeNull();
+  });
 });
 
 describe("cardNumberIssue", () => {

@@ -9,7 +9,11 @@ export type Cleaned<T> = { value: T | null; warning: string | null };
 export function cleanPhone(value: string): Cleaned<string> {
   if (value.trim() === "") return { value: null, warning: null };
   const digits = value.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) {
+  // An extension ("ext 23", "x23") would be glued on and stored as a made up
+  // international number. Over 11 digits without a + is the same problem.
+  const hasExtension = /ext|x/i.test(value);
+  const longWithoutPlus = digits.length > 11 && !value.trim().startsWith("+");
+  if (digits.length < 10 || digits.length > 15 || hasExtension || longWithoutPlus) {
     return { value: null, warning: "This phone number doesn't look right, so it was left out." };
   }
   return { value: toStoredPhone(value), warning: null };

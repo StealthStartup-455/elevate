@@ -27,6 +27,19 @@ describe("cleanPhone", () => {
       expect(result.warning).toMatch(/phone number/);
     }
   });
+
+  it("leaves out numbers with an extension, with a warning", () => {
+    for (const input of ["250-555-0101 ext 23", "250-555-0101 x23", "250-555-0101 Ext. 5"]) {
+      const result = cleanPhone(input);
+      expect(result.value).toBeNull();
+      expect(result.warning).toMatch(/phone number/);
+    }
+  });
+
+  it("leaves out over 11 digits without a +, but keeps them with one", () => {
+    expect(cleanPhone("250555010123").value).toBeNull();
+    expect(cleanPhone("+44 20 7946 0958").value).toBe("+442079460958");
+  });
 });
 
 describe("cleanEmail", () => {

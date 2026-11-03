@@ -24,11 +24,17 @@ export function isCardNumber(value: string): boolean {
   return /^\d{13,19}$/.test(digits) && passesLuhn(digits);
 }
 
+// RGP's own ID columns. Gyms can use long key tag barcodes, and about 1 in 10
+// long numbers passes Luhn by chance, so these are never checked.
+const ID_COLUMNS = new Set(["BARCODE", "RESPONSIBLE_PARTY_ID", "Barcode"]);
+
 // The first column with any card number in it, or null.
 export function findCardNumberColumn(table: RawTable): string | null {
   return (
-    table.headers.find((header) => table.rows.some((row) => isCardNumber(row[header] ?? ""))) ??
-    null
+    table.headers.find(
+      (header) =>
+        !ID_COLUMNS.has(header) && table.rows.some((row) => isCardNumber(row[header] ?? "")),
+    ) ?? null
   );
 }
 
