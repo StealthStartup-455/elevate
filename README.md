@@ -16,6 +16,21 @@ The product page is live at: https://stealthstartup-455.github.io/elevate/.
 - npm
 - Docker Desktop, running before you start the database
 
+### Quick start: one command
+
+With Docker running:
+
+```bash
+git clone https://github.com/StealthStartup-455/elevate.git
+cd elevate
+npm install
+npm run local
+```
+
+`npm run local` does the setup below in the right order and then starts the app: it makes `.env` if it's missing, starts local Supabase and puts its publishable key in `.env`, applies migrations, regenerates the Prisma client, seeds when migrations were just applied, and runs `npm run dev`. Run it again any time, especially after switching branches or pulling: it only installs, migrates and seeds what changed. `npm run local -- --seed` also reloads the sample data; `--help` lists the options.
+
+The steps below are what it does, if you'd rather run them yourself.
+
 ### Setup
 
 ```bash
@@ -44,6 +59,7 @@ Open http://localhost:3000.
 
 | Command                 | Description                                                                                                                                                                                        |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run local`         | Set up whatever changed (packages, local Supabase, migrations, sample data), then start the development server                                                                                     |
 | `npm run dev`           | Start the development server                                                                                                                                                                       |
 | `npm run lint`          | Check code style                                                                                                                                                                                   |
 | `npm run build`         | Create a production build (also run by CI)                                                                                                                                                         |
