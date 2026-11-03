@@ -40,8 +40,9 @@ async function DeskWaiver({ params }: Pick<PageProps<"/desk/waivers/[waiverId]">
         <LinkButton href={`/desk/climbers/${waiver.climberId}`} variant="text">
           ← {waiver.climberName}
         </LinkButton>
-        {/* A plain link: the PDF is a file download, not a page (#111). */}
-        <Button variant="outlined" href={`/desk/waivers/${waiver.id}/pdf`} download>
+        {/* A plain link, not next/link: the route answers with a file (#111). No
+            download attribute, so an error shows as a page, not a broken file. */}
+        <Button variant="outlined" href={`/desk/waivers/${waiver.id}/pdf`}>
           Download PDF
         </Button>
       </div>

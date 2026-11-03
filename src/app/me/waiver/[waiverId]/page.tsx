@@ -30,7 +30,7 @@ async function SignedWaiver({ params }: Pick<PageProps<"/me/waiver/[waiverId]">,
   return (
     <>
       <div className="flex flex-col items-start">
-        <Button variant="outlined" href={`/me/waiver/${waiver.id}/pdf`} download>
+        <Button variant="outlined" href={`/me/waiver/${waiver.id}/pdf`}>
           Download PDF
         </Button>
       </div>
