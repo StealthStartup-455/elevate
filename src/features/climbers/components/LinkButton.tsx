@@ -11,6 +11,7 @@ export default function LinkButton({
   variant = "contained",
   size,
   color,
+  fullWidth,
 }: {
   href: string;
   children: React.ReactNode;
@@ -18,9 +19,10 @@ export default function LinkButton({
   size?: "small" | "medium" | "large";
   /** Only for a renew link (warning); leave out for the usual action color. */
   color?: "warning";
+  fullWidth?: boolean;
 }) {
   return (
-    <Button component={Link} href={href} variant={variant} size={size} color={color}>
+    <Button component={Link} href={href} variant={variant} size={size} color={color} fullWidth={fullWidth}>
       {children}
     </Button>
   );

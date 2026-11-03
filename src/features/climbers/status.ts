@@ -79,7 +79,7 @@ export function punchesLeft(passes: PunchPass[], now: Date): number {
 }
 
 // How far `timeZone` is ahead of UTC at `date`, in milliseconds.
-function zoneOffsetMs(timeZone: string, date: Date): number {
+export function zoneOffsetMs(timeZone: string, date: Date): number {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone,

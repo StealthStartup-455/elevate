@@ -15,7 +15,7 @@ import { type LoginState, login } from "../actions";
 import type { TestLoginGroup } from "../demo-logins";
 
 // What to try as each kind of user, for whoever is testing. The steps follow
-// the desk POS (/desk/pos) and the climber's Purchase tab (/me/purchase).
+// the desk POS (/desk/pos) and the climber's Membership tab (/me/membership).
 const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
   {
     title: "Front desk",
@@ -30,8 +30,8 @@ const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
     title: "Climber who just joined (no waiver, no membership)",
     login: "demo-missing-none",
     steps: [
-      "Open the Purchase tab, open Membership, pick a plan and press Pay. It's a demo: nothing is charged.",
-      "Your plan turns Active, and the Membership section goes away. The waiver can still be signed from the dashboard.",
+      "Open the Membership tab, open Membership under your plan, pick one and press Pay. It's a demo: nothing is charged.",
+      "Your plan turns Active, and the Membership section goes away. The waiver can still be signed from Home.",
       "Rentals and chalk can be bought too. Purchase history lists everything bought.",
       "Log in as desk: the purchase is in the POS under Today's sales, as Online.",
     ],
@@ -39,7 +39,7 @@ const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
   {
     title: "Climber with an active membership",
     login: "demo-valid-active",
-    steps: ["Open the Purchase tab: there is no Membership section, with a warning saying why. Rentals and chalk can still be bought."],
+    steps: ["Open the Membership tab: there is no Membership section to buy from, with a note saying why. Rentals and chalk can still be bought."],
   },
 ];
 

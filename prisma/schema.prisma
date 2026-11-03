@@ -1,4 +1,4 @@
-// Elevate database. Eleven tables.
+// Elevate database. Seventeen tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -41,6 +41,12 @@ model Gym {
   saleLines SaleLine[]
 
   waiverTemplates WaiverTemplate[]
+  openingHours    OpeningHours[]
+  specialHours    SpecialHours[]
+  events          GymEvent[]
+  setChanges      SetChange[]
+  classes         GymClass[]
+  classBookings   ClassBooking[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
@@ -86,6 +92,7 @@ model Climber {
   checkIns       CheckIn[]
   qrScans        QrScan[]
   sales          Sale[]
+  classBookings  ClassBooking[]
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
@@ -284,6 +291,118 @@ model SaleLine {
 
   @@unique([id, gymId])
   @@index([saleId])
+}
+
+// The gym's regular week, one row per weekday. Times are minutes after
+// midnight on the gym's clock: 360 is 6:00 AM, and 1440 is midnight at the end
+// of the day. A gym with no rows hasn't set its hours, so none are shown.
+model OpeningHours {
+  id        String   @id @default(uuid())
+  gymId     String
+  weekday   Int // 0 is Monday to 6 Sunday, like the busyness heat map
+  closed    Boolean  @default(false)
+  opensAt   Int // minutes after midnight
+  closesAt  Int // minutes after midnight, after opensAt; 1440 is midnight
+  updatedAt DateTime @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@unique([gymId, weekday])
+}
+
+// One day that differs from the regular week: a holiday, a staff training
+// day. It replaces that weekday's OpeningHours on that date.
+model SpecialHours {
+  id        String    @id @default(uuid())
+  gymId     String
+  date      DateTime  @db.Date // the gym's calendar day
+  closed    Boolean   @default(false)
+  opensAt   Int? // empty when closed
+  closesAt  Int?
+  note      String? // shown to climbers: "Remembrance Day"
+  removedAt DateTime? // taken off by staff; the row stays
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@index([gymId, date])
+}
+
+// Something the gym announces to climbers: a competition, a film night. The
+// climber dashboard shows it at the top while it is coming up.
+model GymEvent {
+  id         String    @id @default(uuid())
+  gymId      String
+  title      String
+  details    String?
+  startsAt   DateTime
+  endsAt     DateTime? // empty means it has no set end
+  canceledAt DateTime? // a canceled event stays, so climbers see it was canceled
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@index([gymId, startsAt])
+}
+
+// A wall being reset with new routes. Closed while setters work on it, from
+// startsAt until the new routes open at endsAt.
+model SetChange {
+  id         String    @id @default(uuid())
+  gymId      String
+  wall       String // "Cave", "Slab"
+  startsAt   DateTime
+  endsAt     DateTime
+  note       String? // "New V0 to V6 circuit"
+  canceledAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@index([gymId, startsAt])
+}
+
+// A class climbers sign up for in the app: an intro to bouldering, a
+// technique clinic. Free for now; capacity is how many places there are.
+model GymClass {
+  id              String    @id @default(uuid())
+  gymId           String
+  title           String
+  details         String?
+  instructor      String?
+  startsAt        DateTime
+  durationMinutes Int
+  capacity        Int
+  canceledAt      DateTime? // a canceled class stays, so climbers who signed up see it
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  gym      Gym            @relation(fields: [gymId], references: [id])
+  bookings ClassBooking[]
+
+  @@unique([id, gymId])
+  @@index([gymId, startsAt])
+}
+
+// A climber's place in a class. One row per climber per class: cancelling
+// sets canceledAt, and signing up again clears it.
+model ClassBooking {
+  id         String    @id @default(uuid())
+  gymId      String
+  classId    String
+  climberId  String
+  createdAt  DateTime  @default(now())
+  canceledAt DateTime?
+
+  gym     Gym      @relation(fields: [gymId], references: [id])
+  class   GymClass @relation(fields: [classId, gymId], references: [id, gymId], onDelete: Restrict)
+  climber Climber  @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@unique([classId, climberId])
+  @@index([gymId, climberId])
 }
 
 enum GymSystem {

@@ -12,6 +12,7 @@ import KpiTile from "@/components/ui/KpiTile";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill from "@/components/ui/StatusPill";
 import { colors, controlHeight, motion, radius, space, textStyles, type TextStyleName } from "@/components/ui/theme/tokens";
+import ClimberShowcase from "./climber";
 import { FormDemo, SettingsDemo, TableDemo } from "./demos";
 
 // Live reference for STYLE_GUIDE.md. Everything here renders from the real theme, so if it
@@ -298,6 +299,14 @@ export default function StyleGuidePage() {
 
       <Section id="forms" title="Fields" intro="28px tall at the desk, 40px on touch screens, where text is 16px so phones don't zoom in.">
         <FormDemo />
+      </Section>
+
+      <Section
+        id="climber"
+        title="Climber app"
+        intro="The member side (/me) has its own look for phones: Figtree, bigger text, rounder cards and a bottom tab bar. Everything below renders inside ClimberTheme."
+      >
+        <ClimberShowcase />
       </Section>
     </main>
   );

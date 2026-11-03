@@ -3,38 +3,49 @@ import { Suspense } from "react";
 import { VersionLink } from "@/components/ui/AppVersion";
 import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
-import MembershipCard from "@/features/climbers/components/MembershipCard";
+import ReadyToClimb from "@/features/climbers/components/ReadyToClimb";
 import { getMyMembership } from "@/features/climbers/queries";
+import EventBanner from "@/features/events/components/EventBanner";
+import SetChanges from "@/features/events/components/SetChanges";
 
-export default function MePage() {
+// Home tab: who's signed in, an event coming up, anything stopping them climbing, then
+// whether the gym is open and how busy it is, the week's hours and the set changes (#101).
+export default function HomePage() {
   return (
-    <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
-      <div className="flex flex-col gap-1">
-        <Typography variant="pageTitle">My dashboard</Typography>
-        <Suspense fallback={null}>
-          <SignedInAs />
-        </Suspense>
-      </div>
-      <Suspense fallback={<p>Loading membership...</p>}>
-        <MembershipCard />
+    <>
+      <Suspense fallback={<Typography variant="pageTitle">Home</Typography>}>
+        <Greeting />
       </Suspense>
-      <Suspense fallback={<p>Loading busyness...</p>}>
+      {/* Only there while an event is coming up. */}
+      <Suspense fallback={null}>
+        <EventBanner />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ReadyToClimb />
+      </Suspense>
+      <Suspense fallback={<Typography variant="secondary">Loading hours…</Typography>}>
         <CustomerBusyness gymId={DEMO_GYM_ID} />
       </Suspense>
+      <Suspense fallback={null}>
+        <SetChanges />
+      </Suspense>
       {/* Where climbers find the version, rather than a footer on every page (#103). */}
-      <Typography variant="secondary" component="p">
+      <Typography variant="secondary" component="p" sx={{ textAlign: "center" }}>
         About: Elevate <VersionLink />
       </Typography>
-    </div>
+    </>
   );
 }
 
 // Who is signed in, for someone sharing a phone or switching between logins (#144).
-async function SignedInAs() {
+async function Greeting() {
   const { firstName, lastName } = await getMyMembership();
   return (
-    <Typography variant="secondary">
-      Signed in as {firstName} {lastName}
-    </Typography>
+    <div className="flex flex-col gap-1">
+      <Typography variant="pageTitle">Hi, {firstName}</Typography>
+      <Typography variant="secondary">
+        Signed in as {firstName} {lastName}
+      </Typography>
+    </div>
   );
 }

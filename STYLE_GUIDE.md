@@ -344,6 +344,64 @@ Before you open a pull request for UI work:
 - [ ] The screen works at 375px wide, and on touch.
 - [ ] You checked `/style-guide` or the screen in both light and dark.
 
+## Climber app
+
+The member side (`/me`) is a phone app for climbers, not a front-desk tool, so it has its own look: bigger type, rounder cards, one accent and a bottom tab bar (Home, Check in, Membership, Classes). Everything above still applies to `/desk`; this section is what changes under `/me`. The live version is the "Climber app" section of `/style-guide`; the design mock-up is the "Elevate climber app" canvas.
+
+- **Where it lives:** tokens in [`src/components/ui/theme/climber/tokens.ts`](src/components/ui/theme/climber/tokens.ts), the MUI theme in `climber/theme.ts`, shared pieces in [`src/components/climber/`](src/components/climber/).
+- **How it applies:** wrap climber screens in `<ClimberTheme>`. It nests the climber MUI theme inside the desk's with its own CSS variable prefix (`--climb-…`), so MUI components inside read climber values and the desk never changes.
+- **Same text style names:** `pageTitle`, `cardTitle`, `kpi`, `body`, `secondary`, `label` work in both apps; under `ClimberTheme` they are the sizes below.
+- **Color comes from MUI only.** Tailwind's color classes (`bg-surface`, `border-line`, `text-fg-muted`) are wired to the desk's colors, so climber screens use `sx` palette paths and palette props for color and keep Tailwind for layout.
+
+### Look
+
+| | Desk | Climber app |
+|---|---|---|
+| Face | IBM Plex Sans, condensed headers | Figtree (Plex Mono for member codes) |
+| Body text | 13px | 17px; secondary 15px |
+| Titles | 20px page, 14px card | 28px page, 20px card, 40px for the one big answer (`kpi`) |
+| Cards | 1px border, 6px corners | No border, white on grey, 20px corners, 20px padding |
+| Buttons | 28px, 4px corners, tinted secondary | 48px (44px small, 56px large), 14px corners; secondary is white with a border |
+| Accent | Teal actions, slate-blue navigation | Teal only: actions, the current tab, links, meters |
+| Navigation | Top nav, sidebar | Bottom `TabBar`, every tap target at least 44px |
+
+### Color
+
+| Role | Palette path | Light | Dark | Use |
+|---|---|---|---|---|
+| Action | `primary.main` | `#0A7C72` | `#4CC3B5` | Main buttons, current tab, links, meters |
+| Action tint | `primary.soft` | `#E8F7F4` | `#133A36` | Avatar, teal tags |
+| Page | `background.default` | `#F3F5F6` | `#0F1214` | Behind cards |
+| Card | `background.paper` | `#FFFFFF` | `#1A1E21` | Cards, tab bar, fields |
+| Quiet fill | `background.subtle` | `#EEF1F3` | `#252A2E` | Disabled buttons, neutral tags |
+| Divider | `divider` | `#E3E7EA` | `#2E3438` | Rows inside cards, segmented track |
+| Text | `text.primary` / `text.secondary` | `#111418` / `#5B6470` | `#EEF1F3` / `#A3ABB3` | |
+| Announcement | `inverse.bg`, `inverse.text`, `inverse.muted` | dark card | light card | The one card that should catch the eye |
+| Announcement tag | `highlight.bg` | `#F2B84B` | `#F2B84B` | Its tag ("In 12 days") |
+| Busy times | `heat.0`–`heat.4`, `heatNow` | teal shades, ink | teal shades, white | Busy-times bars; the current hour in the text color |
+
+Status keeps the desk's rule: green, amber and red describe state only and always come with ✓, ! or ✕ (`StatusPill` works unchanged). Every text pairing passes 4.5:1 in both themes; the lowest is teal on its tint, 4.6:1.
+
+### Components
+
+| Component | Use for |
+|---|---|
+| `ClimberTheme` | Wraps every climber screen |
+| `TabBar` | The bottom tab bar. Finds the current tab from the URL |
+| `ClimberCard` | A card with an optional `title` and `action`; `tone="brand"` (teal, the plan card) or `tone="inverse"` (dark) |
+| `Announcement` | The dark event card with its amber tag. At most one per screen |
+| `IconTile` | The 44px icon square at the start of a row: `tone` ok, warn, bad, action or neutral |
+| `BusyBars` | Typical busyness by hour, quiet to busy, current hour marked |
+| `icons.tsx` | The stroke icons: tabs, check, cross, wrench, sparkle, waiver, sun, arrow |
+
+### Rules
+
+1. One `pageTitle` per tab, then cards with 16px between them and a 20px side margin.
+2. One teal (`contained`) button per card. Quiet actions are `outlined`.
+3. One `Announcement` per screen, and only when there's something to announce.
+4. Lead with the answer: "Open now", "Moderate", "You're in". Details are `secondary`.
+5. Nothing smaller than 13px, and only `label` that small.
+
 ## Changing the system
 
 The rules are deliberately hard to bypass. To change them:
@@ -359,7 +417,7 @@ The rules are deliberately hard to bypass. To change them:
 
 ## What lint checks
 
-`npm run lint` fails on these anywhere in `src/` outside `src/components/ui/theme/`:
+`npm run lint` fails on these anywhere in `src/` outside `src/components/ui/theme/` (which holds both the desk and the climber tokens):
 
 - Raw colors in strings: `#fff`, `#1F2326`, `rgb(...)`, `hsl(...)`, `oklch(...)`.
 - Tailwind arbitrary values in `className`: `p-[13px]`, `max-w-[560px]`, `grid-cols-[1fr_2fr]`.

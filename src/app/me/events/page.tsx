@@ -1,5 +1,6 @@
-import Typography from "@mui/material/Typography";
+import { redirect } from "next/navigation";
 
+// Events live on the Classes tab (#101).
 export default function MyEventsPage() {
-  return <Typography variant="pageTitle">Events</Typography>;
+  redirect("/me/classes?view=events");
 }

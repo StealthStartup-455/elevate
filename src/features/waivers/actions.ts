@@ -139,7 +139,7 @@ export async function submitWaiver(
     version: template.version,
     relation: parsed.value.signerRelation,
   });
-  revalidatePath("/me");
+  revalidatePath("/me", "layout");
   revalidatePath("/desk");
   revalidatePath(`/desk/climbers/${climberId}`);
   return { status: "success", waiverId: waiver.id };

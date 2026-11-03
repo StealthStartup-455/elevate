@@ -23,12 +23,21 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Product` | Something the desk sells on the POS | 10-punch card, $200 |
 | `Sale` | One POS sale, for one climber | Kim, $217.35 by card |
 | `SaleLine` | One line of a sale | 10-punch card ×1, $200 |
+| `OpeningHours` | One weekday of the gym's regular week | Monday, 6 AM to 10 PM |
+| `SpecialHours` | One date with different hours | Nov 11, closed, "Remembrance Day" |
+| `GymEvent` | Something the gym announces to climbers | Fall bouldering comp, Sat 10 AM |
+| `SetChange` | A wall closed for a reset | Cave, Wed 9 AM to 2 PM |
+| `GymClass` | A class climbers sign up for in the app | Intro to bouldering, 8 places |
+| `ClassBooking` | One climber's place in a class | Kim, Intro to bouldering |
 
 ```text
 Gym
  ├── Staff
  ├── Product
  ├── WaiverTemplate
+ ├── OpeningHours, SpecialHours, GymEvent, SetChange
+ ├── GymClass
+ │    └── ClassBooking ── Climber
  └── Climber
       ├── Pass ── SaleLine (the sale that paid for it)
       ├── Waiver ── WaiverTemplate
@@ -44,7 +53,7 @@ Gym
 - Prices are stored (agreed 2026-10-29, elevate-docs#56; this used to say they weren't). The desk POS sells `Product`s and records each `Sale`. The money itself is taken on the gym's own card machine or in cash: Elevate never sees card details.
 - Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added at checkout and each tax is rounded once: GST on the whole subtotal at the gym's `gstRateBps`, and BC PST at `pstRateBps` only on the lines whose product has `chargesPst` (rentals and retail goods; admissions and memberships are GST only).
 - A sale copies each product's name and price onto its `SaleLine`, so changing a price never rewrites old sales.
-- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end. A canceled event, set change or class keeps its row with `canceledAt`, so climbers can be told; a cancelled class place keeps its `ClassBooking` row too, and a removed special day keeps its row with `removedAt`. Opening hours are edited in place: there is one row per weekday.
 
 ## Gym isolation
 
@@ -236,6 +245,75 @@ The seed adds the demo gym's products with rough mock prices.
 | `quantity` | integer | yes | Always 1 for passes; up to 20 for rentals and chalk |
 | `lineTotalCents` | integer | yes | Before tax |
 | `chargesPst` | boolean | yes | Copied from the product at the time of sale |
+
+### OpeningHours
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `weekday` | integer | yes | 0 is Monday to 6 Sunday, like the busyness heat map. Unique per gym |
+| `closed` | boolean | yes | Closed all day. The times are kept, so opening again brings them back |
+| `opensAt`, `closesAt` | integer | yes | Minutes after midnight on the gym's clock: 360 is 6:00 AM, 1440 is midnight at the end of the day |
+
+Staff save all seven days at once on `/desk/events`. A gym with no rows hasn't set its hours, so the climber dashboard shows none rather than "Closed".
+
+### SpecialHours
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `date` | date | yes | The gym's calendar day |
+| `closed` | boolean | yes | |
+| `opensAt`, `closesAt` | integer | no | Empty when closed |
+| `note` | text | no | Shown to climbers |
+| `removedAt` | timestamp | no | Taken off by staff. Adding a day that already has special hours removes the old row |
+
+Replaces that weekday's `OpeningHours` on that date.
+
+### GymEvent
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `title` | text | yes | |
+| `details` | text | no | |
+| `startsAt` | timestamp | yes | |
+| `endsAt` | timestamp | no | Empty means no set end: it counts as over at midnight |
+| `canceledAt` | timestamp | no | |
+
+The climber dashboard announces up to three at the top while they start within 30 days, canceled ones after the rest.
+
+### SetChange
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `wall` | text | yes | |
+| `startsAt` | timestamp | yes | When the wall closes for setting |
+| `endsAt` | timestamp | yes | When the new routes open |
+| `note` | text | no | |
+| `canceledAt` | timestamp | no | Canceled ones aren't shown to climbers |
+
+### GymClass
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `title` | text | yes | |
+| `details`, `instructor` | text | no | |
+| `startsAt` | timestamp | yes | |
+| `durationMinutes` | integer | yes | 15 to 480 |
+| `capacity` | integer | yes | Places, 1 to 200 |
+| `canceledAt` | timestamp | no | Shown as canceled to climbers who signed up |
+
+Free for now: no payment is taken to sign up.
+
+### ClassBooking
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `classId`, `climberId` | text | yes | One row per climber per class (unique) |
+| `createdAt` | timestamp | yes | Set automatically |
+| `canceledAt` | timestamp | no | Set when the climber cancels; cleared if they sign up again |
+
+Signing up locks the class row (`SELECT … FOR UPDATE`) before counting places, so two climbers can't both take the last one.
 
 The full SQL is in [`migrations/`](migrations/), one folder per change, applied in order.
 

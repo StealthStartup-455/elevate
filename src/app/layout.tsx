@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import ThemeRegistry from "@/components/ui/ThemeRegistry";
-import { plexMono, plexSans } from "@/components/ui/theme/fonts";
+import { figtree, plexMono, plexSans } from "@/components/ui/theme/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // before React hydrates, so the page never flashes the wrong theme.
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexMono.variable} ${figtree.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

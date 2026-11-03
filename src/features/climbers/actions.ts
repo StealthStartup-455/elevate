@@ -39,7 +39,7 @@ function invalid(
 function refreshClimberPages(climberId?: string) {
   revalidatePath("/desk");
   revalidatePath("/desk/climbers");
-  revalidatePath("/me");
+  revalidatePath("/me", "layout");
   if (climberId) revalidatePath(`/desk/climbers/${climberId}`);
 }
 
@@ -301,7 +301,7 @@ export async function checkInClimber(
     pass: usePunch ? "punch" : "membership_or_day",
   });
   revalidatePath("/desk");
-  revalidatePath("/me");
+  revalidatePath("/me", "layout");
   return { ok: true };
 }
 

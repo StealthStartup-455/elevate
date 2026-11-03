@@ -3,17 +3,7 @@ import Typography from "@mui/material/Typography";
 import { heatLevel } from "../busyness";
 import { getGymBusynessSettings } from "../config";
 import { getWeeklyBusyness } from "../queries";
-
-// Fill for heat levels 0 (quiet) to 4 (busy), as shades of the chart colour (data, not an action).
-const SHADES = [0.08, 0.25, 0.45, 0.7, 1].map(
-  (opacity) => `color-mix(in srgb, var(--mui-palette-chart-now) ${opacity * 100}%, transparent)`,
-);
-
-// 18 -> "6p", 12 -> "12p", 6 -> "6a"
-function shortHour(hour: number): string {
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}${hour < 12 ? "a" : "p"}`;
-}
+import { SHADES, shortHour } from "./heat";
 
 function Swatch({ shade }: { shade: string }) {
   return <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: shade }} />;
