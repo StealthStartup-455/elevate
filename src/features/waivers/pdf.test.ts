@@ -1,6 +1,6 @@
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { describe, expect, it } from "vitest";
-import { buildWaiverPdf, pdfSafe, waiverFileName } from "./pdf";
+import { buildWaiverPdf, pdfSafe, waiverFileName, wrap } from "./pdf";
 import type { SignedWaiverView } from "./queries";
 
 const DOT_PNG =
@@ -12,8 +12,9 @@ const WAIVER: SignedWaiverView = {
   climberId: "5a3f2b1c-0d4e-4f6a-8b7c-9d0e1f2a3b4c",
   climberName: "Zoë Tremblay",
   version: "v1",
-  // 23:30 in Vancouver on Nov 2 is already Nov 3 in UTC.
-  signedAt: new Date("2026-11-03T07:30:00Z"),
+  // Evening of Nov 2 in Vancouver (9 or 10 p.m., whichever tzdata decides
+  // BC's offset after Nov 1, 2026), but already Nov 3 in UTC.
+  signedAt: new Date("2026-11-03T05:00:00Z"),
   signedByName: "Marie Tremblay",
   signerRelation: "PARENT",
   signatureText: null,
@@ -72,5 +73,16 @@ describe("pdfSafe", () => {
 describe("waiverFileName", () => {
   it("uses the climber's name and the signing day in the gym's time zone", () => {
     expect(waiverFileName(WAIVER, GYM.timeZone)).toBe("waiver-zoe-tremblay-2026-11-02.pdf");
+  });
+});
+
+describe("wrap", () => {
+  it("breaks a word too long for one line, so nothing runs past the margin", async () => {
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const url = `https://example.com/${"a".repeat(300)}`;
+    const lines = wrap(`See ${url} for details.`, font, 10, 200);
+    expect(lines.length).toBeGreaterThan(2);
+    for (const line of lines) expect(font.widthOfTextAtSize(line, 10)).toBeLessThanOrEqual(200);
+    expect(lines.join("").replace(/\s/g, "")).toBe(`See${url}fordetails.`);
   });
 });

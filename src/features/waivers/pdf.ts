@@ -91,7 +91,11 @@ export async function buildWaiverPdf(
   writer.gap(16);
   writer.text("Signature", { font: bold, size: SIZE.heading });
   const relation = waiver.signerRelation === "SELF" ? "" : ` (${RELATION[waiver.signerRelation]})`;
-  writer.text(`Signed for ${waiver.climberName} by ${waiver.signedByName}${relation}`);
+  writer.text(
+    waiver.signerRelation === "SELF"
+      ? `Signed by ${waiver.signedByName}`
+      : `Signed for ${waiver.climberName} by ${waiver.signedByName}${relation}`,
+  );
   writer.text(`${signedAt} (${gym.timeZone}), version ${waiver.version}`);
   if (waiver.emergencyContact) {
     writer.text(`Emergency contact: ${waiver.emergencyContact.name}, ${waiver.emergencyContact.phone}`);
@@ -189,12 +193,25 @@ class Writer {
   }
 }
 
-function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
+/** Splits text into lines that fit the width; a word too long for one line is cut. */
+export function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
+  const fits = (t: string) => font.widthOfTextAtSize(t, size) <= width;
   const lines: string[] = [];
   let line = "";
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (let word of text.split(/\s+/).filter(Boolean)) {
+    // A long URL or code in a gym's wording: break it by characters.
+    while (!fits(word)) {
+      if (line) {
+        lines.push(line);
+        line = "";
+      }
+      let cut = word.length - 1;
+      while (cut > 1 && !fits(word.slice(0, cut))) cut--;
+      lines.push(word.slice(0, cut));
+      word = word.slice(cut);
+    }
     const next = line ? `${line} ${word}` : word;
-    if (line && font.widthOfTextAtSize(next, size) > width) {
+    if (line && !fits(next)) {
       lines.push(line);
       line = word;
     } else {

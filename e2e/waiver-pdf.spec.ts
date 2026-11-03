@@ -3,7 +3,8 @@ import { expect, test, type Browser, type Download, type Page } from "@playwrigh
 import { signWaiverForm } from "./sign-waiver";
 
 // Download a signed waiver as a PDF (#111): the climber from their waiver page,
-// and the desk from /desk/waivers/[id]. Anyone logged out is sent to log in.
+// and the desk from /desk/waivers/[id]. Another climber gets a 404, and anyone
+// logged out is sent to log in.
 
 async function newPage(browser: Browser, phone = false): Promise<Page> {
   const context = await browser.newContext(
@@ -57,6 +58,20 @@ test("the climber and the desk download a signed waiver as a PDF", async ({ brow
     desk.getByRole("link", { name: "Download PDF" }).click(),
   ]);
   await expectPdf(theirs);
+
+  // A different logged-in climber can't download it: a waiver is a legal
+  // record, so another climber gets a 404, not the PDF.
+  const other = await newPage(browser, true);
+  await other.goto("/join");
+  await other.getByLabel("First name").fill("Avery");
+  await other.getByLabel("Last name").fill(`Other${unique}`);
+  await other.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
+  await other.getByLabel("Date of birth").fill("1991-06-06");
+  await other.getByRole("button", { name: "Create account" }).click();
+  await expect(other.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
+  const refused = await other.request.get(`/me/waiver/${waiverId}/pdf`, { maxRedirects: 0 });
+  expect(refused.status()).toBe(404);
+  expect(refused.headers()["content-type"]).not.toContain("application/pdf");
 
   // Logged out, the PDF address sends you to log in instead of downloading.
   const stranger = await newPage(browser);
