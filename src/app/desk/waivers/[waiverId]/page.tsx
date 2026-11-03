@@ -1,3 +1,4 @@
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -35,10 +36,14 @@ async function DeskWaiver({ params }: Pick<PageProps<"/desk/waivers/[waiverId]">
 
   return (
     <>
-      <div className="flex flex-col items-start">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <LinkButton href={`/desk/climbers/${waiver.climberId}`} variant="text">
           ← {waiver.climberName}
         </LinkButton>
+        {/* A plain link: the PDF is a file download, not a page (#111). */}
+        <Button variant="outlined" href={`/desk/waivers/${waiver.id}/pdf`} download>
+          Download PDF
+        </Button>
       </div>
       <SignedWaiverDetails waiver={waiver} timeZone={gym.timeZone} />
     </>

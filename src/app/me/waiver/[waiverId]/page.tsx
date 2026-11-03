@@ -1,3 +1,4 @@
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -22,7 +23,18 @@ export default function SignedWaiverPage({ params }: PageProps<"/me/waiver/[waiv
 // a parent's login that manages them, or staff can open it (getSignedWaiver).
 async function SignedWaiver({ params }: Pick<PageProps<"/me/waiver/[waiverId]">, "params">) {
   const { waiverId } = await params;
-  const [waiver, gym] = await Promise.all([getSignedWaiver(waiverId), getGym()]);
+  // getSignedWaiver first: it calls connection(), and getGym() reads the clock.
+  const waiver = await getSignedWaiver(waiverId);
   if (!waiver) notFound();
-  return <SignedWaiverDetails waiver={waiver} timeZone={gym.timeZone} />;
+  const gym = await getGym();
+  return (
+    <>
+      <div className="flex flex-col items-start">
+        <Button variant="outlined" href={`/me/waiver/${waiver.id}/pdf`} download>
+          Download PDF
+        </Button>
+      </div>
+      <SignedWaiverDetails waiver={waiver} timeZone={gym.timeZone} />
+    </>
+  );
 }
