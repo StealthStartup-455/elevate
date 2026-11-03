@@ -10,6 +10,7 @@ Elevate's own waiver tool (#35). Climbers sign the gym's waiver on `/me/waiver`;
 - `actions.ts`: `submitWaiver`, the signing form's server action.
 - `validate.ts`, `hash.ts`, `access.ts`: the form rules, the wording's fingerprint, and who may act for a climber.
 - `components/WaiverForm.tsx`: the signing form. `components/SignedWaiverDetails.tsx`: the signed waiver as read, shared by the climber's page (`/me/waiver/[id]`) and the desk's (`/desk/waivers/[id]`).
+- `pdf.ts`: a signed waiver as a PDF (#111), built on download from the saved record, so no file is stored. Downloaded from `/me/waiver/[id]/pdf` (the climber) and `/desk/waivers/[id]/pdf` (staff, own gym only).
 - `sample-waiver.ts`: placeholder wording for the seed. Not a legal document.
 
 ## Rules
