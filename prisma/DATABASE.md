@@ -27,7 +27,8 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `SpecialHours` | One date with different hours | Nov 11, closed, "Remembrance Day" |
 | `GymEvent` | Something the gym announces to climbers | Fall bouldering comp, Sat 10 AM |
 | `SetChange` | A wall closed for a reset | Cave, Wed 9 AM to 2 PM |
-| `GymClass` | A class climbers sign up for in the app | Intro to bouldering, 8 places |
+| `ClassType` | A kind of class the gym runs | Intro to bouldering, 1 h, 8 places |
+| `GymClass` | One session of a class, climbers sign up in the app | Intro to bouldering, Tue 6 PM |
 | `ClassBooking` | One climber's place in a class | Kim, Intro to bouldering |
 
 ```text
@@ -36,8 +37,9 @@ Gym
  ├── Product
  ├── WaiverTemplate
  ├── OpeningHours, SpecialHours, GymEvent, SetChange
- ├── GymClass
- │    └── ClassBooking ── Climber
+ ├── ClassType
+ │    └── GymClass
+ │         └── ClassBooking ── Climber
  └── Climber
       ├── Pass ── SaleLine (the sale that paid for it)
       ├── Waiver ── WaiverTemplate
@@ -53,7 +55,7 @@ Gym
 - Prices are stored (agreed 2026-10-29, elevate-docs#56; this used to say they weren't). The desk POS sells `Product`s and records each `Sale`. The money itself is taken on the gym's own card machine or in cash: Elevate never sees card details.
 - Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added at checkout and each tax is rounded once: GST on the whole subtotal at the gym's `gstRateBps`, and BC PST at `pstRateBps` only on the lines whose product has `chargesPst` (rentals and retail goods; admissions and memberships are GST only).
 - A sale copies each product's name and price onto its `SaleLine`, so changing a price never rewrites old sales.
-- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end. A canceled event, set change or class keeps its row with `canceledAt`, so climbers can be told; a cancelled class place keeps its `ClassBooking` row too, and a removed special day keeps its row with `removedAt`. Opening hours are edited in place: there is one row per weekday.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end. A canceled event, set change or class keeps its row, and an archived class type keeps its row with `active = false` with `canceledAt`, so climbers can be told; a cancelled class place keeps its `ClassBooking` row too, and a removed special day keeps its row with `removedAt`. Opening hours are edited in place: there is one row per weekday.
 
 ## Gym isolation
 
@@ -292,11 +294,24 @@ The climber dashboard announces up to three at the top while they start within 3
 | `note` | text | no | |
 | `canceledAt` | timestamp | no | Canceled ones aren't shown to climbers |
 
+### ClassType
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `name` | text | yes | Name unique per gym |
+| `details`, `instructor` | text | no | `instructor` is who usually teaches it |
+| `durationMinutes` | integer | yes | 15 to 480 |
+| `capacity` | integer | yes | Places in a session, 1 to 200 |
+| `active` | boolean | yes | Archived types are off: they can't be scheduled. Adding an archived name brings it back |
+
+A session copies its type's name, details, length, instructor and places when it's scheduled (it may name its own instructor or places), so editing a type never changes a session already on the calendar.
+
 ### GymClass
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | `gymId`, `title` | text | yes | |
+| `classTypeId` | text | no | The type it was scheduled from. Empty for sessions from before types |
 | `details`, `instructor` | text | no | |
 | `startsAt` | timestamp | yes | |
 | `durationMinutes` | integer | yes | 15 to 480 |

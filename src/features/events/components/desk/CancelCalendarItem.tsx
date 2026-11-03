@@ -29,6 +29,11 @@ const COPY: Record<CalendarKind | "specialDay", { action: string; keep: string; 
     keep: "Keep class",
     explain: "Climbers who signed up see it marked canceled. Nobody else can sign up.",
   },
+  classType: {
+    action: "Archive",
+    keep: "Keep class type",
+    explain: "It can't be scheduled any more. Classes already on the calendar stay on.",
+  },
   specialDay: {
     action: "Remove day",
     keep: "Keep day",

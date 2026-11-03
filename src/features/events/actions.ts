@@ -8,12 +8,14 @@ import { db } from "@/lib/db";
 import { logEvent } from "@/lib/log";
 import { getDeskGym } from "./queries";
 import {
-  checkClass,
+  checkClassSession,
+  checkClassType,
   checkEvent,
   checkSetChange,
   checkSpecialDay,
   checkWeek,
-  type ClassInput,
+  type ClassSessionInput,
+  type ClassTypeInput,
   type EventInput,
   type SetChangeInput,
   type SpecialDayInput,
@@ -31,7 +33,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function refreshCalendarPages() {
   revalidatePath("/me", "layout");
-  revalidatePath("/desk/events");
+  // Every tab of the desk's Events page.
+  revalidatePath("/desk/events", "layout");
 }
 
 // Climbers: class sign-up.
@@ -193,29 +196,98 @@ export async function addSetChange(input: SetChangeInput): Promise<CalendarResul
   return { ok: true };
 }
 
-/** Adds a class climbers can sign up for. */
-export async function addClass(input: ClassInput): Promise<CalendarResult> {
+const NAME_TAKEN: CalendarResult = { ok: false, message: "There's already a class type with that name." };
+
+/**
+ * Adds a kind of class. A name used by an archived type brings that type back with the new
+ * details, so names stay unique per gym.
+ */
+export async function addClassType(input: ClassTypeInput): Promise<CalendarResult> {
   const gym = await staffGym();
   if (!gym) return LOG_IN_AGAIN;
-  const checked = checkClass(input, gym.timeZone, new Date());
+  const checked = checkClassType(input);
   if (!checked.ok) return checked;
-  const { id } = await db.gymClass.create({ data: { gymId: gym.id, ...checked.data }, select: { id: true } });
-  logEvent("class_added", { gymId: gym.id, id });
+  const existing = await db.classType.findUnique({
+    where: { gymId_name: { gymId: gym.id, name: checked.data.name } },
+    select: { id: true, active: true },
+  });
+  if (existing?.active) return NAME_TAKEN;
+  const { id } = existing
+    ? await db.classType.update({ where: { id: existing.id }, data: { ...checked.data, active: true }, select: { id: true } })
+    : await db.classType.create({ data: { gymId: gym.id, ...checked.data }, select: { id: true } });
+  logEvent("class_type_saved", { gymId: gym.id, id });
   refreshCalendarPages();
   return { ok: true };
 }
 
-export type CalendarKind = "event" | "setChange" | "class";
+/** Changes a class type. Sessions already scheduled keep the details they were made with. */
+export async function updateClassType(id: string, input: ClassTypeInput): Promise<CalendarResult> {
+  const gym = await staffGym();
+  if (!gym) return LOG_IN_AGAIN;
+  if (!UUID.test(String(id))) return { ok: false, message: "That class type doesn't exist." };
+  const checked = checkClassType(input);
+  if (!checked.ok) return checked;
+  const clash = await db.classType.findFirst({
+    where: { gymId: gym.id, name: checked.data.name, id: { not: id } },
+    select: { id: true },
+  });
+  if (clash) return NAME_TAKEN;
+  const { count } = await db.classType.updateMany({ where: { id, gymId: gym.id }, data: checked.data });
+  if (count === 0) return { ok: false, message: "That class type doesn't exist." };
+  logEvent("class_type_saved", { gymId: gym.id, id });
+  refreshCalendarPages();
+  return { ok: true };
+}
 
 /**
- * Cancels an event, set change or class. The row stays, marked canceled:
- * climbers who planned on an event or signed up for a class see it was
- * canceled. Cancelling twice is fine.
+ * Schedules a session of a class type climbers can sign up for. It copies the type's name,
+ * details, length, instructor and places, unless the session names its own instructor or
+ * places.
+ */
+export async function addClass(input: ClassSessionInput): Promise<CalendarResult> {
+  const gym = await staffGym();
+  if (!gym) return LOG_IN_AGAIN;
+  const checked = checkClassSession(input, gym.timeZone, new Date());
+  if (!checked.ok) return checked;
+  const type = await db.classType.findFirst({
+    where: { id: checked.data.classTypeId, gymId: gym.id, active: true },
+  });
+  if (!type) return { ok: false, message: "Pick a class type." };
+  const { id } = await db.gymClass.create({
+    data: {
+      gymId: gym.id,
+      classTypeId: type.id,
+      title: type.name,
+      details: type.details,
+      instructor: checked.data.instructor ?? type.instructor,
+      startsAt: checked.data.startsAt,
+      durationMinutes: type.durationMinutes,
+      capacity: checked.data.capacity ?? type.capacity,
+    },
+    select: { id: true },
+  });
+  logEvent("class_added", { gymId: gym.id, id, classTypeId: type.id });
+  refreshCalendarPages();
+  return { ok: true };
+}
+
+export type CalendarKind = "event" | "setChange" | "class" | "classType";
+
+/**
+ * Cancels an event, set change or class, or archives a class type. The row stays: climbers
+ * who planned on an event or signed up for a class see it was canceled, and an archived type's
+ * sessions already scheduled stay on. Doing it twice is fine.
  */
 export async function cancelCalendarItem(kind: CalendarKind, id: string): Promise<CalendarResult> {
   const gym = await staffGym();
   if (!gym) return LOG_IN_AGAIN;
   if (!UUID.test(String(id))) return { ok: false, message: "That isn't on the calendar." };
+  if (kind === "classType") {
+    const { count } = await db.classType.updateMany({ where: { id, gymId: gym.id, active: true }, data: { active: false } });
+    if (count > 0) logEvent("class_type_archived", { gymId: gym.id, id });
+    refreshCalendarPages();
+    return { ok: true };
+  }
   const where = { id, gymId: gym.id, canceledAt: null };
   const data = { canceledAt: new Date() };
   let count = 0;

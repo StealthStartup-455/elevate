@@ -19,7 +19,18 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { user: "demo-missing-none", paths: ["/me/waiver"], phone: true },
   {
     user: "desk",
-    paths: ["/desk", "/desk/pos", "/desk/climbers", "/desk/climbers/new", "/desk/events", "/desk/waivers"],
+    paths: [
+      "/desk",
+      "/desk/pos",
+      "/desk/climbers",
+      "/desk/climbers/new",
+      "/desk/events/hours",
+      "/desk/events/class-types",
+      "/desk/events/classes",
+      "/desk/events/set-changes",
+      "/desk/events/announcements",
+      "/desk/waivers",
+    ],
     phone: false,
   },
 ];

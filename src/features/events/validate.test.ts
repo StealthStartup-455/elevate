@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { gymTime } from "./time";
 import {
-  checkClass,
+  checkClassSession,
+  checkClassType,
   checkEvent,
   checkSetChange,
   checkSpecialDay,
@@ -113,24 +114,47 @@ describe("checkSetChange", () => {
   });
 });
 
-describe("checkClass", () => {
-  const base = { title: "Intro", startsAt: "2026-11-05T18:00", durationMinutes: "60", capacity: "8" };
+describe("checkClassType", () => {
+  const base = { name: "Intro", durationMinutes: "60", capacity: "8" };
 
-  it("takes a future class with places", () => {
-    const result = checkClass(base, LA, NOW);
-    expect(result.ok && result.data).toMatchObject({ title: "Intro", durationMinutes: 60, capacity: 8, instructor: null });
-  });
-
-  it("refuses a class that has already started", () => {
-    expect(checkClass({ ...base, startsAt: "2026-11-01T18:00" }, LA, NOW)).toEqual({
-      ok: false,
-      message: "Pick a time that hasn't passed yet.",
+  it("takes a name, a length and places", () => {
+    const result = checkClassType({ ...base, instructor: " Sam " });
+    expect(result).toEqual({
+      ok: true,
+      data: { name: "Intro", details: null, instructor: "Sam", durationMinutes: 60, capacity: 8 },
     });
   });
 
-  it("refuses places or a length out of range", () => {
-    expect(checkClass({ ...base, capacity: "0" }, LA, NOW).ok).toBe(false);
-    expect(checkClass({ ...base, capacity: "2.5" }, LA, NOW).ok).toBe(false);
-    expect(checkClass({ ...base, durationMinutes: "5" }, LA, NOW).ok).toBe(false);
+  it("refuses a missing name, or places or a length out of range", () => {
+    expect(checkClassType({ ...base, name: " " })).toEqual({ ok: false, message: "Give the class a name." });
+    expect(checkClassType({ ...base, capacity: "0" }).ok).toBe(false);
+    expect(checkClassType({ ...base, capacity: "2.5" }).ok).toBe(false);
+    expect(checkClassType({ ...base, durationMinutes: "5" }).ok).toBe(false);
+  });
+});
+
+describe("checkClassSession", () => {
+  const typeId = "6f1c2c1e-1d2b-4b7a-9a0e-5f8e2b6c3d4a";
+  const base = { classTypeId: typeId, startsAt: "2026-11-05T18:00" };
+
+  it("takes a type and a future start, with the type's instructor and places by default", () => {
+    expect(checkClassSession(base, LA, NOW)).toEqual({
+      ok: true,
+      data: { classTypeId: typeId, startsAt: gymTime("2026-11-05", 18 * 60, LA), instructor: null, capacity: null },
+    });
+  });
+
+  it("takes its own instructor and places", () => {
+    const result = checkClassSession({ ...base, instructor: "Priya", capacity: "4" }, LA, NOW);
+    expect(result.ok && result.data).toMatchObject({ instructor: "Priya", capacity: 4 });
+  });
+
+  it("refuses no type, a past start, or bad places", () => {
+    expect(checkClassSession({ ...base, classTypeId: "" }, LA, NOW)).toEqual({ ok: false, message: "Pick a class type." });
+    expect(checkClassSession({ ...base, startsAt: "2026-11-01T18:00" }, LA, NOW)).toEqual({
+      ok: false,
+      message: "Pick a time that hasn't passed yet.",
+    });
+    expect(checkClassSession({ ...base, capacity: "0" }, LA, NOW).ok).toBe(false);
   });
 });

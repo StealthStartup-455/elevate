@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_COMMIT_SHA: version.commit,
     NEXT_PUBLIC_BUILD_TIME: version.builtAt,
   },
+  // Pages that moved (#101). Here rather than as redirect() in a page, which Cache Components
+  // tries to prerender and warns about.
+  async redirects() {
+    return [
+      { source: "/desk/events", destination: "/desk/events/hours", permanent: false },
+      { source: "/me/purchase", destination: "/me/membership", permanent: false },
+      { source: "/me/events", destination: "/me/classes?view=events", permanent: false },
+    ];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

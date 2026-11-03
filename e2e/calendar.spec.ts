@@ -103,6 +103,10 @@ test("the desk announces an event and the climber sees it, until it is canceled"
   await logIn(desk, "desk", /\/desk/);
   await desk.getByRole("navigation").getByRole("link", { name: "Events", exact: true }).click();
   await expect(desk.getByRole("heading", { name: "Hours and events", level: 1 })).toBeVisible();
+  // It opens on Hours; events have their own tab.
+  await expect(desk).toHaveURL(/\/desk\/events\/hours/);
+  await desk.getByRole("tab", { name: "Events" }).click();
+  await expect(desk).toHaveURL(/\/desk\/events\/announcements/);
   const deskMain = desk.getByRole("main");
 
   // A unique name, in two hours, so it sorts ahead of the seeded events.
@@ -138,10 +142,63 @@ test("the desk announces an event and the climber sees it, until it is canceled"
 
 test("the desk's hours form shows the regular week", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
-  await page.goto("/desk/events");
+  await page.goto("/desk/events/hours");
   // Inside <main>: while the page streams in, a second copy can briefly sit outside it.
   const main = page.getByRole("main");
   await expect(main.getByLabel("Mon opens")).toHaveValue("06:00");
   await expect(main.getByLabel("Sun closes")).toHaveValue("18:00");
   await expect(main.getByRole("list", { name: "Special days" })).toContainText("Staff training day");
+});
+
+test("the desk adds a class type, schedules a class of it, and a climber can sign up", async ({ browser }) => {
+  const desk = await browser.newPage();
+  await logIn(desk, "desk", /\/desk/);
+  await desk.goto("/desk/events/class-types");
+  const deskMain = desk.getByRole("main");
+  const name = `Crack climbing ${Date.now()}`;
+
+  await deskMain.getByRole("button", { name: "Add class type" }).click();
+  const typeForm = desk.getByRole("dialog", { name: "Add a class type" });
+  await typeForm.getByLabel("Name").fill(name);
+  await typeForm.getByLabel("Length in minutes").fill("75");
+  await typeForm.getByLabel("Places").fill("5");
+  await typeForm.getByLabel("Usual instructor").fill("Robin");
+  await typeForm.getByRole("button", { name: "Add class type" }).click();
+  await expect(typeForm).toBeHidden();
+  await expect(deskMain.getByRole("list", { name: "Class types" })).toContainText(name);
+
+  await desk.getByRole("tab", { name: "Classes" }).click();
+  await expect(desk).toHaveURL(/\/desk\/events\/classes/);
+  await deskMain.getByRole("button", { name: "Schedule a class" }).click();
+  const sessionForm = desk.getByRole("dialog", { name: "Schedule a class" });
+  await sessionForm.getByLabel("Class type").click();
+  await desk.getByRole("option", { name: new RegExp(name) }).click();
+  await sessionForm.getByLabel("Starts").fill(gymLocal(new Date(Date.now() + 26 * 60 * 60 * 1000)));
+  await sessionForm.getByRole("button", { name: "Schedule" }).click();
+  await expect(sessionForm).toBeHidden();
+  const scheduled = deskMain.getByRole("listitem").filter({ hasText: name });
+  await expect(scheduled).toContainText("with Robin");
+  await expect(scheduled).toContainText("0 of 5 signed up");
+
+  // The climber sees it with the type's places, and can sign up.
+  const { context, page } = await phone(browser);
+  await logIn(page, "demo-valid-active", /\/me/);
+  await openTab(page, "Classes");
+  const row = page.getByRole("main").getByTestId("class-row").filter({ hasText: name });
+  await expect(row).toContainText("5 spots left");
+  await row.getByRole("button", { name: "Sign up" }).click();
+  await expect(row).toContainText("You're in");
+  await desk.reload();
+  await expect(scheduled).toContainText("1 of 5 signed up: Demo Valid-Active");
+
+  // Leave the calendar as the seed had it: cancel the class, archive the type.
+  await scheduled.getByRole("button", { name: `Cancel class: ${name}` }).click();
+  await desk.getByRole("dialog", { name: "Cancel class" }).getByRole("button", { name: "Cancel class" }).click();
+  await expect(scheduled).toContainText("Canceled");
+  await desk.getByRole("tab", { name: "Class types" }).click();
+  await deskMain.getByRole("button", { name: `Archive: ${name}` }).click();
+  await desk.getByRole("dialog", { name: "Archive" }).getByRole("button", { name: "Archive" }).click();
+  await expect(deskMain.getByRole("list", { name: "Class types" })).not.toContainText(name);
+  await context.close();
+  await desk.close();
 });

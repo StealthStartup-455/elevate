@@ -26,6 +26,7 @@ export async function resetCalendar(gymId: string): Promise<void> {
   // Bookings first: they reference classes and climbers.
   await db.classBooking.deleteMany(where);
   await db.gymClass.deleteMany(where);
+  await db.classType.deleteMany(where);
   await db.gymEvent.deleteMany(where);
   await db.setChange.deleteMany(where);
   await db.specialHours.deleteMany(where);
@@ -73,53 +74,24 @@ export async function seedCalendar(gymId: string): Promise<void> {
     ],
   });
 
-  const classes = [
-    {
-      title: "Intro to bouldering",
-      details: "Never climbed before? Learn the basics and how to fall safely. Shoes included.",
-      instructor: "Sam",
-      startsAt: at(1, hour(18)),
-      durationMinutes: 60,
-      capacity: 8,
-      booked: 3,
-    },
-    {
-      title: "Technique clinic: footwork",
-      details: "Quiet feet, smearing and heel hooks.",
-      instructor: "Priya",
-      startsAt: at(3, hour(19)),
-      durationMinutes: 90,
-      capacity: 6,
-      booked: 6,
-    },
-    {
-      title: "Yoga for climbers",
-      details: "Stretch out shoulders, hips and forearms.",
-      instructor: "Jordan",
-      startsAt: at(6, hour(9, 30)),
-      durationMinutes: 60,
-      capacity: 12,
-      booked: 2,
-      agam: true,
-    },
-    {
-      title: "Intro to bouldering",
-      details: "Never climbed before? Learn the basics and how to fall safely. Shoes included.",
-      instructor: "Sam",
-      startsAt: at(8, hour(18)),
-      durationMinutes: 60,
-      capacity: 8,
-      booked: 0,
-    },
-    {
-      title: "Youth climbing club",
-      details: "Ages 8 to 14. Games, technique and a lot of climbing.",
-      instructor: "Priya",
-      startsAt: at(10, hour(16, 30)),
-      durationMinutes: 90,
-      capacity: 10,
-      booked: 4,
-    },
+  // The kinds of class the gym runs, then sessions of them, each a copy of its type.
+  const TYPES = {
+    intro: { name: "Intro to bouldering", details: "Never climbed before? Learn the basics and how to fall safely. Shoes included.", instructor: "Sam", durationMinutes: 60, capacity: 8 },
+    footwork: { name: "Technique clinic: footwork", details: "Quiet feet, smearing and heel hooks.", instructor: "Priya", durationMinutes: 90, capacity: 6 },
+    yoga: { name: "Yoga for climbers", details: "Stretch out shoulders, hips and forearms.", instructor: "Jordan", durationMinutes: 60, capacity: 12 },
+    youth: { name: "Youth climbing club", details: "Ages 8 to 14. Games, technique and a lot of climbing.", instructor: "Priya", durationMinutes: 90, capacity: 10 },
+  };
+  const typeIds: Record<string, string> = {};
+  for (const [key, t] of Object.entries(TYPES)) {
+    typeIds[key] = (await db.classType.create({ data: { gymId, ...t }, select: { id: true } })).id;
+  }
+
+  const classes: { type: keyof typeof TYPES; startsAt: Date; booked: number; agam?: boolean }[] = [
+    { type: "intro", startsAt: at(1, hour(18)), booked: 3 },
+    { type: "footwork", startsAt: at(3, hour(19)), booked: 6 },
+    { type: "yoga", startsAt: at(6, hour(9, 30)), booked: 2, agam: true },
+    { type: "intro", startsAt: at(8, hour(18)), booked: 0 },
+    { type: "youth", startsAt: at(10, hour(16, 30)), booked: 4 },
   ];
 
   // Busyness climbers fill the places, never the demo accounts the e2e tests
@@ -132,8 +104,12 @@ export async function seedCalendar(gymId: string): Promise<void> {
   const agam = await db.climber.findFirst({ where: { gymId, firstName: "Agam", lastName: "Kamran" }, select: { id: true } });
 
   let next = 0;
-  for (const { booked, agam: withAgam, ...data } of classes) {
-    const created = await db.gymClass.create({ data: { gymId, ...data }, select: { id: true } });
+  for (const { type, startsAt, booked, agam: withAgam } of classes) {
+    const { name: title, ...copied } = TYPES[type];
+    const created = await db.gymClass.create({
+      data: { gymId, classTypeId: typeIds[type], title, startsAt, ...copied },
+      select: { id: true },
+    });
     const climberIds = fillers.slice(next, next + booked).map((c) => c.id);
     next += booked;
     if (withAgam && agam) climberIds.push(agam.id);
@@ -143,6 +119,6 @@ export async function seedCalendar(gymId: string): Promise<void> {
   }
 
   console.log(
-    `Seeded the calendar: opening hours, 1 special day, 2 events, 3 set changes and ${classes.length} classes.`,
+    `Seeded the calendar: opening hours, 1 special day, 2 events, 3 set changes, ${Object.keys(TYPES).length} class types and ${classes.length} classes.`,
   );
 }

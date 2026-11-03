@@ -8,17 +8,26 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useId, useState, useTransition } from "react";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
-import { addClass, addEvent, addSetChange, addSpecialHours, type CalendarResult } from "../../actions";
+import {
+  addClass,
+  addClassType,
+  addEvent,
+  addSetChange,
+  addSpecialHours,
+  updateClassType,
+  type CalendarResult,
+} from "../../actions";
 
 const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
 
 type Field = {
   name: string;
   label: string;
-  type?: "text" | "multiline" | "datetime-local" | "date" | "time" | "number" | "checkbox";
+  type?: "text" | "multiline" | "datetime-local" | "date" | "time" | "number" | "checkbox" | "select";
   required?: boolean;
   helper?: string;
   defaultValue?: string;
@@ -33,10 +42,26 @@ type Form = {
   title: string;
   submit: string;
   fields: Field[];
-  save: (values: Values) => Promise<CalendarResult>;
+  save: (values: Values, id?: string) => Promise<CalendarResult>;
 };
 
 const str = (v: string | boolean | undefined) => (typeof v === "string" ? v : "");
+
+const CLASS_TYPE_FIELDS: Field[] = [
+  { name: "name", label: "Name", required: true, helper: "Like \"Intro to bouldering\"" },
+  { name: "durationMinutes", label: "Length in minutes", type: "number", required: true, defaultValue: "60" },
+  { name: "capacity", label: "Places", type: "number", required: true, defaultValue: "8" },
+  { name: "instructor", label: "Usual instructor" },
+  { name: "details", label: "Details for climbers", type: "multiline" },
+];
+
+const classType = (v: Values) => ({
+  name: str(v.name),
+  durationMinutes: str(v.durationMinutes),
+  capacity: str(v.capacity),
+  instructor: str(v.instructor),
+  details: str(v.details),
+});
 
 // One form per kind of calendar item. The actions check everything again on
 // the server; these fields only shape what is sent.
@@ -87,43 +112,69 @@ const FORMS = {
     save: (v) =>
       addSetChange({ wall: str(v.wall), startsAt: str(v.startsAt), endsAt: str(v.endsAt), note: str(v.note) }),
   },
+  classType: {
+    button: "Add class type",
+    title: "Add a class type",
+    submit: "Add class type",
+    fields: CLASS_TYPE_FIELDS,
+    save: (v) => addClassType(classType(v)),
+  },
+  editClassType: {
+    button: "Edit",
+    title: "Edit class type",
+    submit: "Save changes",
+    fields: CLASS_TYPE_FIELDS,
+    save: (v, id) => updateClassType(id ?? "", classType(v)),
+  },
   class: {
-    button: "Add class",
-    title: "Add a class",
-    submit: "Add class",
+    button: "Schedule a class",
+    title: "Schedule a class",
+    submit: "Schedule",
     fields: [
-      { name: "title", label: "Name", required: true, helper: "Like \"Intro to bouldering\"" },
+      { name: "classTypeId", label: "Class type", type: "select", required: true },
       { name: "startsAt", label: "Starts", type: "datetime-local", required: true },
-      { name: "durationMinutes", label: "Length in minutes", type: "number", required: true, defaultValue: "60" },
-      { name: "capacity", label: "Places", type: "number", required: true, defaultValue: "8" },
-      { name: "instructor", label: "Instructor" },
-      { name: "details", label: "Details", type: "multiline" },
+      { name: "instructor", label: "Instructor", helper: "Leave empty for the usual instructor" },
+      { name: "capacity", label: "Places", type: "number", helper: "Leave empty for the class type's places" },
     ],
     save: (v) =>
       addClass({
-        title: str(v.title),
+        classTypeId: str(v.classTypeId),
         startsAt: str(v.startsAt),
-        durationMinutes: str(v.durationMinutes),
-        capacity: str(v.capacity),
         instructor: str(v.instructor),
-        details: str(v.details),
+        capacity: str(v.capacity),
       }),
   },
 } satisfies Record<string, Form>;
 
 export type AddKind = keyof typeof FORMS;
 
-function initial(fields: Field[]): Values {
-  return Object.fromEntries(fields.map((f) => [f.name, f.type === "checkbox" ? false : (f.defaultValue ?? "")]));
+function initialValues(fields: Field[], initial?: Record<string, string>): Values {
+  return Object.fromEntries(
+    fields.map((f) => [f.name, f.type === "checkbox" ? false : (initial?.[f.name] ?? f.defaultValue ?? "")]),
+  );
 }
 
-// The "Add …" button on each calendar card, and its form.
-export default function AddCalendarItem({ kind }: { kind: AddKind }) {
+type Props = {
+  kind: AddKind;
+  /** The item being edited (editClassType). */
+  id?: string;
+  /** Values to start the form with, like the class type being edited. */
+  initial?: Record<string, string>;
+  /** Choices for a select field, like the class types to schedule. */
+  options?: { value: string; label: string }[];
+  /** `outlined` for a row's own button; the card's main "Add" button is contained. */
+  variant?: "contained" | "outlined";
+  /** Names the button for screen readers when its text alone is ambiguous ("Edit"). */
+  ariaLabel?: string;
+};
+
+// The "Add …" button on each calendar card (or a row's "Edit"), and its form.
+export default function AddCalendarItem({ kind, id, initial, options = [], variant = "contained", ariaLabel }: Props) {
   const form: Form = FORMS[kind];
   const [open, setOpen] = useState(false);
   // Hold the scan popup while the form is open (#92, #127).
   useDeskDialogOpen(open);
-  const [values, setValues] = useState<Values>(() => initial(form.fields));
+  const [values, setValues] = useState<Values>(() => initialValues(form.fields, initial));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const titleId = useId();
@@ -132,7 +183,7 @@ export default function AddCalendarItem({ kind }: { kind: AddKind }) {
     if (pending) return;
     setOpen(false);
     setError(null);
-    setValues(initial(form.fields));
+    setValues(initialValues(form.fields, initial));
   }
 
   function submit(event: React.FormEvent) {
@@ -140,10 +191,10 @@ export default function AddCalendarItem({ kind }: { kind: AddKind }) {
     setError(null);
     startTransition(async () => {
       try {
-        const result = await form.save(values);
+        const result = await form.save(values, id);
         if (result.ok) {
           setOpen(false);
-          setValues(initial(form.fields));
+          setValues(initialValues(form.fields, initial));
         } else setError(result.message);
       } catch {
         setError(OFFLINE);
@@ -153,7 +204,7 @@ export default function AddCalendarItem({ kind }: { kind: AddKind }) {
 
   return (
     <>
-      <Button variant="contained" size="small" onClick={() => setOpen(true)}>
+      <Button variant={variant} size="small" onClick={() => setOpen(true)} aria-label={ariaLabel}>
         {form.button}
       </Button>
       <Dialog open={open} onClose={close} fullWidth maxWidth="xs" aria-labelledby={titleId}>
@@ -174,6 +225,26 @@ export default function AddCalendarItem({ kind }: { kind: AddKind }) {
                       />
                     }
                   />
+                );
+              }
+              if (field.type === "select") {
+                return (
+                  <TextField
+                    key={field.name}
+                    select
+                    name={field.name}
+                    label={field.label}
+                    required={field.required}
+                    value={str(values[field.name])}
+                    onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+                    helperText={options.length === 0 ? "Add a class type first, on the Class types tab." : field.helper}
+                  >
+                    {options.map((o) => (
+                      <MenuItem key={o.value} value={o.value}>
+                        {o.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 );
               }
               const multiline = field.type === "multiline";

@@ -259,7 +259,7 @@ export async function getMyClasses(): Promise<ClassItem[]> {
     });
 }
 
-// The desk's Events page.
+// The desk's Events page: one reader per tab. Staff only, for the signed-in staff member's gym.
 
 /** "06:00" for a time field; midnight at the end of the day is "00:00". */
 function clockValue(minutes: number): string {
@@ -267,28 +267,13 @@ function clockValue(minutes: number): string {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 
-export type DeskWeekday = { weekday: number; name: string; closed: boolean; opensAt: string; closesAt: string };
-
-export type DeskCalendar = {
-  /** False until staff save the regular week for the first time. */
-  hoursSet: boolean;
-  week: DeskWeekday[];
-  specialDays: { id: string; date: string; hours: string; note: string | null }[];
-  events: { id: string; title: string; details: string | null; when: string; canceled: boolean }[];
-  setChanges: { id: string; wall: string; note: string | null; when: string; canceled: boolean }[];
-  classes: {
-    id: string;
-    title: string;
-    instructor: string | null;
-    when: string;
-    capacity: number;
-    signedUp: string[];
-    canceled: boolean;
-  }[];
-};
-
-// Shown in the form before a gym has saved its hours.
-const DEFAULT_OPEN = { opensAt: 6 * 60, closesAt: 22 * 60 };
+/** "1 h", "90 min", "1 h 30 min". */
+function formatLength(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
 
 /** The signed-in staff member's gym. */
 export async function getDeskGym(): Promise<Gym | null> {
@@ -296,43 +281,36 @@ export async function getDeskGym(): Promise<Gym | null> {
   return staff ? getGymById(staff.gymId) : null;
 }
 
-/** Everything the desk's Events page lists and edits. Staff only. */
-export async function getDeskCalendar(): Promise<DeskCalendar | null> {
+async function deskGym(): Promise<Gym | null> {
   await connection();
   await requireStaff();
-  const gym = await getDeskGym();
-  if (!gym) return null;
-  const now = new Date();
-  const today = gymClockAt(now, gym.timeZone).day;
-  const since = new Date(now.getTime() - 7 * DAY_MS);
+  return getDeskGym();
+}
 
-  const [weekly, special, events, setChanges, classes] = await Promise.all([
+export type DeskWeekday = { weekday: number; name: string; closed: boolean; opensAt: string; closesAt: string };
+
+export type DeskHours = {
+  /** False until staff save the regular week for the first time. */
+  hoursSet: boolean;
+  week: DeskWeekday[];
+  specialDays: { id: string; date: string; hours: string; note: string | null }[];
+};
+
+// Shown in the form before a gym has saved its hours.
+const DEFAULT_OPEN = { opensAt: 6 * 60, closesAt: 22 * 60 };
+
+/** The Hours tab: the regular week and the special days from today on. */
+export async function getDeskHours(): Promise<DeskHours | null> {
+  const gym = await deskGym();
+  if (!gym) return null;
+  const today = gymClockAt(new Date(), gym.timeZone).day;
+  const [weekly, special] = await Promise.all([
     db.openingHours.findMany({ where: { gymId: gym.id } }),
     db.specialHours.findMany({
       where: { gymId: gym.id, removedAt: null, date: { gte: asDate(today) } },
       orderBy: { date: "asc" },
     }),
-    db.gymEvent.findMany({
-      where: { gymId: gym.id, OR: [{ endsAt: { gte: since } }, { endsAt: null, startsAt: { gte: since } }] },
-      orderBy: { startsAt: "asc" },
-    }),
-    db.setChange.findMany({
-      where: { gymId: gym.id, endsAt: { gte: new Date(now.getTime() - NEW_ROUTES_DAYS * DAY_MS) } },
-      orderBy: { startsAt: "asc" },
-    }),
-    db.gymClass.findMany({
-      where: { gymId: gym.id, startsAt: { gte: since } },
-      orderBy: { startsAt: "asc" },
-      include: {
-        bookings: {
-          where: { canceledAt: null },
-          orderBy: { createdAt: "asc" },
-          select: { climber: { select: { firstName: true, lastName: true } } },
-        },
-      },
-    }),
   ]);
-
   const byWeekday = new Map(weekly.map((w) => [w.weekday, w]));
   return {
     hoursSet: weekly.length > 0,
@@ -352,29 +330,117 @@ export async function getDeskCalendar(): Promise<DeskCalendar | null> {
       hours: describeHours(s.closed || s.opensAt === null || s.closesAt === null ? null : { opensAt: s.opensAt, closesAt: s.closesAt }),
       note: s.note,
     })),
-    events: events.map((e) => ({
-      id: e.id,
-      title: e.title,
-      details: e.details,
-      when: formatSpan(e.startsAt, e.endsAt, gym.timeZone),
-      canceled: e.canceledAt !== null,
-    })),
-    setChanges: setChanges.map((s) => ({
-      id: s.id,
-      wall: s.wall,
-      note: s.note,
-      when: formatSpan(s.startsAt, s.endsAt, gym.timeZone),
-      canceled: s.canceledAt !== null,
-    })),
-    classes: classes.map((c) => ({
-      id: c.id,
-      title: c.title,
-      instructor: c.instructor,
-      when: formatSpan(c.startsAt, new Date(c.startsAt.getTime() + c.durationMinutes * 60_000), gym.timeZone),
-      capacity: c.capacity,
-      // Staff see who is coming; climbers only ever see counts.
-      signedUp: c.bookings.map((b) => `${b.climber.firstName} ${b.climber.lastName}`),
-      canceled: c.canceledAt !== null,
-    })),
   };
+}
+
+export type DeskClassType = {
+  id: string;
+  name: string;
+  details: string | null;
+  instructor: string | null;
+  durationMinutes: number;
+  capacity: number;
+  /** "1 h · 8 places · with Sam". */
+  summary: string;
+  /** Sessions still to come. */
+  upcoming: number;
+};
+
+/** The Class types tab: every type still offered, by name. */
+export async function getDeskClassTypes(): Promise<DeskClassType[]> {
+  const gym = await deskGym();
+  if (!gym) return [];
+  const types = await db.classType.findMany({
+    where: { gymId: gym.id, active: true },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { classes: { where: { startsAt: { gt: new Date() }, canceledAt: null } } } } },
+  });
+  return types.map((t) => ({
+    id: t.id,
+    name: t.name,
+    details: t.details,
+    instructor: t.instructor,
+    durationMinutes: t.durationMinutes,
+    capacity: t.capacity,
+    summary: [formatLength(t.durationMinutes), `${t.capacity} places`, t.instructor ? `with ${t.instructor}` : null]
+      .filter(Boolean)
+      .join(" · "),
+    upcoming: t._count.classes,
+  }));
+}
+
+export type DeskClass = {
+  id: string;
+  title: string;
+  instructor: string | null;
+  when: string;
+  capacity: number;
+  signedUp: string[];
+  canceled: boolean;
+};
+
+/** The Classes tab: sessions from a week ago on, with who signed up. */
+export async function getDeskClasses(): Promise<DeskClass[]> {
+  const gym = await deskGym();
+  if (!gym) return [];
+  const classes = await db.gymClass.findMany({
+    where: { gymId: gym.id, startsAt: { gte: new Date(Date.now() - 7 * DAY_MS) } },
+    orderBy: { startsAt: "asc" },
+    include: {
+      bookings: {
+        where: { canceledAt: null },
+        orderBy: { createdAt: "asc" },
+        select: { climber: { select: { firstName: true, lastName: true } } },
+      },
+    },
+  });
+  return classes.map((c) => ({
+    id: c.id,
+    title: c.title,
+    instructor: c.instructor,
+    when: formatSpan(c.startsAt, new Date(c.startsAt.getTime() + c.durationMinutes * 60_000), gym.timeZone),
+    capacity: c.capacity,
+    // Staff see who is coming; climbers only ever see counts.
+    signedUp: c.bookings.map((b) => `${b.climber.firstName} ${b.climber.lastName}`),
+    canceled: c.canceledAt !== null,
+  }));
+}
+
+export type DeskSetChange = { id: string; wall: string; note: string | null; when: string; canceled: boolean };
+
+/** The Set changes tab: resets still on the climbers' list, and those coming up. */
+export async function getDeskSetChanges(): Promise<DeskSetChange[]> {
+  const gym = await deskGym();
+  if (!gym) return [];
+  const rows = await db.setChange.findMany({
+    where: { gymId: gym.id, endsAt: { gte: new Date(Date.now() - NEW_ROUTES_DAYS * DAY_MS) } },
+    orderBy: { startsAt: "asc" },
+  });
+  return rows.map((s) => ({
+    id: s.id,
+    wall: s.wall,
+    note: s.note,
+    when: formatSpan(s.startsAt, s.endsAt, gym.timeZone),
+    canceled: s.canceledAt !== null,
+  }));
+}
+
+export type DeskEvent = { id: string; title: string; details: string | null; when: string; canceled: boolean };
+
+/** The Events tab: events from a week ago on. */
+export async function getDeskEvents(): Promise<DeskEvent[]> {
+  const gym = await deskGym();
+  if (!gym) return [];
+  const since = new Date(Date.now() - 7 * DAY_MS);
+  const rows = await db.gymEvent.findMany({
+    where: { gymId: gym.id, OR: [{ endsAt: { gte: since } }, { endsAt: null, startsAt: { gte: since } }] },
+    orderBy: { startsAt: "asc" },
+  });
+  return rows.map((e) => ({
+    id: e.id,
+    title: e.title,
+    details: e.details,
+    when: formatSpan(e.startsAt, e.endsAt, gym.timeZone),
+    canceled: e.canceledAt !== null,
+  }));
 }

@@ -143,46 +143,84 @@ export function checkSetChange(
   return { ok: true, data: { wall, startsAt, endsAt, note } };
 }
 
-export type ClassInput = {
-  title: string;
+export type ClassTypeInput = {
+  name: string;
   details?: string;
   instructor?: string;
-  startsAt: string;
   durationMinutes: string;
   capacity: string;
 };
 
-export function checkClass(
-  input: ClassInput,
-  timeZone: string,
-  now: Date,
-): Checked<{
-  title: string;
-  details: string | null;
-  instructor: string | null;
-  startsAt: Date;
-  durationMinutes: number;
-  capacity: number;
-}> {
-  const title = text(input?.title);
-  const details = optional(input?.details);
-  const instructor = optional(input?.instructor);
-  if (!title) return { ok: false, message: "Give the class a name." };
-  if (title.length > LIMITS.title) return { ok: false, message: `Keep the name under ${LIMITS.title} characters.` };
-  if (tooLong(details, LIMITS.details)) return { ok: false, message: `Keep the details under ${LIMITS.details} characters.` };
+function checkInstructor(value: unknown): Checked<string | null> {
+  const instructor = optional(value);
   if (tooLong(instructor, LIMITS.instructor)) {
     return { ok: false, message: `Keep the instructor's name under ${LIMITS.instructor} characters.` };
   }
-  const startsAt = parseDateTime(input.startsAt, timeZone);
-  if (!startsAt) return { ok: false, message: "Pick when the class starts." };
-  if (startsAt <= now) return { ok: false, message: "Pick a time that hasn't passed yet." };
+  return { ok: true, data: instructor };
+}
+
+function checkCapacity(value: unknown): Checked<number> {
+  const capacity = Number(text(value));
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > LIMITS.capacity) {
+    return { ok: false, message: `Enter how many places there are, from 1 to ${LIMITS.capacity}.` };
+  }
+  return { ok: true, data: capacity };
+}
+
+/** A kind of class: its name, details, usual instructor, length and places. */
+export function checkClassType(input: ClassTypeInput): Checked<{
+  name: string;
+  details: string | null;
+  instructor: string | null;
+  durationMinutes: number;
+  capacity: number;
+}> {
+  const name = text(input?.name);
+  const details = optional(input?.details);
+  if (!name) return { ok: false, message: "Give the class a name." };
+  if (name.length > LIMITS.title) return { ok: false, message: `Keep the name under ${LIMITS.title} characters.` };
+  if (tooLong(details, LIMITS.details)) return { ok: false, message: `Keep the details under ${LIMITS.details} characters.` };
+  const instructor = checkInstructor(input.instructor);
+  if (!instructor.ok) return instructor;
   const durationMinutes = Number(text(input.durationMinutes));
   if (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > LIMITS.durationMinutes) {
     return { ok: false, message: "Enter how long it runs, between 15 and 480 minutes." };
   }
-  const capacity = Number(text(input.capacity));
-  if (!Number.isInteger(capacity) || capacity < 1 || capacity > LIMITS.capacity) {
-    return { ok: false, message: `Enter how many places there are, from 1 to ${LIMITS.capacity}.` };
+  const capacity = checkCapacity(input.capacity);
+  if (!capacity.ok) return capacity;
+  return { ok: true, data: { name, details, instructor: instructor.data, durationMinutes, capacity: capacity.data } };
+}
+
+export type ClassSessionInput = {
+  classTypeId: string;
+  startsAt: string;
+  /** Leave empty for the type's usual instructor. */
+  instructor?: string;
+  /** Leave empty for the type's places. */
+  capacity?: string;
+};
+
+/**
+ * A session of a class type. The type's own checks happen in the action, which reads it from
+ * the database; this checks the time and the optional overrides.
+ */
+export function checkClassSession(
+  input: ClassSessionInput,
+  timeZone: string,
+  now: Date,
+): Checked<{ classTypeId: string; startsAt: Date; instructor: string | null; capacity: number | null }> {
+  const classTypeId = text(input?.classTypeId);
+  if (!/^[0-9a-f-]{36}$/i.test(classTypeId)) return { ok: false, message: "Pick a class type." };
+  const startsAt = parseDateTime(input.startsAt, timeZone);
+  if (!startsAt) return { ok: false, message: "Pick when the class starts." };
+  if (startsAt <= now) return { ok: false, message: "Pick a time that hasn't passed yet." };
+  const instructor = checkInstructor(input.instructor);
+  if (!instructor.ok) return instructor;
+  let capacity: number | null = null;
+  if (text(input.capacity)) {
+    const checked = checkCapacity(input.capacity);
+    if (!checked.ok) return checked;
+    capacity = checked.data;
   }
-  return { ok: true, data: { title, details, instructor, startsAt, durationMinutes, capacity } };
+  return { ok: true, data: { classTypeId, startsAt, instructor: instructor.data, capacity } };
 }

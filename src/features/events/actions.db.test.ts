@@ -83,6 +83,7 @@ async function cleanUp() {
     const where = { where: { gymId: gym.id } };
     await db.classBooking.deleteMany(where);
     await db.gymClass.deleteMany(where);
+    await db.classType.deleteMany(where);
     await db.gymEvent.deleteMany(where);
     await db.setChange.deleteMany(where);
     await db.specialHours.deleteMany(where);
@@ -277,10 +278,11 @@ describe("staff keeping the calendar", () => {
 
   it("refuses bad input with a message", async () => {
     session.staff = true;
-    expect(await actions.addClass({ title: "", startsAt: "", durationMinutes: "60", capacity: "8" })).toEqual({
+    expect(await actions.addClassType({ name: "", durationMinutes: "60", capacity: "8" })).toEqual({
       ok: false,
       message: "Give the class a name.",
     });
+    expect(await actions.addClass({ classTypeId: "", startsAt: "" })).toEqual({ ok: false, message: "Pick a class type." });
   });
 
   it("never touches another gym's calendar", async () => {
@@ -295,5 +297,78 @@ describe("staff keeping the calendar", () => {
     session.climberId = otherClimber;
     const seen = await queries.getMyAnnouncements();
     expect(seen.map((e) => e.title)).toEqual(["Their comp"]);
+  });
+});
+
+describe("class types and the sessions scheduled from them", () => {
+  const later = (hours: number) => {
+    // A datetime-local value on the test gym's clock (America/Vancouver, the default).
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Vancouver",
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+        .formatToParts(new Date(Date.now() + hours * HOUR))
+        .map((p) => [p.type, p.value]),
+    );
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  };
+  const type = { name: "Footwork clinic", durationMinutes: "90", capacity: "6", instructor: "Priya", details: "Quiet feet." };
+
+  it("are staff only", async () => {
+    await expect(actions.addClassType(type)).rejects.toThrow("redirect /login");
+  });
+
+  it("keeps names unique, and an archived name comes back with the new details", async () => {
+    session.staff = true;
+    expect(await actions.addClassType(type)).toEqual({ ok: true });
+    expect(await actions.addClassType(type)).toEqual({ ok: false, message: "There's already a class type with that name." });
+    const saved = await db.classType.findFirstOrThrow({ where: { gymId, name: type.name } });
+
+    expect(await actions.cancelCalendarItem("classType", saved.id)).toEqual({ ok: true });
+    expect((await queries.getDeskClassTypes()).map((t) => t.name)).not.toContain(type.name);
+    expect(await actions.addClassType({ ...type, capacity: "10" })).toEqual({ ok: true });
+    const back = await db.classType.findUniqueOrThrow({ where: { id: saved.id } });
+    expect(back).toMatchObject({ active: true, capacity: 10 });
+    expect(await db.classType.count({ where: { gymId, name: type.name } })).toBe(1);
+  });
+
+  it("schedules a session as a copy of its type, with its own instructor or places if given", async () => {
+    session.staff = true;
+    const t = await db.classType.findFirstOrThrow({ where: { gymId, name: type.name } });
+    expect(await actions.addClass({ classTypeId: t.id, startsAt: later(48) })).toEqual({ ok: true });
+    expect(await actions.addClass({ classTypeId: t.id, startsAt: later(72), instructor: "Sam", capacity: "3" })).toEqual({
+      ok: true,
+    });
+    const sessions = await db.gymClass.findMany({ where: { classTypeId: t.id }, orderBy: { startsAt: "asc" } });
+    expect(sessions.map(({ title, details, durationMinutes, instructor, capacity }) => ({ title, details, durationMinutes, instructor, capacity }))).toEqual([
+      { title: "Footwork clinic", details: "Quiet feet.", durationMinutes: 90, instructor: "Priya", capacity: 10 },
+      { title: "Footwork clinic", details: "Quiet feet.", durationMinutes: 90, instructor: "Sam", capacity: 3 },
+    ]);
+
+    // Editing the type leaves the sessions already scheduled as they were.
+    expect(await actions.updateClassType(t.id, { ...type, name: "Footwork 101", capacity: "4" })).toEqual({ ok: true });
+    const after = await db.gymClass.findMany({ where: { classTypeId: t.id }, select: { title: true, capacity: true } });
+    expect(after.map((s) => s.title)).toEqual(["Footwork clinic", "Footwork clinic"]);
+    expect((await queries.getDeskClassTypes()).find((x) => x.id === t.id)).toMatchObject({ name: "Footwork 101", upcoming: 2 });
+  });
+
+  it("refuses an archived type and another gym's type", async () => {
+    session.staff = true;
+    const archived = await db.classType.create({
+      data: { gymId, name: "Old class", durationMinutes: 60, capacity: 5, active: false },
+    });
+    const theirs = await db.classType.create({
+      data: { gymId: otherGymId, name: "Their class", durationMinutes: 60, capacity: 5 },
+    });
+    for (const id of [archived.id, theirs.id]) {
+      expect(await actions.addClass({ classTypeId: id, startsAt: later(48) })).toEqual({ ok: false, message: "Pick a class type." });
+    }
+    expect(await actions.updateClassType(theirs.id, type)).toEqual({ ok: false, message: "That class type doesn't exist." });
   });
 });

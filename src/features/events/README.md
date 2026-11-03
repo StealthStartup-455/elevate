@@ -29,7 +29,11 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 - **Climber app, Classes tab (`/me/classes`)**: a Classes | Events switch (`ClassesOrEvents`, `?view=events` in the URL).
   - `Classes`: the next 14 days, with sign up and cancel. Free; capacity is the only limit. A canceled class only shows to climbers who were signed up.
   - `EventsList`: every event in the next 60 days, canceled ones marked.
-- **Desk (`/desk/events`, "Events" in the menu)**: staff edit the regular week (all seven days save together), add or remove special days, announce and cancel events, plan and cancel set changes, and add and cancel classes (with who signed up).
+- **Desk (`/desk/events`, "Events" in the menu)**: five tabs, each its own page (`EventsTabs`, `components/desk/DeskCalendar.tsx`):
+  - **Hours** (`/desk/events/hours`): the regular week (all seven days save together) and special days.
+  - **Class types** (`/desk/events/class-types`): the kinds of class the gym runs (`ClassType`): add, edit, archive.
+  - **Classes** (`/desk/events/classes`): schedule a session of a type (it copies the type; instructor and places can be changed for that session), cancel one, see who signed up.
+  - **Set changes** (`/desk/events/set-changes`) and **Events** (`/desk/events/announcements`): plan and cancel.
 
 ## Rules
 

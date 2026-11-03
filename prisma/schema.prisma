@@ -1,4 +1,4 @@
-// Elevate database. Seventeen tables.
+// Elevate database. Eighteen tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -45,6 +45,7 @@ model Gym {
   specialHours    SpecialHours[]
   events          GymEvent[]
   setChanges      SetChange[]
+  classTypes      ClassType[]
   classes         GymClass[]
   classBookings   ClassBooking[]
 }
@@ -85,8 +86,8 @@ model Climber {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  gym            Gym       @relation(fields: [gymId], references: [id])
-  createdByStaff Staff?    @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
+  gym            Gym            @relation(fields: [gymId], references: [id])
+  createdByStaff Staff?         @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
   passes         Pass[]
   waivers        Waiver[]
   checkIns       CheckIn[]
@@ -365,11 +366,35 @@ model SetChange {
   @@index([gymId, startsAt])
 }
 
-// A class climbers sign up for in the app: an intro to bouldering, a
-// technique clinic. Free for now; capacity is how many places there are.
+// A kind of class the gym runs again and again: Intro to bouldering, a
+// footwork clinic. Staff schedule sessions of it (GymClass). A session copies
+// the type's details when it's made, so editing a type never changes a session
+// already on the calendar. Switched off with `active`, never deleted.
+model ClassType {
+  id              String   @id @default(uuid())
+  gymId           String
+  name            String
+  details         String?
+  instructor      String? // who usually teaches it; a session can name someone else
+  durationMinutes Int
+  capacity        Int // places in a session, unless the session says otherwise
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gym     Gym        @relation(fields: [gymId], references: [id])
+  classes GymClass[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, name])
+}
+
+// One session of a class climbers sign up for in the app. Free for now;
+// capacity is how many places there are.
 model GymClass {
   id              String    @id @default(uuid())
   gymId           String
+  classTypeId     String? // the type it was scheduled from; empty for sessions from before types
   title           String
   details         String?
   instructor      String?
@@ -380,11 +405,13 @@ model GymClass {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  gym      Gym            @relation(fields: [gymId], references: [id])
-  bookings ClassBooking[]
+  gym       Gym            @relation(fields: [gymId], references: [id])
+  classType ClassType?     @relation(fields: [classTypeId, gymId], references: [id, gymId], onDelete: Restrict)
+  bookings  ClassBooking[]
 
   @@unique([id, gymId])
   @@index([gymId, startsAt])
+  @@index([classTypeId])
 }
 
 // A climber's place in a class. One row per climber per class: cancelling
