@@ -206,7 +206,8 @@ export default function PurchaseOptions({
 
   return (
     <>
-      {!showMembership ? <Alert severity="warning">{ACTIVE_MEMBERSHIP_NOTICE}</Alert> : null}
+      {/* Nothing is wrong when a member already has a plan, so this is info, not a warning. */}
+      {!showMembership ? <Alert severity="info">{ACTIVE_MEMBERSHIP_NOTICE}</Alert> : null}
 
       {showMembership ? (
         <Accordion defaultExpanded>
