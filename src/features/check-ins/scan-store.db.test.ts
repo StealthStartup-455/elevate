@@ -3,7 +3,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { SCAN_TTL_MS, saveScan, takeScan } from "./scan-store";
+import { finishScan, isScanWaiting, oldestWaitingScan, SCAN_TTL_MS, saveScan } from "./scan-store";
 
 const SLUG = "test-scan-store";
 let gymId = "";
@@ -40,56 +40,80 @@ async function cleanUp() {
 }
 
 describe("scan store", () => {
-  it("returns nothing when no one has scanned", async () => {
-    expect(await takeScan(gymId)).toBeUndefined();
+  it("has nothing waiting when no one has scanned", async () => {
+    expect(await oldestWaitingScan(gymId)).toBeUndefined();
   });
 
-  it("shows each scan once, oldest first, so two climbers both reach the desk", async () => {
+  it("keeps a scan waiting until it's finished, so every desk and a reload see it (issue 127)", async () => {
+    await saveScan(gymId, alex);
+    const first = await oldestWaitingScan(gymId);
+    expect(first?.climberId).toBe(alex);
+    // A second desk, or the same desk after a reload, sees the same scan.
+    expect((await oldestWaitingScan(gymId))?.id).toBe(first?.id);
+    expect(await isScanWaiting(gymId, first!.id)).toBe(true);
+
+    expect((await finishScan(gymId, first!.id))?.climberId).toBe(alex);
+    expect(await oldestWaitingScan(gymId)).toBeUndefined();
+    expect(await isScanWaiting(gymId, first!.id)).toBe(false);
+  });
+
+  it("shows scans oldest first, so two climbers both reach the desk", async () => {
     await saveScan(gymId, alex);
     await new Promise((r) => setTimeout(r, 5));
     await saveScan(gymId, sam);
-    expect((await takeScan(gymId))?.climberId).toBe(alex);
-    expect((await takeScan(gymId))?.climberId).toBe(sam);
-    expect(await takeScan(gymId)).toBeUndefined();
+    const first = await oldestWaitingScan(gymId);
+    expect(first?.climberId).toBe(alex);
+    await finishScan(gymId, first!.id);
+    expect((await oldestWaitingScan(gymId))?.climberId).toBe(sam);
   });
 
-  it("gives a scan to only one of two desks polling at the same moment", async () => {
+  it("finishes a scan once, even when two desks finish it at the same moment", async () => {
     await saveScan(gymId, alex);
-    const results = await Promise.all([takeScan(gymId), takeScan(gymId), takeScan(gymId)]);
-    expect(results.filter(Boolean).map((r) => r?.climberId)).toEqual([alex]);
+    const scan = await oldestWaitingScan(gymId);
+    const results = await Promise.all([
+      finishScan(gymId, scan!.id),
+      finishScan(gymId, scan!.id),
+      finishScan(gymId, scan!.id),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it("clears a climber's repeat taps along with the scan staff dealt with", async () => {
+    await saveScan(gymId, alex);
+    await saveScan(gymId, alex);
+    await saveScan(gymId, sam);
+    const scan = await oldestWaitingScan(gymId);
+    await finishScan(gymId, scan!.id);
+    expect((await oldestWaitingScan(gymId))?.climberId).toBe(sam);
   });
 
   it("says when the climber scanned, for the scan-to-desk time", async () => {
     const before = Date.now();
     await saveScan(gymId, alex);
-    const taken = await takeScan(gymId);
-    expect(taken?.scannedAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
-    expect(taken?.scannedAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+    const scan = await oldestWaitingScan(gymId);
+    expect(scan?.scannedAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(scan?.scannedAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
+  it("shows a scan made a little before the desk looked (issue 127)", async () => {
+    await saveScan(gymId, alex);
+    const aMinuteLater = new Date(Date.now() + 60 * 1000);
+    expect((await oldestWaitingScan(gymId, aMinuteLater))?.climberId).toBe(alex);
   });
 
   it("ignores scans older than the time limit", async () => {
     await saveScan(gymId, alex);
     const later = new Date(Date.now() + SCAN_TTL_MS + 1000);
-    expect(await takeScan(gymId, later)).toBeUndefined();
+    expect(await oldestWaitingScan(gymId, later)).toBeUndefined();
   });
 
-  it("ignores scans made before the desk started watching", async () => {
+  it("never shows or finishes another gym's scan", async () => {
     await saveScan(gymId, alex);
-    const deskOpened = new Date(Date.now() + 1000);
-    const later = new Date(deskOpened.getTime() + 1000);
-    expect(await takeScan(gymId, later, deskOpened)).toBeUndefined();
-  });
-
-  it("shows a scan made after the desk started watching", async () => {
-    const deskOpened = new Date(Date.now() - 1000);
-    await saveScan(gymId, sam);
-    expect((await takeScan(gymId, new Date(), deskOpened))?.climberId).toBe(sam);
-  });
-
-  it("never shows another gym's scan", async () => {
-    await saveScan(gymId, alex);
-    expect(await takeScan(otherGymId)).toBeUndefined();
-    expect((await takeScan(gymId))?.climberId).toBe(alex);
+    expect(await oldestWaitingScan(otherGymId)).toBeUndefined();
+    const scan = await oldestWaitingScan(gymId);
+    expect(await finishScan(otherGymId, scan!.id)).toBeUndefined();
+    expect(await isScanWaiting(otherGymId, scan!.id)).toBe(false);
+    expect((await oldestWaitingScan(gymId))?.id).toBe(scan!.id);
   });
 
   it("refuses a scan for a climber from another gym", async () => {

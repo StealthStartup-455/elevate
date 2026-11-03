@@ -26,5 +26,5 @@ test("the desk adds a climber and lands on their page with the waiver step", asy
   await expect(page.getByRole("link", { name: "Later" })).toBeVisible();
 
   await page.getByRole("button", { name: /sign a waiver/i }).click();
-  await expect(page.getByText("valid", { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText("Valid", { exact: true })).toBeVisible({ timeout: 5_000 });
 });

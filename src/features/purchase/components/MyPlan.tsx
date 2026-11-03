@@ -45,13 +45,15 @@ export default function MyPlan({ data }: { data: PurchasePageData }) {
               {current.name}
             </Typography>
             {current.endsOn ? (
-              <Typography variant="secondary">
+              <Typography variant="secondary" color={membership.status === "expired" ? "error" : undefined}>
                 {membership.status === "expired" ? "Ended" : "Runs until"} {formatDate(current.endsOn, true)}
               </Typography>
             ) : null}
           </div>
         ) : membership.status === "expired" && membership.renewsOn ? (
-          <Typography variant="secondary">Ended {formatDate(membership.renewsOn, true)}</Typography>
+          <Typography variant="secondary" color="error">
+            Ended {formatDate(membership.renewsOn, true)}
+          </Typography>
         ) : (
           <Typography variant="secondary">You don&apos;t have a membership yet. Open Membership below to pick one.</Typography>
         )}

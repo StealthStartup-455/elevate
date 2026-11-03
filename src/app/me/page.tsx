@@ -4,11 +4,17 @@ import { VersionLink } from "@/components/ui/AppVersion";
 import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
 import MembershipCard from "@/features/climbers/components/MembershipCard";
+import { getMyMembership } from "@/features/climbers/queries";
 
 export default function MePage() {
   return (
     <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
-      <Typography variant="pageTitle">My dashboard</Typography>
+      <div className="flex flex-col gap-1">
+        <Typography variant="pageTitle">My dashboard</Typography>
+        <Suspense fallback={null}>
+          <SignedInAs />
+        </Suspense>
+      </div>
       <Suspense fallback={<p>Loading membership...</p>}>
         <MembershipCard />
       </Suspense>
@@ -20,5 +26,15 @@ export default function MePage() {
         About: Elevate <VersionLink />
       </Typography>
     </div>
+  );
+}
+
+// Who is signed in, for someone sharing a phone or switching between logins (#144).
+async function SignedInAs() {
+  const { firstName, lastName } = await getMyMembership();
+  return (
+    <Typography variant="secondary">
+      Signed in as {firstName} {lastName}
+    </Typography>
   );
 }

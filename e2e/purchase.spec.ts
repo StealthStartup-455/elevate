@@ -27,6 +27,7 @@ test("a climber with no waiver buys a membership from the Membership section", a
   await expect(page.getByText(/already have an active membership/)).toHaveCount(0);
 
   await page.getByRole("button", { name: /^1 month/ }).click();
+  await page.getByRole("button", { name: "Checkout", exact: true }).click();
   const checkout = page.getByRole("dialog", { name: "Checkout" });
   await expect(checkout).toContainText("GST (5%)");
   await expect(checkout).toContainText("demo checkout");
@@ -48,7 +49,7 @@ test("a climber with no waiver buys a membership from the Membership section", a
     page.getByText("You already have an active membership, so you don't need a day pass."),
   ).toBeVisible();
   // Rentals and chalk are still there.
-  await expect(page.getByRole("button", { name: /^Shoe rental/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "One more Shoe rental" })).toBeEnabled();
 });
 
 test("anyone can buy rentals, with a quantity, and see them in Purchase history", async ({ page }) => {
@@ -59,9 +60,10 @@ test("anyone can buy rentals, with a quantity, and see them in Purchase history"
     page.getByText("You already have an active membership, so you don't need a day pass."),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: /^Shoe rental/ }).click();
+  await page.getByRole("button", { name: "One more Shoe rental" }).click();
+  await page.getByRole("button", { name: "One more Shoe rental" }).click();
+  await page.getByRole("button", { name: "Checkout", exact: true }).click();
   const checkout = page.getByRole("dialog", { name: "Checkout" });
-  await checkout.getByRole("button", { name: "One more Shoe rental" }).click();
   // 2 × 6.00 = 12.00, plus 5% GST and 7% PST on rentals.
   await expect(checkout).toContainText("PST (7%)");
   await expect(checkout).toContainText("$13.44");
@@ -80,6 +82,62 @@ test("anyone can buy rentals, with a quantity, and see them in Purchase history"
   await expect(latest).toContainText("$13.44");
   await history.getByRole("button", { name: "Done" }).click();
   await expect(history).toBeHidden();
+});
+
+test("a climber buys shoes, a harness and chalk in one checkout (#143)", async ({ page }) => {
+  await openPurchase(page, "demo-valid-active");
+  const more = (name: string) => page.getByRole("button", { name: `One more ${name}` });
+  await more("Shoe rental").click();
+  await more("Shoe rental").click();
+  await more("Harness rental").click();
+  for (let i = 0; i < 3; i++) await more("Chalk").click();
+
+  // 2 × 6.00 + 5.00 + 3 × 8.00 = 41.00 before tax, in one order.
+  const order = page.getByRole("list", { name: "Your order" });
+  await expect(order).toContainText("Shoe rental ×2");
+  await expect(order).toContainText("Harness rental");
+  await expect(order).toContainText("Chalk ×3");
+  await page.getByRole("button", { name: "Checkout", exact: true }).click();
+  const checkout = page.getByRole("dialog", { name: "Checkout" });
+  // GST 2.05, PST 7% of 41.00 is 2.87.
+  await expect(checkout).toContainText("$41.00");
+  await expect(checkout).toContainText("$2.05");
+  await expect(checkout).toContainText("$2.87");
+  await checkout.getByRole("button", { name: "Pay $45.92" }).click();
+  const done = page.getByRole("dialog", { name: "You're all set" });
+  await expect(done).toContainText("Shoe rental ×2");
+  await expect(done).toContainText("Chalk ×3");
+  await done.getByRole("button", { name: "Done" }).click();
+  await expect(done).toBeHidden();
+
+  // The order is empty again, and it is one purchase in the history.
+  await expect(page.getByRole("button", { name: "Checkout", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Purchase history" }).click();
+  const history = page.getByRole("dialog", { name: "Purchase history" });
+  const latest = history.getByRole("list", { name: "Your purchases" }).getByRole("listitem").first();
+  await expect(latest).toContainText("Shoe rental ×2");
+  await expect(latest).toContainText("Chalk ×3");
+  await expect(latest).toContainText("$45.92");
+});
+
+test("an order holds one membership or pass: picking another replaces it (#143)", async ({ page }) => {
+  await openPurchase(page, "demo-valid-none");
+  await page.getByRole("button", { name: /^1 month/ }).click();
+  await page.getByRole("button", { name: "One more Shoe rental" }).click();
+  const order = page.getByRole("list", { name: "Your order" });
+  await expect(order).toContainText("1 month membership");
+  await expect(order).toContainText("Shoe rental");
+
+  // A day pass takes the membership's place; the shoes stay.
+  await page.getByRole("button", { name: /^Day pass/ }).click();
+  await expect(order).toContainText("Day pass");
+  await expect(order).not.toContainText("1 month membership");
+  await expect(order).toContainText("Shoe rental");
+  await expect(page.getByRole("button", { name: /^(✓ )?1 month membership/ })).toHaveAttribute("aria-pressed", "false");
+
+  // Picking the day pass again takes it out.
+  await page.getByRole("button", { name: /Day pass/ }).click();
+  await expect(order).not.toContainText("Day pass");
 });
 
 async function openDashboard(page: Page, username: string) {

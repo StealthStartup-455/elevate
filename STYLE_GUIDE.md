@@ -78,7 +78,14 @@ In MUI, **primary = actions** and **secondary = navigation and settings**. Links
 
 ### Status
 
-Green, amber and red only describe state. They are never used for decoration or for actions.
+Green, amber and red only describe state. They are never used for decoration, and for actions only in the two cases below.
+
+Two buttons take a status color, because the action is about a status:
+
+- **Destructive** (revoke, remove): `color="error"` (red), on the button and on its confirm button in the dialog. The confirm is the dialog's one `contained` button.
+- **Renew**: `color="warning"` (amber), for the "Renew membership" button and the renewal rows on the POS. Teal stays for every other action, including buying.
+
+An **expired membership** is red wherever it shows: the `StatusPill` (`status="bad"`, ✕), and the "Ended …" line next to it (`color="error"`).
 
 | Status | Use for | MUI | Tailwind | Icon |
 |---|---|---|---|---|

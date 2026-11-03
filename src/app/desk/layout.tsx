@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import AppVersion from "@/components/ui/AppVersion";
 import Logo from "@/components/ui/Logo";
 import LogoutButton from "@/features/auth/components/LogoutButton";
+import ScanWatcher from "@/features/check-ins/components/ScanWatcher";
 import { requireStaff } from "@/features/auth/staff";
 import { isPosEnabled } from "@/features/pos/queries";
 
@@ -27,6 +28,8 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             <LogoutButton />
           </nav>
           <main className="p-4 sm:p-6">{children}</main>
+          {/* On every desk page, so a scan shows wherever staff are (#127). */}
+          <ScanWatcher />
           <AppVersion />
         </div>
       </StaffOnly>

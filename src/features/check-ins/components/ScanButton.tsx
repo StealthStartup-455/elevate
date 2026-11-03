@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function ScanButton(props: Props) {
-  const [step, setStep] = useState<"idle" | "processing" | "done" | "error">("idle");
+  const [step, setStep] = useState<"idle" | "processing" | "done" | "error" | "offline">("idle");
   const issues = climberScanMessages(props);
 
   // After the spinner has shown for 3 seconds, tell the server about the
@@ -34,8 +34,14 @@ export default function ScanButton(props: Props) {
   useEffect(() => {
     if (step !== "processing") return;
     const timer = setTimeout(async () => {
-      const result = await recordScan();
-      setStep(result.ok ? "done" : "error");
+      try {
+        const result = await recordScan();
+        setStep(result.ok ? "done" : "error");
+      } catch {
+        // Offline or the server didn't answer: say so, rather than let the
+        // whole page fail (#130).
+        setStep("offline");
+      }
     }, PROCESSING_MS);
     return () => clearTimeout(timer);
   }, [step]);
@@ -60,10 +66,14 @@ export default function ScanButton(props: Props) {
         Demo only: at the gym, the desk scans your code.
       </Typography>
 
-      <Dialog open={step === "error"} onClose={() => setStep("idle")}>
+      <Dialog open={step === "error" || step === "offline"} onClose={() => setStep("idle")}>
         <DialogTitle>Couldn&apos;t scan</DialogTitle>
         <DialogContent>
-          <Alert severity="error">Something went wrong. Please log in again and try once more.</Alert>
+          <Alert severity="error">
+            {step === "offline"
+              ? "Couldn't reach the gym. Check your connection and try again."
+              : "Something went wrong. Please log in again and try once more."}
+          </Alert>
         </DialogContent>
         <DialogActions>
           <Button variant="contained" onClick={() => setStep("idle")}>
@@ -73,7 +83,9 @@ export default function ScanButton(props: Props) {
       </Dialog>
 
       <Dialog open={step === "done"} onClose={() => setStep("idle")}>
-        <DialogTitle>{issues.length ? "Your scan reached the desk" : "Scanned!"}</DialogTitle>
+        {/* "Sent", not "the desk can see you": the phone can't know whether
+            staff have seen it yet (#127). */}
+        <DialogTitle>Sent to the desk</DialogTitle>
         <DialogContent>
           {issues.length ? (
             // Info, not a warning: nothing here is the climber's fault (#90).
@@ -84,7 +96,7 @@ export default function ScanButton(props: Props) {
               <div>Please stop by the desk before you climb.</div>
             </Alert>
           ) : (
-            <Typography>The front desk can see you now. Have a good climb!</Typography>
+            <Typography>The desk will check you in. Have a good climb!</Typography>
           )}
         </DialogContent>
         <DialogActions>

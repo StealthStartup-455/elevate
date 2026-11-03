@@ -79,6 +79,8 @@ async function demoLogin(username: string, rawPassword: string): Promise<LoginSt
   }
   logEvent("login_succeeded", { role: "climber", climberId });
 
+  // Drop a leftover desk cookie too, or this browser keeps desk access (#142).
+  await clearSession();
   await setSession(climberId);
   redirect("/me");
 }

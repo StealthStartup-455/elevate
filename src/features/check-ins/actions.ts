@@ -7,7 +7,9 @@ import { db } from "@/lib/db";
 import { logEvent, logWarning } from "@/lib/log";
 import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
-import { saveScan, takeScan } from "./scan-store";
+import { finishScan, isScanWaiting, oldestWaitingScan, saveScan } from "./scan-store";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ScannedClimber = {
   id: string;
@@ -45,62 +47,74 @@ export async function recordScan(): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
-// When the desk page starts watching for scans, on the server's clock so the
-// browser's clock doesn't matter. The desk passes it back to takeLatestScan.
-export async function startWatchingScans(): Promise<string> {
-  await requireStaff();
-  return new Date().toISOString();
+// The desk's view of a waiting scan: which scan, and the climber behind it.
+export type DeskScan = { scanId: string; climber: ScannedClimber };
+
+// The oldest scan waiting at the staff member's gym, for the desk popup.
+// Polled by every open desk page. It doesn't take the scan: every desk gets
+// the same one until someone deals with it (finishDeskScan), so a desk on
+// another page, a reload or a second desk never loses an arrival (#127).
+// Staff only.
+export async function nextDeskScan(): Promise<DeskScan | null> {
+  // Polled every few seconds by every desk, so its total time matters (#84, #86).
+  return timed("perf_action", { name: "nextDeskScan" }, nextDeskScanNow);
 }
 
-// A day is longer than any desk session that matters; anything older, or not
-// a date, falls back to the usual time limit.
-const MAX_WATCH_MS = 24 * 60 * 60 * 1000;
-
-function watchStart(value: string | undefined, now: Date): Date | undefined {
-  if (!value) return undefined;
-  const at = new Date(value);
-  const age = now.getTime() - at.getTime();
-  return Number.isNaN(at.getTime()) || age < 0 || age > MAX_WATCH_MS ? undefined : at;
-}
-
-// The climber from the latest scan, for the front desk popup. Returns each
-// scan once, then null until someone scans again. Only scans made after
-// `watchingSince` (from startWatchingScans) count (#91). Staff only.
-export async function takeLatestScan(watchingSince?: string): Promise<ScannedClimber | null> {
-  // Polled every few seconds by the desk, so its total time matters (#84, #86).
-  return timed("perf_action", { name: "takeLatestScan" }, () => takeLatestScanNow(watchingSince));
-}
-
-async function takeLatestScanNow(watchingSince?: string): Promise<ScannedClimber | null> {
+async function nextDeskScanNow(): Promise<DeskScan | null> {
   await requireStaff();
   const staff = await getStaffContext();
   if (!staff) return null;
-  const gymId = staff.gymId;
-  const now = new Date();
-  const scan = await takeScan(gymId, now, watchStart(watchingSince, now));
+  const scan = await oldestWaitingScan(staff.gymId);
   if (!scan) return null;
   const climber = await getClimber(scan.climberId);
   if (!climber || climber.id !== scan.climberId) {
-    logWarning("scan_climber_missing", { gymId, climberId: scan.climberId });
+    // Nobody can deal with a scan for a climber the desk can't load, so
+    // clear it rather than block the ones behind it.
+    logWarning("scan_climber_missing", { gymId: staff.gymId, climberId: scan.climberId });
+    await finishScan(staff.gymId, scan.id);
     return null;
   }
-  // Time from the climber's tap to the desk showing them: the number behind
+  return {
+    scanId: scan.id,
+    climber: {
+      id: climber.id,
+      name: `${climber.firstName} ${climber.lastName}`,
+      waiverStatus: climber.waiverStatus,
+      waiverExpiresOn: climber.waiverExpiresOn,
+      membershipStatus: climber.membershipStatus,
+      membershipRenewsOn: climber.membershipRenewsOn,
+      hasDayPass: climber.hasDayPass,
+      punchesLeft: climber.punchesLeft,
+    },
+  };
+}
+
+// Whether the scan a desk is showing is still waiting. False once another
+// desk has dealt with it, so that desk's popup can close. Staff only.
+export async function isDeskScanWaiting(scanId: string): Promise<boolean> {
+  await requireStaff();
+  const staff = await getStaffContext();
+  if (!staff || !UUID.test(String(scanId))) return false;
+  return isScanWaiting(staff.gymId, scanId);
+}
+
+// Staff dealt with a scan: checked the person in, or closed the popup. Clears
+// it (and any repeat taps by the same climber) from every desk. Staff only.
+export async function finishDeskScan(
+  scanId: string,
+  outcome: "checked_in" | "closed",
+): Promise<void> {
+  await requireStaff();
+  const staff = await getStaffContext();
+  if (!staff || !UUID.test(String(scanId))) return;
+  const scan = await finishScan(staff.gymId, scanId);
+  if (!scan) return;
+  // Time from the climber's tap to staff dealing with them: the number behind
   // any "faster check-in" claim.
   logEvent("scan_taken", {
-    gymId,
-    climberId: climber.id,
+    gymId: staff.gymId,
+    climberId: scan.climberId,
     waitMs: Date.now() - scan.scannedAt.getTime(),
-    waiverStatus: climber.waiverStatus,
-    membershipStatus: climber.membershipStatus,
+    outcome: outcome === "checked_in" ? "checked_in" : "closed",
   });
-  return {
-    id: climber.id,
-    name: `${climber.firstName} ${climber.lastName}`,
-    waiverStatus: climber.waiverStatus,
-    waiverExpiresOn: climber.waiverExpiresOn,
-    membershipStatus: climber.membershipStatus,
-    membershipRenewsOn: climber.membershipRenewsOn,
-    hasDayPass: climber.hasDayPass,
-    punchesLeft: climber.punchesLeft,
-  };
 }

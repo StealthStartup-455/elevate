@@ -71,7 +71,11 @@ export default async function MembershipCard() {
             <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
               {title}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+              variant="body2"
+              color={membership.status === "expired" ? "error" : "text.secondary"}
+              sx={{ mt: 1 }}
+            >
               {renewalLine(membership)}
             </Typography>
             {needsPurchase ? (
@@ -129,11 +133,11 @@ export default async function MembershipCard() {
             ) : null}
             {needsRenewal ? (
               canPurchase ? (
-                <LinkButton href="/me/purchase" variant="outlined" size="large">
+                <LinkButton href="/me/purchase" variant="outlined" size="large" color="warning">
                   Renew membership
                 </LinkButton>
               ) : (
-                <Button variant="outlined" size="large" disabled title="Coming soon">
+                <Button variant="outlined" size="large" color="warning" disabled title="Coming soon">
                   Renew membership
                 </Button>
               )

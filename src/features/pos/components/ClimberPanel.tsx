@@ -21,6 +21,7 @@ import { formatDate } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { findPosClimbers, revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
+import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 // Wait for a pause in typing before searching, as Manual check in does.
 const SEARCH_DELAY_MS = 200;
@@ -34,7 +35,7 @@ const WAIVER: Record<WaiverStatus, { status: Status; label: string }> = {
 const MEMBERSHIP: Record<MembershipStatus, { status: Status; label: string }> = {
   active: { status: "ok", label: "Active membership" },
   paused: { status: "warn", label: "Membership paused" },
-  expired: { status: "warn", label: "Membership expired" },
+  expired: { status: "bad", label: "Membership expired" },
   none: { status: "neutral", label: "No membership" },
 };
 
@@ -144,7 +145,11 @@ export default function ClimberPanel({
             <StatusPill status={waiver.status} label={waiver.label} />
             <StatusPill status={membership.status} label={membership.label} />
           </div>
-          {detail ? <Typography variant="secondary">{detail}</Typography> : null}
+          {detail ? (
+            <Typography variant="secondary" color={selected.membershipStatus === "expired" ? "error" : undefined}>
+              {detail}
+            </Typography>
+          ) : null}
           {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
             <RevokeMembership key={selected.id} climber={selected} onRevoked={onUpdated} />
           ) : null}
@@ -202,7 +207,10 @@ export default function ClimberPanel({
                 <List dense disablePadding aria-label="Renewals due">
                   {renewalsDue.map((renewal) => (
                     <ListItem key={renewal.climberId} disablePadding>
-                      <ListItemButton onClick={() => onRenew(renewal)}>
+                      <ListItemButton
+                        onClick={() => onRenew(renewal)}
+                        sx={{ bgcolor: "warning.soft", "&:hover": { bgcolor: "warning.softHover" } }}
+                      >
                         <ListItemText
                           primary={renewal.name}
                           secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}`}
@@ -247,6 +255,8 @@ export default function ClimberPanel({
 // refund, staff void the sale under Today's sales.
 function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevoked: () => void }) {
   const [open, setOpen] = useState(false);
+  // Hold the scan popup while revoking (#92, #127).
+  useDeskDialogOpen(open);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -270,7 +280,7 @@ function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevok
   return (
     <>
       <div>
-        <Button variant="outlined" size="small" onClick={() => setOpen(true)}>
+        <Button variant="outlined" color="error" size="small" onClick={() => setOpen(true)}>
           Revoke membership
         </Button>
       </div>
@@ -288,7 +298,7 @@ function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevok
           <Button disabled={pending} onClick={close}>
             Keep membership
           </Button>
-          <Button variant="contained" disabled={pending} onClick={confirm}>
+          <Button variant="contained" color="error" disabled={pending} onClick={confirm}>
             {pending ? "Revoking…" : "Revoke membership"}
           </Button>
         </DialogActions>
