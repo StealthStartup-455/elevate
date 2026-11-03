@@ -1,0 +1,27 @@
+# 2026-10-30 17:25 UTC: RGP import checker, part A (read and clean)
+
+- **Developer:** @TylerLeHere
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#40 / PR to come (part 1 of 3)
+- **Branch:** `feature/40-parse-and-import`
+- **What the agent did:**
+  - Started `src/features/imports/`, the checker for Rock Gym Pro exports: types, `parse.ts` (CSV to table), `cards.ts` (refuses card numbers), `dates.ts` (day/month order), `clean.ts` (phone, email, name, yes/no) and `rgp-mapping.ts` (RGP column to Elevate field).
+  - Tests for each, run against the fake RGP files in `src/features/imports/fixtures/`.
+- **Files touched:** `src/features/imports/*`, `package.json` and `package-lock.json` (Papa Parse).
+- **Decisions and why:**
+  - RGP exports only for now (#40, #29). Another format is one more mapping file.
+  - The checker saves nothing and never touches the database. #41 saves the ready records.
+  - Day/month order is decided once per date column, or given by the gym, never guessed per row. `03/04/1996` with no other clue is "ambiguous" and goes to review.
+  - Any one card number (13 to 19 digits that pass the Luhn check) refuses the whole file. The message names the column, never the number.
+  - Papa Parse reads the CSV (quotes, commas and newlines inside cells). The separator is fixed to a comma so it doesn't guess.
+  - Unknown belay labels such as "Auto Belay Only" stay unknown until the gym says what they mean. Same phone is never treated as the same person (families share phones).
+  - Functions take everything as arguments (text, `now`, answers) and return results, so they're pure and easy to test.
+- **Gotchas:**
+  - npm 11.6 (on Node 25) rewrote unrelated parts of `package-lock.json` when adding Papa Parse, dropping Linux-only entries CI needs. The lock file was regenerated with npm 12 so the diff is only Papa Parse. Use Node 24 (as CI does) before `npm install`.
+  - `toStoredPhone()` doesn't check length; `cleanPhone()` checks for 10 to 15 digits before calling it.
+- **Open follow-ups:**
+  - Part B: build people and passes from rows, row checks, parent links, duplicate flags, the dry-run report.
+  - Part C: the `npm run import:check` command.
+  - Not decided yet: an unclosed quote in a CSV, rows with more cells than headers, and whether row numbers should count blank lines. RGP's "Free" membership type (one fixture row) needs a rule before Part B.
+  - The card refusal says "send it again"; `fixtures/README.md` still says "upload again".
+- **Verification:** `npm run lint` passed. `npm run build` passed. `npm test`: 21 files, 180 passed, 2 todo.
