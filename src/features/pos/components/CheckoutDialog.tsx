@@ -117,7 +117,12 @@ export default function CheckoutDialog({
   const total = formatMoney(cart.totalCents);
 
   return (
-    <Dialog open={open} onClose={close} fullWidth maxWidth="xs" aria-labelledby="checkout-title">
+    <Dialog open={open} onClose={(_event, reason) => {
+        // A click outside doesn't close it: the second click of a double-click
+        // on the button that opened it lands there (#134), and a sale shouldn't
+        // be dismissed by accident. Cancel and Escape close it.
+        if (reason !== "backdropClick") close();
+      }} fullWidth maxWidth="xs" aria-labelledby="checkout-title">
       <DialogTitle id="checkout-title">{done ? "Sale saved" : "Checkout"}</DialogTitle>
 
       {done ? (

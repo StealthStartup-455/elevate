@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { checkInClimber, giveDayPass, signWaiver } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
-import { formatDate } from "@/features/climbers/format";
+import { formatDate, membershipDateLine } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
 import {
   finishDeskScan,
@@ -176,6 +176,11 @@ export default function ScanWatcher() {
   if (!climber) return null;
   const issues = problems(climber);
   const nextStep = deskNextStep(climber);
+  const dateLine = membershipDateLine(
+    climber.membershipStatus,
+    climber.membershipRenewsOn,
+    climber.membershipRecurring,
+  );
 
   return (
     <Dialog
@@ -228,10 +233,10 @@ export default function ScanWatcher() {
               <Typography variant="caption" color="text.secondary">
                 {climber.punchesLeft} {climber.punchesLeft === 1 ? "punch" : "punches"} left
               </Typography>
-            ) : climber.membershipRenewsOn ? (
+            ) : dateLine ? (
+              // No date while paused (#124); "Runs until" for a one-off plan (#132).
               <Typography variant="caption" color={climber.membershipStatus === "expired" ? "error" : "text.secondary"}>
-                {climber.membershipStatus === "expired" ? "Ended" : "Renews"}{" "}
-                {formatDate(climber.membershipRenewsOn, true)}
+                {dateLine}
               </Typography>
             ) : null}
           </Box>

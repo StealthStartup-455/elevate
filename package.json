@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "local": "node scripts/local.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -23,6 +24,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "staging:setup": "node scripts/staging-setup.mjs",
+    "staging:reset": "node scripts/staging-reset.mjs",
     "mock:busyness": "tsx scripts/generate-busyness-mock.ts"
   },
   "dependencies": {
@@ -36,6 +38,7 @@
     "@supabase/supabase-js": "^2.117.3",
     "next": "16.4.2",
     "papaparse": "^5.7.0",
+    "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",

@@ -1,9 +1,6 @@
 import { connection } from "next/server";
 import { formatTime } from "@/features/analytics/components/format";
-import { DEMO_GYM_ID } from "@/features/analytics/config";
-import { getFrontDeskBusyness } from "@/features/analytics/queries";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
-import { getCheckInClimbers } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
 import { formatPhone } from "@/features/climbers/phone";
 import { isoDay } from "@/features/climbers/status";
@@ -49,6 +46,7 @@ export function toPosClimber(c: Climber): PosClimber {
     waiverExpiresOn: c.waiverExpiresOn,
     membershipStatus: c.membershipStatus,
     membershipRenewsOn: c.membershipRenewsOn,
+    membershipRecurring: c.membershipRecurring,
     hasDayPass: c.hasDayPass,
     punchesLeft: c.punchesLeft,
   };
@@ -106,46 +104,39 @@ async function listProducts(gymId: string): Promise<Product[]> {
 }
 
 /**
- * The climbers checked in today, newest first, once each: the visits the
- * desk saved today, then the busyness mock's check-ins (the same ones the
- * front desk list shows), linked to the real climbers.
+ * The climbers the desk checked in today, newest first, once each. Today is
+ * from midnight in the gym's time zone. Only saved check-ins: the busyness
+ * sample's check-ins aren't real visits, and its two hour window reaches back
+ * into the previous evening after midnight (#135).
  */
 async function getCheckedInToday(
   gymId: string,
   since: Date,
   timeZone: string,
 ): Promise<RecentCheckIn[]> {
-  const [saved, busyness] = await Promise.all([
-    db.checkIn.findMany({
-      where: { gymId, checkedInAt: { gte: since } },
-      orderBy: { checkedInAt: "desc" },
-      select: {
-        climberId: true,
-        checkedInAt: true,
-        climber: { select: { firstName: true, lastName: true, phone: true } },
-      },
-      take: 100,
-    }),
-    getFrontDeskBusyness(DEMO_GYM_ID),
-  ]);
-  // Only the climbers behind the mock's check-ins (#85).
-  const mockClimbers = await getCheckInClimbers(busyness.checkIns.map((c) => c.climberId));
+  const saved = await db.checkIn.findMany({
+    where: { gymId, checkedInAt: { gte: since } },
+    orderBy: { checkedInAt: "desc" },
+    select: {
+      climberId: true,
+      checkedInAt: true,
+      climber: { select: { firstName: true, lastName: true, phone: true } },
+    },
+    take: 100,
+  });
 
   const seen = new Set<string>();
   const list: RecentCheckIn[] = [];
-  const add = (climberId: string | undefined, name: string, phone: string, at: Date) => {
-    if (!climberId || seen.has(climberId)) return;
-    seen.add(climberId);
-    list.push({ climberId, name, phone, time: formatTime(at, timeZone) });
-  };
   for (const c of saved) {
+    if (seen.has(c.climberId)) continue;
+    seen.add(c.climberId);
     const { firstName, lastName, phone } = c.climber;
-    add(c.climberId, `${firstName} ${lastName}`, phone ? formatPhone(phone) : "", c.checkedInAt);
-  }
-  // The mock's names and phones, already formatted.
-  for (const c of busyness.checkIns) {
-    const { firstName, lastName, phone } = c.climber;
-    add(mockClimbers.get(c.climberId)?.id, `${firstName} ${lastName}`, phone, c.timestamp);
+    list.push({
+      climberId: c.climberId,
+      name: `${firstName} ${lastName}`,
+      phone: phone ? formatPhone(phone) : "",
+      time: formatTime(c.checkedInAt, timeZone),
+    });
   }
   return list;
 }

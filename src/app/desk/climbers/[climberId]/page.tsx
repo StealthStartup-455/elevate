@@ -12,7 +12,7 @@ import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import DeskWaiverPanel from "@/features/climbers/components/DeskWaiverPanel";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
-import { formatDate } from "@/features/climbers/format";
+import { membershipDateLine } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
 import type { MembershipStatus } from "@/features/climbers/types";
 import { getStaffWaiverPanel } from "@/features/waivers/queries";
@@ -60,6 +60,11 @@ async function ClimberCard({
   if (!climber) notFound();
   const waiver = await getStaffWaiverPanel(climber.id);
   const membership = MEMBERSHIP[climber.membershipStatus];
+  const membershipLine = membershipDateLine(
+    climber.membershipStatus,
+    climber.membershipRenewsOn,
+    climber.membershipRecurring,
+  );
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
@@ -110,14 +115,13 @@ async function ClimberCard({
               <div className="flex flex-wrap items-center gap-3">
                 <Typography variant="secondary">Membership</Typography>
                 <StatusPill status={membership.status} label={membership.label} />
-                {climber.membershipRenewsOn &&
-                (climber.membershipStatus === "active" || climber.membershipStatus === "expired") ? (
+                {membershipLine ? (
+                  // No date while paused (#124); "Runs until" for a one-off plan (#132).
                   <Typography
                     variant="secondary"
                     color={climber.membershipStatus === "expired" ? "error" : undefined}
                   >
-                    {climber.membershipStatus === "expired" ? "Ended" : "Renews"}{" "}
-                    {formatDate(climber.membershipRenewsOn, true)}
+                    {membershipLine}
                   </Typography>
                 ) : null}
               </div>

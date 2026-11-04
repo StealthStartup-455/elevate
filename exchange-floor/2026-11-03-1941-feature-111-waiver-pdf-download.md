@@ -1,0 +1,22 @@
+# 2026-11-03 19:41 UTC: Download a signed waiver as a PDF
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#111 / PR pending
+- **Branch:** `feature/111-waiver-pdf-download`
+- **What the agent did:**
+  - `src/features/waivers/pdf.ts`: `buildWaiverPdf` lays out a signed waiver (gym, wording, rules, signer, time in the gym's time zone, emergency contact, drawn signature, waiver id and wording SHA-256) with `pdf-lib` (MIT, new dependency). `waiverPdfResponse` sends it as an attachment named `waiver-<name>-<yyyy-mm-dd>.pdf`.
+  - Two download routes: `/desk/waivers/[waiverId]/pdf` (staff, own gym only, via `getSignedWaiverForStaff`) and `/me/waiver/[waiverId]/pdf` (the climber, a managing parent or staff, via `getSignedWaiver`). Anyone else gets a 404; logged out, the proxy sends them to log in.
+  - **Download PDF** buttons on `/desk/waivers/[waiverId]` and `/me/waiver/[waiverId]`. New log event `waiver_pdf_downloaded` (`waiverId`, `climberId`, `source`).
+  - `SignedWaiverView` now carries `bodyHash`.
+- **Files touched:** `src/features/waivers/{pdf.ts,pdf.test.ts,queries.ts,README.md}`, `src/app/desk/waivers/[waiverId]/{page.tsx,pdf/route.ts}`, `src/app/me/waiver/[waiverId]/{page.tsx,pdf/route.ts}`, `e2e/waiver-pdf.spec.ts`, `DEPLOYMENT.md`, `package.json`
+- **Decisions and why:**
+  - Built on each download, never stored: the wording, signature and hash on a signed waiver never change, so there is nothing to keep in sync and no storage bucket to secure.
+  - `pdf-lib` with the built-in Helvetica: no font files, works in a route handler. It only covers Windows-1252, so other characters (emoji, non-Latin names) print as "?" instead of failing (`pdfSafe`). Embed a TTF font if gyms need those names printed.
+  - Dark ink on white from `colors.light` in `tokens.ts`, so the PDF prints the same in any theme.
+- **Gotchas:**
+  - Route handler types (`RouteContext<...>`) are generated: run `npx next typegen` (or `next dev`/`build`) before `tsc`, or it says the path doesn't satisfy `"/api/version"`.
+  - `/me/waiver/[waiverId]` now calls `getSignedWaiver` before `getGym`: `getGym` reads the clock, and running both at once logged "unstable value `Date.now()` while prerendering".
+- **Review fixes (2026-11-03 22:30 UTC):** the `waiverFileName` test signed at 07:30 UTC on Nov 3, which is Nov 2 or Nov 3 in Vancouver depending on tzdata (2026b keeps BC on UTC-7 from Nov 2026); it now signs at 05:00 UTC, Nov 2 under both. Self-signed PDFs say "Signed by X". `wrap` breaks a word longer than a line (a URL in a gym's wording). The e2e checks that another logged-in climber gets a 404.
+- **Open follow-ups:** A download link on the desk climber page's waiver panel; a TTF font for non-Latin names; several participants on one waiver.
+- **Verification:** after the review fixes: lint and `tsc` clean; `npm test` 269 passed (2 todo); build passed; Playwright 54 passed, 3 skipped. Before them: `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 268 passed (2 todo), including 6 new in `pdf.test.ts`; `npm run build` passed; `npx playwright test` 54 passed, 3 skipped (real Supabase logins). Opened a generated PDF and the desk and climber pages by eye.

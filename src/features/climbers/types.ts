@@ -26,6 +26,10 @@ export type Climber = {
   membershipStatus: MembershipStatus;
   /** ISO date the membership renews, or ended. Unset when there is none. */
   membershipRenewsOn?: string;
+  /** A monthly recurring plan (renews), not a one-off one (#132). */
+  membershipRecurring?: boolean;
+  /** The product the membership was sold as, when it came from a sale. */
+  membershipPlan?: string;
   /** A day pass covers today (sold on the POS, or the #62 stopgap). */
   hasDayPass: boolean;
   /** Visits left on their punch cards. 0 when they have none. */
@@ -59,6 +63,7 @@ export type CheckInCandidate = {
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
+  membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
 };

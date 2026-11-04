@@ -28,6 +28,28 @@ describe("summarizeWaiver", () => {
     const result = summarizeWaiver({ signedAt: day("2026-09-01"), version: "v2" }, "v2", NOW);
     expect(result.status).toBe("valid");
   });
+  // #125: 5 p.m. on Oct 29 in Victoria is already Oct 30 in UTC.
+  const eveningSigned = { signedAt: new Date("2026-10-30T00:00:00Z"), version: "v1" };
+
+  it("dates a waiver signed in the evening by the gym's day, not UTC's", () => {
+    const result = summarizeWaiver(eveningSigned, null, NOW, "America/Vancouver");
+    expect(result).toEqual({ status: "valid", expiresOn: "2027-10-29" });
+  });
+
+  it("stays valid until midnight in the gym's time zone on the expiry day", () => {
+    const lastEvening = new Date("2027-10-30T06:59:00Z"); // 11:59 p.m. Oct 29, Victoria
+    const nextMorning = new Date("2027-10-30T07:01:00Z"); // 12:01 a.m. Oct 30, Victoria
+    expect(summarizeWaiver(eveningSigned, null, lastEvening, "America/Vancouver").status).toBe("valid");
+    expect(summarizeWaiver(eveningSigned, null, nextMorning, "America/Vancouver").status).toBe("expired");
+  });
+});
+
+describe("summarizeMembership plan details (issue 132)", () => {
+  it("says whether the plan renews, and its name when it was sold", () => {
+    const sold = { startsAt: day("2026-10-01"), expiresAt: day("2026-11-30"), pausedAt: null, renews: false, plan: "1 month membership" };
+    expect(summarizeMembership([sold], NOW)).toMatchObject({ status: "active", recurring: false, plan: "1 month membership" });
+    expect(summarizeMembership([{ ...sold, renews: true, plan: null }], NOW)).toMatchObject({ recurring: true, plan: undefined });
+  });
 });
 
 describe("summarizeMembership", () => {

@@ -212,6 +212,11 @@ function passesFor(c: SeedClimber, gymId: string, n: number) {
 }
 
 async function main() {
+  // It deletes every climber in the gym, so never on real customers (#138).
+  if (process.env.APP_ENV === "production") {
+    throw new Error("APP_ENV is production. The seed is for fictional data only.");
+  }
+
   const gym = await db.gym.upsert({
     where: { slug: DEFAULT_GYM_SLUG },
     update: { name: SEED_GYM_NAME, waiverVersion: WAIVER_VERSION },
@@ -234,8 +239,10 @@ async function main() {
 
   const all: SeedClimber[] = [...CLIMBERS, ...busynessClimbers(), ...demoClimbers()];
 
+  let removed = 0;
   await db.$transaction(
     async (tx) => {
+      removed = await tx.climber.count({ where: { gymId: gym.id } });
       // Children first: they reference climbers with ON DELETE RESTRICT.
       await tx.qrScan.deleteMany({ where: { gymId: gym.id } });
       await tx.checkIn.deleteMany({ where: { gymId: gym.id } });
@@ -285,6 +292,13 @@ async function main() {
     { timeout: 60_000 },
   );
 
+  // What a reset before a demo took away (#138): everyone added in the app
+  // since the last seed, on top of the seed's own climbers it recreated.
+  const added = Math.max(removed - all.length, 0);
+  console.log(
+    `Removed ${removed} climbers (${added} added since the last seed) with their passes, ` +
+      "waivers, sales, check ins and scans.",
+  );
   console.log(
     `Seeded ${all.length} climbers into ${gym.name} ` +
       `(${CLIMBERS.length} team, ${all.length - CLIMBERS.length - DEMO_ACCOUNTS.length} busyness, ${DEMO_ACCOUNTS.length} demo), ` +

@@ -130,7 +130,12 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
         )}
       </CardContent>
 
-      <Dialog open={voiding !== null} onClose={close} fullWidth maxWidth="xs" aria-labelledby="void-title">
+      <Dialog open={voiding !== null} onClose={(_event, reason) => {
+        // A click outside doesn't close it: the second click of a double-click
+        // on the button that opened it lands there (#134), and a sale shouldn't
+        // be dismissed by accident. Cancel and Escape close it.
+        if (reason !== "backdropClick") close();
+      }} fullWidth maxWidth="xs" aria-labelledby="void-title">
         <DialogTitle id="void-title">Void sale</DialogTitle>
         {voiding ? (
           <>
