@@ -19,10 +19,10 @@ export default function ClimbersPage() {
           gap: 4,
         }}
       >
-        <Typography variant="pageTitle">Climbers</Typography>
-        <LinkButton href="/desk/climbers/new">Add climber</LinkButton>
+        <Typography variant="pageTitle">Customers</Typography>
+        <LinkButton href="/desk/customers/new">Add customer</LinkButton>
       </Box>
-      <Suspense fallback={<p>Loading climbers...</p>}>
+      <Suspense fallback={<p>Loading customers...</p>}>
         <ClimberList />
       </Suspense>
     </div>
@@ -36,7 +36,7 @@ async function ClimberList() {
     <Card variant="outlined" sx={{ borderRadius: 3 }}>
       <CardContent>
         <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
-          All climbers
+          All customers
         </Typography>
         <ClimberTable
           rows={climbers.map((c) => ({

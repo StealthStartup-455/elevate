@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_COMMIT_SHA: version.commit,
     NEXT_PUBLIC_BUILD_TIME: version.builtAt,
   },
+  // The desk's Climbers pages became Customers. Old links and bookmarks
+  // (/desk/climbers, /desk/climbers/<id>, /desk/climbers/new) still land on
+  // the right page, query string included. Not permanent, so browsers don't
+  // cache it for good.
+  async redirects() {
+    return [{ source: "/desk/climbers/:path*", destination: "/desk/customers/:path*", permanent: false }];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

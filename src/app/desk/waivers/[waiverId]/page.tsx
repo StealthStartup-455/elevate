@@ -36,7 +36,7 @@ async function DeskWaiver({ params }: Pick<PageProps<"/desk/waivers/[waiverId]">
   return (
     <>
       <div className="flex flex-col items-start">
-        <LinkButton href={`/desk/climbers/${waiver.climberId}`} variant="text">
+        <LinkButton href={`/desk/customers/${waiver.climberId}`} variant="text">
           ← {waiver.climberName}
         </LinkButton>
       </div>

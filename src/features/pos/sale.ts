@@ -37,7 +37,7 @@ export function refreshSalePages(climberId: string) {
   revalidatePath("/desk");
   revalidatePath("/me");
   revalidatePath("/me/purchase");
-  revalidatePath(`/desk/climbers/${climberId}`);
+  revalidatePath(`/desk/customers/${climberId}`);
 }
 
 // What the sale put on the climber's account, for the done screen.

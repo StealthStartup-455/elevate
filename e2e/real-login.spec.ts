@@ -23,7 +23,7 @@ test.describe("real logins", () => {
     await logIn(page, "climber@elevate.test", /\/me/);
     await page.goto("/desk");
     await expect(page).toHaveURL(/\/staff-only/);
-    await page.goto("/desk/climbers");
+    await page.goto("/desk/customers");
     await expect(page).toHaveURL(/\/staff-only/);
   });
 
@@ -45,8 +45,8 @@ test.describe("real logins", () => {
 
   test("the desk login opens the front desk, and /me sends it back", async ({ page }) => {
     await logIn(page, "desk@elevate.test", /\/desk/);
-    await page.goto("/desk/climbers");
-    await expect(page.getByRole("heading", { name: "Climbers", level: 1 })).toBeVisible();
+    await page.goto("/desk/customers");
+    await expect(page.getByRole("heading", { name: "Customers", level: 1 })).toBeVisible();
     await page.goto("/me");
     await expect(page).toHaveURL(/\/desk$/);
   });

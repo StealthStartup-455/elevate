@@ -226,6 +226,7 @@ Use MUI's own components wherever they exist. `src/components/ui/` adds a few th
 | Component | Use for |
 |---|---|
 | `LinkArrow` | "View all", "Open schedule": a link to another page, with an arrow |
+| `NavLink` | A link in a page's top nav bar. Marks the page you're on (slate blue, tint, bar, `aria-current`) and takes that look as soon as it's clicked |
 | `HelpTip` | A "?" that explains the thing next to it |
 | `DisabledReason` | Wraps a disabled control so it can say why |
 | `StatusPill` | Any status: valid, expiring, failed. Always has its icon |
@@ -251,7 +252,7 @@ A button that navigates is still a link. Use `<LinkArrow>` or a `<Link>`, not a 
 ### Navigation and settings
 
 ```tsx
-<LinkArrow href="/desk/climbers">View all climbers</LinkArrow>
+<LinkArrow href="/desk/customers">View all customers</LinkArrow>
 
 <ToggleButtonGroup exclusive value={range} onChange={(_, v) => v && setRange(v)} aria-label="Timeframe">
   <ToggleButton value="today">Today</ToggleButton>
