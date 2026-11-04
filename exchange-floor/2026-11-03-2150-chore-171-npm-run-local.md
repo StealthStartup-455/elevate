@@ -1,0 +1,29 @@
+# 2026-11-03 21:50 UTC: npm run local, one command to set up and run the app
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#171 / PR to come
+- **Branch:** `chore/171-npm-run-local`
+- **What the agent did:**
+  - `scripts/local.mjs` and `npm run local`, in this order: checks Node, makes `.env` from `.env.example` if it's missing, checks Docker, runs `npm install` when `package-lock.json` is newer than `node_modules/.package-lock.json`, starts local Supabase if `supabase status` fails, fills in `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` when it's empty or still the placeholder, runs `prisma migrate deploy` and `prisma generate`, seeds when migrations were just applied, then runs `npm run dev`.
+  - Options: `--seed` (always seed), `--no-seed`, `--setup-only` (don't start the app), `--help`.
+  - README: a "Quick start: one command" section above the manual setup, and a row in the scripts table.
+- **Files touched:** `scripts/local.mjs` (new), `package.json`, `README.md`
+- **Decisions and why:**
+  - Node, not bash, so it runs on Windows too; commands go through the shell like `staging-setup.mjs` (needed for `npx` on Windows).
+  - `prisma migrate deploy`, not `migrate dev` (`npm run db:migrate`): deploy only applies what's in `prisma/migrations`. It never creates a migration and never asks to reset the database, so it's safe after switching branches. Changing the schema still goes through `npm run db:migrate`.
+  - Seeds only when migrations were just applied (a new database or a branch with new tables), because seeding gives every climber a new id and logs open tabs out. `--seed` forces it.
+  - Refuses to run when `DATABASE_URL` isn't localhost or 127.0.0.1, or with `APP_ENV=production`, so it can't migrate or seed a hosted database. It never prints keys.
+  - Never changes a publishable key that's already set, only an empty or placeholder one.
+  - The app itself isn't run in Docker: local Supabase already runs in Docker through its CLI, and staging and production run on Vercel, not in a container.
+- **Gotchas:**
+  - If 3000 is taken, `next dev` moves to the next free port, and the script says to open the Local address it prints.
+  - A migration that was edited after you applied it makes `migrate deploy` fail; the script tells you to run `npx supabase db reset` and then `npm run local -- --seed`.
+- **Open follow-ups:** None
+- **Verification:**
+  - `npm run lint` clean; `npm run build` passed.
+  - Fresh worktree, no `node_modules`, empty database, placeholder key: `npm run local -- --setup-only` installed, filled in the key, applied all 9 migrations, seeded, in 25 s.
+  - Re-run: "Up to date", "No pending migrations", no seed.
+  - Docker stopped (faked `docker` failing): stops with how to start it.
+  - Hosted pooler `DATABASE_URL`: refuses. Unknown option: refuses.
+  - Full run: `next dev` started (moved to 3001 because 3000 was busy), `/login` returned 200 with the demo logins, and SIGINT stopped both the script and the server.
