@@ -37,13 +37,16 @@ export function monthGrid(month: string): (string | null)[][] {
   return weeks;
 }
 
-/**
- * The months the calendar can show: from today's month to the month of the last thing on it,
- * so there's never an empty month to page to.
- */
-export function calendarMonths(today: string, days: string[]): string[] {
-  const last = days.reduce((max, day) => (day > max ? day : max), today);
-  const months = [monthOf(today)];
-  while (months.at(-1)! < monthOf(last)) months.push(addMonths(months.at(-1)!, 1));
-  return months;
+/** How many months the climber's calendar shows, starting with this one: a year ahead. */
+export const CALENDAR_MONTHS = 12;
+
+/** The months the calendar can show: today's month and the next eleven. */
+export function calendarMonths(today: string): string[] {
+  return Array.from({ length: CALENDAR_MONTHS }, (_, i) => addMonths(monthOf(today), i));
+}
+
+/** The last day the calendar shows: the end of its last month ("2027-10-31"). */
+export function calendarEnd(today: string): string {
+  const [y, m] = addMonths(monthOf(today), CALENDAR_MONTHS - 1).split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 }

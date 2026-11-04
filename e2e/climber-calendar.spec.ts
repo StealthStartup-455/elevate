@@ -25,7 +25,9 @@ test("a climber finds a class on the calendar and signs up from its sheet", asyn
   await openTab(page, "Classes");
   await page.getByRole("button", { name: "Calendar" }).click();
   await expect(page).toHaveURL(/view=calendar/);
-  const calendar = page.getByTestId("calendar");
+  // Scoped to <main>: while the page streams in, a second copy can sit outside it.
+  const main = page.getByRole("main");
+  const calendar = main.getByTestId("calendar");
   await expect(calendar.getByRole("button", { pressed: true })).toHaveAttribute("aria-current", "date");
 
   // The seed puts classes over the next two weeks: pick the first day with one.
@@ -33,7 +35,7 @@ test("a climber finds a class on the calendar and signs up from its sheet", asyn
   const label = (await dayWithClass.getAttribute("aria-label"))!;
   await dayWithClass.click();
   await expect(dayWithClass).toHaveAttribute("aria-pressed", "true");
-  const day = page.getByTestId("calendar-day");
+  const day = main.getByTestId("calendar-day");
   await expect(day.getByRole("heading", { level: 2 })).toHaveText(label.split(":")[0]);
   // The seed opens every day it has a class: its hours show under the date.
   await expect(day.getByTestId("calendar-hours")).toHaveText(/^(Open|Special hours) \d/);
@@ -50,8 +52,14 @@ test("a climber finds a class on the calendar and signs up from its sheet", asyn
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toBeHidden();
 
+  // It goes a year ahead: eleven more months, then the arrow stops.
+  const next = calendar.getByRole("button", { name: "Next month" });
+  for (let i = 0; i < 11; i++) await next.click();
+  await expect(next).toBeDisabled();
+  await expect(calendar.getByRole("button", { name: "Previous month" })).toBeEnabled();
+
   // A reload keeps the calendar open.
   await page.reload();
-  await expect(page.getByTestId("calendar")).toBeVisible();
+  await expect(main.getByTestId("calendar")).toBeVisible();
   await context.close();
 });

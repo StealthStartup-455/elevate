@@ -1,14 +1,14 @@
 import { describeHours } from "../hours";
-import { getMyCalendarHours, getMyClasses, getMyEvents, getMyGymToday } from "../queries";
+import { getMyCalendarEvents, getMyCalendarHours, getMyClasses, getMyGymToday } from "../queries";
 import CalendarView from "./CalendarView";
 
-// The Classes tab's Calendar view (#101): the same classes and events as the two lists, by
-// day, with the gym's hours for each day (special days and closures included).
+// The Classes tab's Calendar view (#101): a year ahead of the gym's hours (special days and
+// closures included) and events, and the next two weeks of classes, by day.
 export default async function Calendar() {
   const [today, classes, events, hours] = await Promise.all([
     getMyGymToday(),
     getMyClasses(),
-    getMyEvents(),
+    getMyCalendarEvents(),
     getMyCalendarHours(),
   ]);
   if (!today) return null;

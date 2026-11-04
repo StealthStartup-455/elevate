@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, calendarMonths, formatMonth, monthGrid, monthOf } from "./calendar";
+import { addMonths, calendarEnd, calendarMonths, formatMonth, monthGrid, monthOf } from "./calendar";
 
 describe("monthGrid", () => {
   it("lays November 2026 out Monday first, padding the weeks either side", () => {
@@ -32,14 +32,14 @@ describe("months", () => {
     expect(formatMonth("2026-11")).toBe("November 2026");
   });
 
-  it("offers today's month up to the month of the last thing on the calendar", () => {
-    expect(calendarMonths("2026-11-03", [])).toEqual(["2026-11"]);
-    expect(calendarMonths("2026-11-03", ["2026-11-20", "2027-01-02", "2026-12-01"])).toEqual([
-      "2026-11",
-      "2026-12",
-      "2027-01",
-    ]);
-    // Something that started before today (an event on now) doesn't add past months.
-    expect(calendarMonths("2026-11-03", ["2026-10-30"])).toEqual(["2026-11"]);
+  it("offers a year from today's month, ending on the last day of the last month", () => {
+    const months = calendarMonths("2026-11-03");
+    expect(months).toHaveLength(12);
+    expect(months[0]).toBe("2026-11");
+    expect(months.at(-1)).toBe("2027-10");
+    expect(calendarEnd("2026-11-03")).toBe("2027-10-31");
+    // A last month of February ends on the 28th, or the 29th in a leap year.
+    expect(calendarEnd("2026-03-15")).toBe("2027-02-28");
+    expect(calendarEnd("2027-03-01")).toBe("2028-02-29");
   });
 });

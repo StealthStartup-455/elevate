@@ -6,6 +6,7 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getMyGym } from "@/features/purchase/queries";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
+import { CALENDAR_MONTHS, calendarEnd } from "./calendar";
 import {
   describeHours,
   openStatus,
@@ -91,9 +92,9 @@ async function loadGymWeek(gym: Gym, now: Date): Promise<GymWeek | null> {
 }
 
 /**
- * The gym's hours for every day the climber's calendar can show: from today to the end of the
- * month 60 days ahead (as far as events go). Null if the gym hasn't set its hours, so the
- * calendar shows none rather than "Closed" every day.
+ * The gym's hours for every day the climber's calendar can show: from today to the end of its
+ * last month, a year ahead. Null if the gym hasn't set its hours, so the calendar shows none
+ * rather than "Closed" every day.
  */
 export async function getMyCalendarHours(): Promise<DayHours[] | null> {
   await connection();
@@ -101,8 +102,7 @@ export async function getMyCalendarHours(): Promise<DayHours[] | null> {
   if (!gym) return null;
   const now = new Date();
   const today = gymClockAt(now, gym.timeZone).day;
-  const [y, m] = addDays(today, 60).split("-").map(Number);
-  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const last = calendarEnd(today);
   const [weekly, special] = await Promise.all([
     db.openingHours.findMany({
       where: { gymId: gym.id },
@@ -156,6 +156,11 @@ export async function getMyAnnouncements(): Promise<Announcement[]> {
 /** Every event on now or in the next 60 days, soonest first, canceled ones marked: the Events list. */
 export async function getMyEvents(): Promise<Announcement[]> {
   return loadMyEvents(60);
+}
+
+/** Every event on now or coming up in the climber's calendar's year, soonest first. */
+export async function getMyCalendarEvents(): Promise<Announcement[]> {
+  return loadMyEvents(CALENDAR_MONTHS * 31);
 }
 
 async function loadMyEvents(days: number): Promise<Announcement[]> {

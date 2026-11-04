@@ -38,7 +38,8 @@ const DOT = { class: "primary.main", event: "highlight.bg", closed: "error.main"
 export default function CalendarView({ today, classes, events, hours }: Props) {
   // An event that started before today and is still on shows on today.
   const eventDay = (e: Announcement) => (e.day < today ? today : e.day);
-  const months = calendarMonths(today, [...classes.map((c) => c.day), ...events.map(eventDay)]);
+  const months = calendarMonths(today);
+  const hoursByDay = new Map(hours.map((h) => [h.day, h]));
 
   const [month, setMonth] = useState(monthOf(today));
   const [day, setDay] = useState(today);
@@ -46,7 +47,7 @@ export default function CalendarView({ today, classes, events, hours }: Props) {
 
   const classesOn = (d: string) => classes.filter((c) => c.day === d);
   const eventsOn = (d: string) => events.filter((e) => eventDay(e) === d);
-  const hoursOn = (d: string) => hours.find((h) => h.day === d);
+  const hoursOn = (d: string) => hoursByDay.get(d);
   const closedOn = (d: string) => {
     const h = hoursOn(d);
     return h && h.hours === null ? h : undefined;
@@ -206,7 +207,7 @@ export default function CalendarView({ today, classes, events, hours }: Props) {
           </ul>
         )}
 
-        <Typography variant="secondary">Classes show two weeks ahead, events two months.</Typography>
+        <Typography variant="secondary">Classes show two weeks ahead. Hours and events go a year ahead.</Typography>
       </section>
 
       <Drawer
@@ -358,6 +359,10 @@ function AgendaRow({
           </Typography>
         </div>
         {pill}
+        {/* Like a phone's settings list: the chevron says the row opens something. */}
+        <Box component="span" aria-hidden="true" sx={{ color: "text.secondary", fontSize: "1.375rem", lineHeight: 1, flexShrink: 0 }}>
+          ›
+        </Box>
       </ButtonBase>
     </li>
   );
