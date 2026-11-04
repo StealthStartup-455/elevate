@@ -21,15 +21,16 @@ import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill from "@/components/ui/StatusPill";
 import { voidSale } from "../actions";
 import { formatMoney } from "../cart";
+import { TENDER_LABEL } from "../cashout";
 import type { SaleSummary } from "../types";
+import CashOutDialog from "./CashOutDialog";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
-
-const TENDER_LABEL = { CARD: "Card", CASH: "Cash", ONLINE: "Online" } as const;
 
 // Today's sales under the POS, newest first, with Void. Totals count paid
 // sales only, so they match what the card machine and till should hold.
 export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
   const [voiding, setVoiding] = useState<SaleSummary | null>(null);
+  const [cashingOut, setCashingOut] = useState(false);
   // Hold the scan popup while voiding (#92, #127).
   useDeskDialogOpen(voiding !== null);
   const [reason, setReason] = useState("");
@@ -67,9 +68,14 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
       <CardContent className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <Typography variant="cardTitle">Today&apos;s sales</Typography>
-          <Typography variant="secondary" component="span">
-            {paid.length} paid · {totals.map((t) => `${TENDER_LABEL[t.tender]} ${formatMoney(t.cents)}`).join(" · ")}
-          </Typography>
+          <div className="flex flex-wrap items-center gap-2">
+            <Typography variant="secondary" component="span">
+              {paid.length} paid · {totals.map((t) => `${TENDER_LABEL[t.tender]} ${formatMoney(t.cents)}`).join(" · ")}
+            </Typography>
+            <Button variant="outlined" size="small" onClick={() => setCashingOut(true)}>
+              Cash out
+            </Button>
+          </div>
         </div>
 
         {sales.length === 0 ? (
@@ -129,6 +135,8 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
           </TableContainer>
         )}
       </CardContent>
+
+      <CashOutDialog open={cashingOut} onClose={() => setCashingOut(false)} sales={sales} />
 
       <Dialog open={voiding !== null} onClose={(_event, reason) => {
         // A click outside doesn't close it: the second click of a double-click
