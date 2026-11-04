@@ -27,6 +27,16 @@ const monday = (minutes: number) => gymTime("2026-11-02", minutes, LA);
 describe("weekAhead", () => {
   const days = weekAhead(monday(h(10)), LA, WEEK, [HOLIDAY]);
 
+  it("runs as many days as asked, for the month calendar, repeating the regular week", () => {
+    const christmas: SpecialDay = { day: "2026-12-25", closed: true, opensAt: null, closesAt: null, note: "Christmas" };
+    const month = weekAhead(monday(h(10)), LA, WEEK, [HOLIDAY, christmas], 60);
+    expect(month).toHaveLength(60);
+    expect(month.at(-1)?.day).toBe("2026-12-31");
+    // Monday, Nov 30 has the regular Monday hours; Christmas is closed with its note.
+    expect(month.find((d) => d.day === "2026-11-30")).toMatchObject({ hours: { opensAt: h(6), closesAt: h(22) }, special: false });
+    expect(month.find((d) => d.day === "2026-12-25")).toMatchObject({ hours: null, special: true, note: "Christmas" });
+  });
+
   it("lists seven days from today", () => {
     expect(days.map((d) => d.label)).toEqual(["Today", "Tomorrow", "Wed", "Thu", "Fri", "Sat", "Sun"]);
     expect(days[0]).toMatchObject({ day: "2026-11-02", date: "Nov 2", hours: { opensAt: h(6), closesAt: h(22) } });

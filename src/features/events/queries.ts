@@ -6,6 +6,7 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getMyGym } from "@/features/purchase/queries";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
+import { CALENDAR_MONTHS, calendarEnd } from "./calendar";
 import {
   describeHours,
   openStatus,
@@ -28,7 +29,16 @@ import {
   startsIn,
   type SetChangeState,
 } from "./schedule";
-import { addDays, formatClockRange, formatDay, formatSpan, gymClockAt, MINUTES_PER_DAY, weekdayName } from "./time";
+import {
+  addDays,
+  daysBetween,
+  formatClockRange,
+  formatDay,
+  formatSpan,
+  gymClockAt,
+  MINUTES_PER_DAY,
+  weekdayName,
+} from "./time";
 
 // Reads for the gym calendar: the climber dashboard (/me) and the desk's
 // Events page (/desk/events). The climber side reads the signed-in climber's
@@ -81,6 +91,36 @@ async function loadGymWeek(gym: Gym, now: Date): Promise<GymWeek | null> {
   };
 }
 
+/**
+ * The gym's hours for every day the climber's calendar can show: from today to the end of its
+ * last month, a year ahead. Null if the gym hasn't set its hours, so the calendar shows none
+ * rather than "Closed" every day.
+ */
+export async function getMyCalendarHours(): Promise<DayHours[] | null> {
+  await connection();
+  const gym = await myGym();
+  if (!gym) return null;
+  const now = new Date();
+  const today = gymClockAt(now, gym.timeZone).day;
+  const last = calendarEnd(today);
+  const [weekly, special] = await Promise.all([
+    db.openingHours.findMany({
+      where: { gymId: gym.id },
+      select: { weekday: true, closed: true, opensAt: true, closesAt: true },
+    }),
+    loadSpecialDays(gym.id, today, last),
+  ]);
+  if (weekly.length === 0) return null;
+  return weekAhead(now, gym.timeZone, weekly, special, daysBetween(today, last) + 1);
+}
+
+/** Today on the signed-in climber's gym's clock ("2026-11-03"), for the calendar view. */
+export async function getMyGymToday(): Promise<string | null> {
+  await connection();
+  const gym = await myGym();
+  return gym ? gymClockAt(new Date(), gym.timeZone).day : null;
+}
+
 /** The signed-in climber's gym hours for the week ahead. Null if it hasn't set them. */
 export async function getMyGymWeek(): Promise<GymWeek | null> {
   await connection();
@@ -97,6 +137,8 @@ export type Announcement = {
   /** "In 12 days", "Tomorrow", "On now". */
   startsIn: string;
   canceled: boolean;
+  /** The day it starts on the gym's clock ("2026-11-14"), for the calendar view. */
+  day: string;
 };
 
 /**
@@ -114,6 +156,11 @@ export async function getMyAnnouncements(): Promise<Announcement[]> {
 /** Every event on now or in the next 60 days, soonest first, canceled ones marked: the Events list. */
 export async function getMyEvents(): Promise<Announcement[]> {
   return loadMyEvents(60);
+}
+
+/** Every event on now or coming up in the climber's calendar's year, soonest first. */
+export async function getMyCalendarEvents(): Promise<Announcement[]> {
+  return loadMyEvents(CALENDAR_MONTHS * 31);
 }
 
 async function loadMyEvents(days: number): Promise<Announcement[]> {
@@ -140,6 +187,7 @@ async function loadMyEvents(days: number): Promise<Announcement[]> {
       when: formatSpan(e.startsAt, e.endsAt, gym.timeZone),
       startsIn: startsIn(now, e.startsAt, gym.timeZone),
       canceled: e.canceledAt !== null,
+      day: gymClockAt(e.startsAt, gym.timeZone).day,
     }));
 }
 
@@ -208,6 +256,8 @@ export type ClassItem = {
   spots: string;
   booked: boolean;
   canceled: boolean;
+  /** The day on the gym's clock ("2026-11-05"), for the calendar view. */
+  day: string;
 };
 
 /**
@@ -255,6 +305,7 @@ export async function getMyClasses(): Promise<ClassItem[]> {
         spots: describeSpots(left),
         booked: c.bookings.length > 0,
         canceled: c.canceledAt !== null,
+        day: start.day,
       };
     });
 }

@@ -1,0 +1,24 @@
+# 2026-11-03 22:51 UTC: Seth's polish branch on top of Scott's climber app
+
+- **Developer:** @SethMess
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#101 / none yet (meant to merge into `feature/101-customer-dashboard` if Scott wants it, not into dev)
+- **Branch:** `feature/101-seth-climber-polish`, from `feature/101-customer-dashboard` at `15cfc22`
+- **What the agent did:**
+  - Membership tab: "You already have an active membership, so you don't need a day pass." is now an `info` Alert, not `warning`: nothing is wrong (STYLE_GUIDE status table: info is for neutral notices). In the climber theme it shows teal.
+- **Files touched:** `src/features/purchase/components/PurchaseOptions.tsx`
+- **Decisions and why:**
+  - Each change is its own commit so Scott can cherry-pick, merge or ignore them.
+  - Kept "Signed in as <full name>" under "Hi, <first name>": it's #144 (shared phones), and `release-fixes.spec.ts` checks it.
+- **Gotchas:** In a seeded database the plan card says "Membership" because seeded passes have no sale line (`purchase/queries.ts` fallback); a plan bought in the app shows its product name. Not a bug.
+- **Update: a Calendar view on the Classes tab.**
+  - A third option, Classes | Events | **Calendar** (`?view=calendar`). It's a month grid, Monday first, with a dot for classes (teal), events (amber) and closed days (red). Today is outlined and the chosen day is filled teal. Tapping a day lists its events and classes underneath, or "Nothing on this day" with a "Next up" button. Tapping an item opens a bottom sheet: for a class it's the same `ClassList` card, so sign up and cancel work there; for an event it's its tag, time and details.
+  - Data: `ClassItem` and `Announcement` gain `day` (the gym-clock ISO day); there's a new `getMyGymToday()`. Closed days come from `getMyGymWeek()`, so only the coming seven days. An event that started before today and is still on shows on today. Months run from today's to the month of the last item (`calendarMonths`), so there are no empty months to page to.
+  - Files: `src/features/events/calendar.ts` (+ test), `components/Calendar.tsx`, `components/CalendarView.tsx`, `components/ClassesOrEvents.tsx`, `queries.ts`, `src/app/me/classes/page.tsx`, `README.md`, `e2e/climber-calendar.spec.ts`, `e2e/accessibility.spec.ts` (adds `/me/classes?view=calendar`).
+  - Gotchas: the sheet uses `disablePortal` so it keeps the climber theme's font and colours. After joining, a climber is still on `/join`, which has no tab bar, so e2e goes to `/me` first. `calendar.spec.ts` counts places on the seeded Youth climbing club, so it fails after manual sign-ups until you re-seed.
+  - Verification: lint and `tsc` clean; `npm test` 317 passed (2 todo); `npm run build` passed; against `next dev` after a fresh seed, `climber-calendar`, `calendar`, `accessibility` and `navigation` specs: 18 passed (axe on the calendar in light and dark, and on the open sheet). Checked at 390px in light and dark with no horizontal scroll.
+- **Update: the calendar shows each day's hours.** Under the date: "Open 6 AM – 10 PM", or "Special hours … · note"; closed days keep the red Closed box. `weekAhead` takes an optional `count` (default `DAYS_SHOWN`, so the Home card is unchanged), and the new `getMyCalendarHours()` loads the regular week plus special days from today to the end of the month 60 days ahead. It replaces `getMyGymWeek` in the calendar, so closed days now show beyond the coming week. If the gym hasn't set its hours, no hours and no Closed dots show.
+  - Verification: `npm test` 318 passed (new 60-day `weekAhead` test); after a fresh seed, `climber-calendar` (now checks the hours line), `calendar` and `accessibility` specs: 16 passed; lint, `tsc` and `npm run build` clean.
+- **Update: a year ahead, and rows that look tappable.** The calendar always offers today's month and the next eleven (`CALENDAR_MONTHS`, `calendarEnd`). Hours (`getMyCalendarHours`) and events (`getMyCalendarEvents`, a new reader over `loadMyEvents`) cover that whole year. Classes stay at two weeks (`CLASS_DAYS`), and a note under the calendar says so. The Events list keeps its 60 days. Each agenda row ends in a `›` chevron, like a phone settings list. Verification: unit tests for `calendarMonths` and `calendarEnd` (including leap years); the e2e test pages 11 months ahead and checks the arrow stops; 390px check: the page loads in under a second against `next dev`.
+- **Open follow-ups:** Multi-day events show on their first day only.
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `e2e/accessibility.spec.ts` and `e2e/purchase.spec.ts` against `next dev` on this branch: 18 passed; checked the notice at 390px in light and dark.

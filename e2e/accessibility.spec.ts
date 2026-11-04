@@ -10,7 +10,7 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { paths: ["/login", "/join"], phone: true },
   {
     user: "demo-valid-active",
-    paths: ["/me", "/me/check-in", "/me/membership", "/me/classes", "/me/classes?view=events", "/me/stats", "/staff-only"],
+    paths: ["/me", "/me/check-in", "/me/membership", "/me/classes", "/me/classes?view=events", "/me/classes?view=calendar", "/me/stats", "/staff-only"],
     phone: true,
   },
   // No membership: the Before you climb card and the Membership section.
