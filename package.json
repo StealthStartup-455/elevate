@@ -24,6 +24,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "staging:setup": "node scripts/staging-setup.mjs",
+    "staging:reset": "node scripts/staging-reset.mjs",
     "mock:busyness": "tsx scripts/generate-busyness-mock.ts"
   },
   "dependencies": {
