@@ -281,6 +281,10 @@ Links inside MUI need Next's router: `<Link component={NextLink} href="...">` (`
 <Alert severity="warning">9 waivers expire this week.</Alert>
 ```
 
+**Plain text in dense tables.** A table column where the words already say the state can be plain text instead of a pill: "Yes", "Expires Nov 8", "Expired" in the desk's Check-in table. Normal text when fine; `warning.main` or `error.main`, semibold, when it needs attention. Never color alone: the text must say the state.
+
+**Pass badges** (`BadgePill`, the Chip's `badge` variant in `theme.ts`) say what let a climber in: Member (solid navy), Punch card (grey), Day pass (teal tint). They're uppercase like a label and have no icon, because they're a kind of pass, not a status. No pass is a problem, so it's a `StatusPill` (✕).
+
 ### Cards, tables and KPI tiles
 
 ```tsx

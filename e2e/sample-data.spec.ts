@@ -14,8 +14,11 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 
 test("the desk labels sample check-ins and the sample week", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
-  await expect(page.getByTestId("sample-check-ins")).toContainText("samples, not real visits");
-  await expect(page.getByTestId("sample-week").first()).toContainText("sample week");
+  // Inside <main>: while the page streams in, a second copy can briefly sit outside it.
+  await expect(page.getByRole("main").getByTestId("sample-check-ins")).toContainText("samples, not real visits");
+  // The typical week is behind "Busy times" on the Check-in page.
+  await page.getByRole("button", { name: "Busy times" }).click();
+  await expect(page.getByRole("dialog").getByTestId("sample-week")).toContainText("sample week");
 });
 
 test("a climber sees the same labels on their busyness card", async ({ page }) => {
