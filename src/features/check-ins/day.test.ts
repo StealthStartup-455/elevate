@@ -15,33 +15,35 @@ import {
   waiverLabel,
 } from "./day";
 
+// Vancouver times stay before Nov 2026: BC keeps UTC-7 all year from then
+// (tzdata 2026b), so older time zone data, like Node 25's 2025b, disagrees.
 const TZ = "America/Vancouver";
 const at = (iso: string) => new Date(iso);
 
 describe("gymDay", () => {
   it("is the gym's calendar day, not UTC's", () => {
-    // 6 p.m. on Nov 3 in Victoria is already Nov 4 in UTC.
-    expect(gymDay(at("2026-11-04T02:00:00Z"), TZ)).toBe("2026-11-03");
-    expect(gymDay(at("2026-11-04T08:00:00Z"), TZ)).toBe("2026-11-04");
+    // 6 p.m. on Oct 20 in Victoria is already Oct 21 in UTC.
+    expect(gymDay(at("2026-10-21T01:00:00Z"), TZ)).toBe("2026-10-20");
+    expect(gymDay(at("2026-10-21T07:00:00Z"), TZ)).toBe("2026-10-21");
   });
 });
 
 describe("startOfGymDay", () => {
   it("is midnight in the gym's time zone", () => {
-    expect(startOfGymDay(at("2026-11-03T20:00:00Z"), TZ)).toEqual(at("2026-11-03T08:00:00Z"));
+    expect(startOfGymDay(at("2026-10-20T19:00:00Z"), TZ)).toEqual(at("2026-10-20T07:00:00Z"));
   });
 
   it("is the same instant at midnight itself", () => {
-    expect(startOfGymDay(at("2026-11-03T08:00:00Z"), TZ)).toEqual(at("2026-11-03T08:00:00Z"));
+    expect(startOfGymDay(at("2026-10-20T07:00:00Z"), TZ)).toEqual(at("2026-10-20T07:00:00Z"));
   });
 
   it("is still today late in the evening, after UTC has moved on", () => {
-    expect(startOfGymDay(at("2026-11-04T07:59:00Z"), TZ)).toEqual(at("2026-11-03T08:00:00Z"));
+    expect(startOfGymDay(at("2026-10-21T06:59:00Z"), TZ)).toEqual(at("2026-10-20T07:00:00Z"));
   });
 
   it("handles the 25 hour day when the clocks go back", () => {
-    // Nov 1 2026: midnight is still daylight time (UTC-7).
-    expect(startOfGymDay(at("2026-11-01T20:00:00Z"), TZ)).toEqual(at("2026-11-01T07:00:00Z"));
+    // Nov 2 2025: midnight is still daylight time (UTC-7).
+    expect(startOfGymDay(at("2025-11-02T20:00:00Z"), TZ)).toEqual(at("2025-11-02T07:00:00Z"));
   });
 
   it("handles the 23 hour day when the clocks go forward", () => {
@@ -58,7 +60,7 @@ describe("gymDayBounds", () => {
   });
 
   it("is 25 and 23 hours long on the days the clocks change", () => {
-    expect(hours(gymDayBounds("2026-11-01", TZ))).toBe(25);
+    expect(hours(gymDayBounds("2025-11-02", TZ))).toBe(25);
     expect(hours(gymDayBounds("2026-03-08", TZ))).toBe(23);
   });
 
@@ -107,7 +109,7 @@ describe("shiftDay", () => {
 describe("countByHour", () => {
   it("counts check-ins by the gym's hour", () => {
     const hourly = countByHour(
-      [at("2026-11-03T20:19:00Z"), at("2026-11-03T20:05:00Z"), at("2026-11-04T07:30:00Z")],
+      [at("2026-10-20T19:19:00Z"), at("2026-10-20T19:05:00Z"), at("2026-10-21T06:30:00Z")],
       TZ,
     );
     expect(hourly).toHaveLength(24);
@@ -119,9 +121,9 @@ describe("countByHour", () => {
 
 describe("gymHour", () => {
   it("is the hour on the gym's clock", () => {
-    expect(gymHour(at("2026-11-03T20:19:00Z"), TZ)).toBe(12);
-    expect(gymHour(at("2026-11-04T07:30:00Z"), TZ)).toBe(23);
-    expect(gymHour(at("2026-11-03T08:05:00Z"), TZ)).toBe(0);
+    expect(gymHour(at("2026-10-20T19:19:00Z"), TZ)).toBe(12);
+    expect(gymHour(at("2026-10-21T06:30:00Z"), TZ)).toBe(23);
+    expect(gymHour(at("2026-10-20T07:05:00Z"), TZ)).toBe(0);
   });
 });
 
