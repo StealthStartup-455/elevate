@@ -166,6 +166,19 @@ export async function getClimber(id: string): Promise<Climber | null> {
   return row ? toClimber(row, gym.waiverVersion, new Date()) : null;
 }
 
+// The status of each of `ids` right now (waiver, membership, passes), by id,
+// in one query. For lists like the desk's day of check-ins (check-ins/queries).
+// No staff check: callers check first and pass the staff member's gym.
+export async function getClimberStatuses(
+  gym: { id: string; waiverVersion: string | null },
+  ids: string[],
+  now: Date = new Date(),
+): Promise<Map<string, Climber>> {
+  if (ids.length === 0) return new Map();
+  const rows = await findRows(gym.id, ids);
+  return new Map(rows.map((row) => [row.id, toClimber(row, gym.waiverVersion, now)]));
+}
+
 // What the busyness mock needs to show its check-ins as real climbers: the
 // database climber (id for the link, live waiver status) by the mock's own id.
 export type CheckInClimber = { id: string; waiverStatus: WaiverStatus };
