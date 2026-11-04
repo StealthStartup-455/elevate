@@ -15,6 +15,7 @@ import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
 import { useState } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
+import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import type { Badge, Label, Tone } from "../day";
 import BadgePill from "./BadgePill";
 
@@ -46,6 +47,9 @@ const TONE: Record<Tone, object> = {
   warning: { color: "warning.main", fontWeight: 600 },
   error: { color: "error.main", fontWeight: 600 },
 };
+
+// The waiver is a status, so it's a pill like everywhere else on the desk.
+const PILL = { normal: "ok", warning: "warn", error: "bad" } as const satisfies Record<Tone, Status>;
 
 function Tinted({ label }: { label: Label }) {
   return (
@@ -149,7 +153,12 @@ export default function DeskDayTable({
                   <BadgePill badge={row.badge} />
                 </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  <Tinted label={row.waiver} />
+                  {/* Valid drops its ✓ to keep a long column quiet; problems keep ! or ✕ (STYLE_GUIDE.md). */}
+                  <StatusPill
+                    status={PILL[row.waiver.tone]}
+                    label={row.waiver.text}
+                    showIcon={row.waiver.tone !== "normal"}
+                  />
                 </TableCell>
                 <TableCell>
                   <Tinted label={row.message} />

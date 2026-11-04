@@ -229,7 +229,7 @@ Use MUI's own components wherever they exist. `src/components/ui/` adds a few th
 | `NavLink` | A link in a page's top nav bar. Marks the page you're on (slate blue, tint, bar, `aria-current`) and takes that look as soon as it's clicked |
 | `HelpTip` | A "?" that explains the thing next to it |
 | `DisabledReason` | Wraps a disabled control so it can say why |
-| `StatusPill` | Any status: valid, expiring, failed. Always has its icon |
+| `StatusPill` | Any status: valid, expiring, failed. Always has its icon, except the one case under Status in dense tables (`showIcon={false}`) |
 | `KpiTile` | A big number with a label, optional detail and an optional follow-up action |
 | `ColorModeToggle` | Light / system / dark switch |
 | `Logo` | The Elevate logo. `variant="inline"` (default) in nav bars, `variant="full"` (with the tagline) on the login page. The mountain is teal as the brand color; that is not an action |
@@ -281,7 +281,7 @@ Links inside MUI need Next's router: `<Link component={NextLink} href="...">` (`
 <Alert severity="warning">9 waivers expire this week.</Alert>
 ```
 
-**Plain text in dense tables.** A table column where the words already say the state can be plain text instead of a pill: "Yes", "Expires Nov 8", "Expired" in the desk's Check-in table. Normal text when fine; `warning.main` or `error.main`, semibold, when it needs attention. Never color alone: the text must say the state.
+**Status in dense tables.** A column that holds a status uses `StatusPill`, even in a long table, so valid and not valid differ by color: the Check-in table's Waiver column shows Valid, Expires Nov 8, Expired or Not signed. **One exception, the developer's call:** Valid there has no ✓, to keep a column of 25 green pills quiet. Expires keeps its ! and Expired and Not signed keep their ✕, so a problem still never depends on color alone. Don't use `showIcon={false}` anywhere else without the same sign-off. A free-text column like Message stays plain text: normal when fine; `warning.main` or `error.main`, semibold, when it needs attention. Never color alone: the text must say the state.
 
 **Pass badges** (`BadgePill`, the Chip's `badge` variant in `theme.ts`) say what let a climber in: Member (solid navy), Punch card (grey), Day pass (teal tint). They're uppercase like a label and have no icon, because they're a kind of pass, not a status. No pass is a problem, so it's a `StatusPill` (✕).
 

@@ -195,14 +195,14 @@ describe("badgeAt", () => {
 describe("waiverLabel", () => {
   const today = "2026-11-03";
 
-  it("says Yes for a waiver good for more than a week", () => {
-    expect(waiverLabel({ status: "valid", expiresOn: "2027-03-01" }, today)).toEqual({ text: "Yes", tone: "normal" });
+  it("says Valid for a waiver good for more than a week", () => {
+    expect(waiverLabel({ status: "valid", expiresOn: "2027-03-01" }, today)).toEqual({ text: "Valid", tone: "normal" });
   });
 
   it("warns with the date when it runs out within 7 days", () => {
     expect(waiverLabel({ status: "valid", expiresOn: "2026-11-08" }, today)).toEqual({ text: "Expires Nov 8", tone: "warning" });
     expect(waiverLabel({ status: "valid", expiresOn: "2026-11-10" }, today).tone).toBe("warning");
-    expect(waiverLabel({ status: "valid", expiresOn: "2026-11-11" }, today).text).toBe("Yes");
+    expect(waiverLabel({ status: "valid", expiresOn: "2026-11-11" }, today).text).toBe("Valid");
   });
 
   it("flags an expired or missing waiver", () => {

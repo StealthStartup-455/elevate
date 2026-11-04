@@ -152,14 +152,14 @@ function expiresSoon(waiver: WaiverSummary, today: string): number | null {
   return days <= WAIVER_WARNING_DAYS ? days : null;
 }
 
-/** The Waiver column: Yes, Expires Nov 8, Expired or Not signed. */
+/** The Waiver column's pill: Valid, Expires Nov 8, Expired or Not signed. */
 export function waiverLabel(waiver: WaiverSummary, today: string): Label {
   if (waiver.status === "missing") return { text: "Not signed", tone: "error" };
   if (waiver.status === "expired") return { text: "Expired", tone: "error" };
   if (expiresSoon(waiver, today) !== null) {
     return { text: `Expires ${formatDate(waiver.expiresOn!)}`, tone: "warning" };
   }
-  return { text: "Yes", tone: "normal" };
+  return { text: "Valid", tone: "normal" };
 }
 
 function whenWaiverExpires(expiresOn: string, days: number): string {
