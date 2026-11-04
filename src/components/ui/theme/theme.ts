@@ -322,6 +322,27 @@ const components: ThemeOptions["components"] = {
                 "&.MuiChip-clickable:hover": { backgroundColor: p[color].softHover },
               },
             })),
+            // Pass badges on the desk's Check-in table (BadgePill): what let a climber in,
+            // not a status, so no icon. Uppercase like a label; the three kinds differ by
+            // fill as well as color: Member solid navy, Punch card grey, Day pass tinted.
+            {
+              props: { variant: "badge" },
+              style: {
+                ...textStyle(textStyles.label, false),
+                height: 20,
+                letterSpacing: "0.06em",
+                backgroundColor: p.background.subtle,
+                color: p.text.primary,
+              },
+            },
+            {
+              props: { variant: "badge", color: "secondary" },
+              style: { backgroundColor: p.secondary.main, color: p.secondary.contrastText },
+            },
+            {
+              props: { variant: "badge", color: "primary" },
+              style: { backgroundColor: p.primary.soft, color: p.primary.main },
+            },
           ],
         };
       },

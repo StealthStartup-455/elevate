@@ -96,7 +96,7 @@ An **expired membership** is red wherever it shows: the `StatusPill` (`status="b
 
 ### Charts
 
-Chart data is grey (`chart.data`, `bg-chart-data`). The current or latest value is dark granite (`chart.now`). Heat maps use shades of `chart.now`. Charts never use the action or status colors unless the chart is about status.
+Chart data is blue (`chart.data`, `bg-chart-data`), a hue of its own so it never reads as an action (teal) or navigation (slate blue). The current or latest value is a darker blue (`chart.now`). Heat maps show quiet as the plain `background.subtle` cell, then four steps from `chart.heat1` (a little busy) to `chart.heat4` (busy); the current cell gets a `text.primary` ring with a 1px gap. The blues were checked for color blindness and contrast in light and dark. Charts never use the action or status colors unless the chart is about status. Bars sit on a baseline and empty hours show nothing, not a stub.
 
 ### Dark mode
 
