@@ -31,7 +31,7 @@ Set these in Vercel (Project Settings, Environment Variables), never in the repo
 | `DEMO_MODE` | `true` | Staging only |
 | `APP_ENV` | `staging` | `production` on the production project |
 | `PERF_LOG` | unset | `true` only while looking for slow requests: logs each query's and step's time (see "Finding slow requests") |
-| `MOCK_BUSYNESS_SCENARIO` | `moderate` | Until busyness uses real check-ins (#39). Generated check-ins are labelled on screen (#64); `none` shows real check-ins only. Leave it unset on production: with `APP_ENV=production` it defaults to `none` |
+| `MOCK_BUSYNESS_SCENARIO` | `none` | Real check-ins only, like production, so the busyness card and POS show what happened in the session (#138). `moderate` mixes in generated check-ins (labelled on screen, #64) and shows "~28 climbers here" at any hour. Leave it unset on production: with `APP_ENV=production` it defaults to `none` |
 
 GitHub (Settings, Environments, `staging`) holds what `deploy-staging.yml` needs:
 
@@ -154,7 +154,7 @@ It adds a climber and a check in, so reseed a hosted demo afterwards. The full s
 - **The desk's waiver button is a placeholder.** Climbers sign the real waiver on their phone at `/me/waiver` (#35), but "Sign a waiver now" on the desk still marks it signed with no wording or signature.
 - **Purchase is a free day pass from the desk** (#62). Selling passes and memberships is #53 (PR #119).
 - **The scan is simulated** from the climber's phone, standing in for a scanner at the desk (#94).
-- **Busyness mixes in generated check-ins** unless `MOCK_BUSYNESS_SCENARIO=none` (#64), and the typical week is always a sample until #39.
+- **Busyness shows real check-ins only on staging** (`MOCK_BUSYNESS_SCENARIO=none`, #138); `moderate` mixes in generated ones (#64). The typical week is always a sample until #39.
 - **No emails.** Nothing is sent after joining or signing (#95).
 
 When one of these is replaced, change the matching step in `e2e/release.spec.ts` in the same pull request, so the check keeps following the real journey.
@@ -164,16 +164,32 @@ When one of these is replaced, change the matching step in `e2e/release.spec.ts`
 ## Before a demo
 
 - Resume the Supabase project if it was paused (Dashboard, Resume project). Nothing is lost.
-- Reseed so the demo starts clean, because the two hour check-in rule remembers earlier runs: `DATABASE_URL="<session url>" npm run db:seed`.
-- Run `E2E_BASE_URL="https://<staging url>" npm run test:release` (see "Release checks"), then reseed again.
+- Reset staging to the seed (see "Reset before a demo" below), so the demo starts with no test climbers and the two hour check-in rule forgets earlier runs.
+- Run `E2E_BASE_URL="https://<staging url>" npm run test:release` (see "Release checks"), then reset again.
 - Use two browser windows or devices: the climber's phone and the desk.
 - Code freeze the day before; demo from the tagged release.
+
+### Reset before a demo
+
+Testing leaves climbers, sales and check-ins behind (for example several copies of the same test climber). Reset staging the morning of a demo and before each class feedback session (#138):
+
+```bash
+npm run staging:reset          # Windows PowerShell: npm.cmd run staging:reset
+```
+
+It asks for the staging **session pooler** URL (Supabase, Connect, password filled in), or reads `STAGING_SESSION_URL`, and runs the seed against it. The seed deletes every climber in the demo gym, with their passes, waivers, sales, sale lines, check-ins and scans, then creates the seeded climbers again, all in one transaction. It prints how many climbers it removed and how many of those were added since the last seed.
+
+- **Kept:** the gym and its settings, the waiver wording, products (by name, so their ids stay), staff, and the Supabase logins.
+- **`climber@elevate.test`** points at a seeded climber, so it is linked again only when you also set `STAGING_SUPABASE_URL`, `STAGING_SECRET_KEY` and `SEED_LOGIN_PASSWORD` (the staging project's values, see "Real logins on a hosted project"). Otherwise the script blanks the Supabase values from your `.env`, so local keys never make logins against staging data, and only the demo usernames sign in as climbers.
+- **New ids:** seeded climbers are created again, so anyone signed in as a climber is sent back to log in. Log in again with the demo usernames.
+- **Refused** with `APP_ENV=production`: both the script and the seed stop, because the seed deletes every climber in the gym.
+- **Check:** on the desk, Manual check in finds none of the test climbers (search one by name), and POS "Checked in today" and "Today's sales" are empty.
 
 ## Rolling back
 
 - **Code:** in Vercel, open Deployments and promote the previous deployment. Instant.
 - **Database:** migrations are never rolled back by hand. Fix forward with a new migration. Because every migration keeps working with the previous code, rolling back the code alone is safe.
-- **Data on staging:** reseed.
+- **Data on staging:** reset (`npm run staging:reset`).
 
 ## Logs and errors
 
@@ -186,6 +202,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `climber_created` / `climber_updated` | Join, desk add, desk edit | `climberId`, `source`: `self` or `desk` |
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
+| `waiver_pdf_downloaded` | A signed waiver was downloaded as a PDF (#111) | `waiverId`, `climberId`, `source`: `self` or `desk` |
 | `scan_saved` / `scan_taken` | Phone scan saved; staff dealt with it at the desk (checked in or closed the popup) | `climberId`; `waitMs` (time from tap to staff dealing with it), `outcome` (`checked_in` or `closed`) |
 | `perf_db` / `perf_auth` / `perf_action` | Only when `PERF_LOG="true"` (see "Finding slow requests") | `model` and `operation`, or `where` (`proxy`, `page`), or `name`; `ms` |
 | `check_in_saved` / `check_in_refused` | Desk check in | `climberId`, `method`; or `reason`: `waiver_missing`, `waiver_expired`, `membership_none`, `membership_expired`, `membership_paused`, `already_checked_in`, `not_found`, `invalid_id` |

@@ -1,3 +1,4 @@
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -35,10 +36,15 @@ async function DeskWaiver({ params }: Pick<PageProps<"/desk/waivers/[waiverId]">
 
   return (
     <>
-      <div className="flex flex-col items-start">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <LinkButton href={`/desk/customers/${waiver.climberId}`} variant="text">
           ← {waiver.climberName}
         </LinkButton>
+        {/* A plain link, not next/link: the route answers with a file (#111). No
+            download attribute, so an error shows as a page, not a broken file. */}
+        <Button variant="outlined" href={`/desk/waivers/${waiver.id}/pdf`}>
+          Download PDF
+        </Button>
       </div>
       <SignedWaiverDetails waiver={waiver} timeZone={gym.timeZone} />
     </>

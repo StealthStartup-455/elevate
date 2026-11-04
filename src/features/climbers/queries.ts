@@ -19,6 +19,8 @@ export type Membership = {
   firstName: string;
   lastName: string;
   plan: string;
+  /** A recurring plan, which renews; a one-off one just ends (#132). */
+  recurring: boolean;
   status: MembershipStatus;
   // Calendar date, YYYY-MM-DD. The next renewal, or when it ended. Unset when
   // there is no membership yet.
@@ -59,7 +61,15 @@ function findRows(gymId: string, ids?: string[]) {
             { kind: "PUNCH", visitsLeft: { gt: 0 } },
           ],
         },
-        select: { kind: true, startsAt: true, expiresAt: true, pausedAt: true, visitsLeft: true },
+        select: {
+          kind: true,
+          startsAt: true,
+          expiresAt: true,
+          pausedAt: true,
+          visitsLeft: true,
+          renews: true,
+          saleLine: { select: { name: true } },
+        },
       },
     },
   });
@@ -67,10 +77,16 @@ function findRows(gymId: string, ids?: string[]) {
 
 type Row = Awaited<ReturnType<typeof findRows>>[number];
 
-function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
-  const waiver = summarizeWaiver(row.waivers[0], waiverVersion, now);
+function toClimber(
+  row: Row,
+  gym: { waiverVersion: string | null; timeZone: string },
+  now: Date,
+): Climber {
+  const waiver = summarizeWaiver(row.waivers[0], gym.waiverVersion, now, gym.timeZone);
   const membership = summarizeMembership(
-    row.passes.filter((p) => p.kind === "MEMBERSHIP"),
+    row.passes
+      .filter((p) => p.kind === "MEMBERSHIP")
+      .map((p) => ({ ...p, plan: p.saleLine?.name ?? null })),
     now,
   );
   return {
@@ -85,6 +101,8 @@ function toClimber(row: Row, waiverVersion: string | null, now: Date): Climber {
     waiverExpiresOn: waiver.expiresOn,
     membershipStatus: membership.status,
     membershipRenewsOn: membership.renewsOn,
+    membershipRecurring: membership.recurring,
+    membershipPlan: membership.plan,
     hasDayPass: hasDayPass(row.passes.filter((p) => p.kind === "DAY"), now),
     punchesLeft: punchesLeft(row.passes.filter((p) => p.kind === "PUNCH"), now),
   };
@@ -110,9 +128,12 @@ export async function getMyMembership(): Promise<Membership> {
     climberId: climber.id,
     firstName: climber.firstName,
     lastName: climber.lastName,
-    plan: "Monthly",
+    // The product they bought (#132); a membership from before the POS has
+    // no product, so it's named by whether it renews.
+    plan: climber.membershipPlan ?? (climber.membershipRecurring ? "Monthly" : "Membership"),
     status: climber.membershipStatus,
     renewsOn: climber.membershipRenewsOn,
+    recurring: climber.membershipRecurring ?? false,
     waiverStatus: climber.waiverStatus,
     waiverExpiresOn: climber.waiverExpiresOn,
     // Printed code until real member numbers exist.
@@ -133,7 +154,7 @@ export async function listClimbers(): Promise<Climber[]> {
   const now = new Date();
   const rows = await findRows(gym.id);
   return rows
-    .map((row) => toClimber(row, gym.waiverVersion, now))
+    .map((row) => toClimber(row, gym, now))
     .sort(
       (a, b) =>
         a.lastName.localeCompare(b.lastName) ||
@@ -163,20 +184,20 @@ export async function getClimber(id: string): Promise<Climber | null> {
   const gym = await getGymById(gymId);
   if (!gym) return null;
   const [row] = await findRows(gym.id, [id]);
-  return row ? toClimber(row, gym.waiverVersion, new Date()) : null;
+  return row ? toClimber(row, gym, new Date()) : null;
 }
 
 // The status of each of `ids` right now (waiver, membership, passes), by id,
 // in one query. For lists like the desk's day of check-ins (check-ins/queries).
 // No staff check: callers check first and pass the staff member's gym.
 export async function getClimberStatuses(
-  gym: { id: string; waiverVersion: string | null },
+  gym: { id: string; waiverVersion: string | null; timeZone: string },
   ids: string[],
   now: Date = new Date(),
 ): Promise<Map<string, Climber>> {
   if (ids.length === 0) return new Map();
   const rows = await findRows(gym.id, ids);
-  return new Map(rows.map((row) => [row.id, toClimber(row, gym.waiverVersion, now)]));
+  return new Map(rows.map((row) => [row.id, toClimber(row, gym, now)]));
 }
 
 // What the busyness mock needs to show its check-ins as real climbers: the
@@ -215,7 +236,7 @@ export async function getCheckInClimbers(
   for (const row of rows) {
     const value = {
       id: row.id,
-      waiverStatus: summarizeWaiver(row.waivers[0], gym.waiverVersion, now).status,
+      waiverStatus: summarizeWaiver(row.waivers[0], gym.waiverVersion, now, gym.timeZone).status,
     };
     map.set(row.id, value);
     if (row.externalId) map.set(row.externalId, value);
@@ -254,7 +275,7 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
   const byId = new Map(
     (await findRows(gym.id, matches.map((m) => m.id))).map((row) => [
       row.id,
-      toClimber(row, gym.waiverVersion, now),
+      toClimber(row, gym, now),
     ]),
   );
   return matches.flatMap((m) => byId.get(m.id) ?? []);
@@ -316,6 +337,6 @@ export async function getSavedCheckIns(since: Date): Promise<
     lastName: r.climber.lastName,
     phone: r.climber.phone ? formatPhone(r.climber.phone) : "",
     timestamp: r.checkedInAt,
-    waiverStatus: summarizeWaiver(r.climber.waivers[0], gym.waiverVersion, now).status,
+    waiverStatus: summarizeWaiver(r.climber.waivers[0], gym.waiverVersion, now, gym.timeZone).status,
   }));
 }

@@ -1,0 +1,21 @@
+# 2026-11-02 14:09 UTC: Demo display fixes for #149 (seven issues)
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#124, #125, #132, #133, #134, #135, #137 (under #149) / #159
+- **Branch:** `fix/149-demo-display-fixes`
+- **What the agent did:**
+  - **#137:** the login page lists test logins only in demo mode (`getLoginPageTestLogins`), read at request time (the login card is in a Suspense boundary after `connection()`), and hides the (i) when there are none.
+  - **#133:** the join success view links to the dashboard; a signed-in person on `/join` sees "You're signed in as … Go to your dashboard". The form stays, so a parent can still sign up someone else.
+  - **#134:** a click outside the POS Checkout and Void dialogs no longer closes them (the second click of a double-click landed there). Cancel and Escape still do.
+  - **#132 and #124:** memberships carry `recurring` (`Pass.renews`) and the product name (from the sale line). One date line everywhere (`membershipDateLine` in `climbers/format.ts`): "Renews" only for a recurring plan, "Runs until" for a one-off one, "Ended" when expired, and no date while paused. `/me` shows the product name ("1 month membership") instead of always "Monthly".
+  - **#125:** waiver expiry uses the gym's time zone (`summarizeWaiver(…, timeZone)`): signed Oct 29 local, expires Oct 29 a year later, valid until midnight there.
+  - **#135:** POS "Checked in today" lists only check-ins saved since midnight in the gym's time zone; the busyness sample (and its two hour window reaching into the previous evening) is no longer mixed in.
+- **Files touched:** `src/app/{login,join}/page.tsx`, `LoginForm.tsx`, `auth/demo-logins.ts`, `climbers/{status,format,queries,types,actions}.ts`, `MembershipCard.tsx`, `ManualCheckIn.tsx`, `ClimberForm.tsx`, `ScanWatcher.tsx`, `check-ins/actions.ts`, desk climber page, POS `CheckoutDialog`, `TodaysSales`, `ClimberPanel`, `pos/{queries,types}.ts`, `waivers/queries.ts`; tests in `status.test.ts`, `format.test.ts`, `demo-logins.test.ts`, `e2e/demo-fixes.spec.ts`.
+- **Decisions and why:**
+  - Seeded memberships keep `renews = false`, so they now read "Runs until" and "Membership" rather than "Renews" and "Monthly". Marking them recurring would have filled the POS "Renewals due" list with every seeded member.
+  - `/join` doesn't redirect a signed-in person, because a parent signing up their family uses the same phone (staging test report item 11).
+  - Membership end dates still come from `isoDay` in UTC; only waivers moved to the gym's time zone here.
+- **Gotchas:** Lint treats "#" plus three digits in a string as a raw colour, so test names say "issue 133", not "#133". Don't put a form in a Suspense fallback: while the real one streams in, the page briefly has two (two Email fields broke every e2e login). Suspend only the part that waits. A streamed boundary also leaves a hidden copy outside `<main>` for a moment, so e2e looks inside `getByRole("main")`.
+- **Open follow-ups:** None for these issues. Other #149 items (#128, #129, #131, #136, #138, #151) are separate.
+- **Verification:** `npm run lint` clean; unit tests 190 passed (2 todo), 9 new. `tsc`, the build, database tests and e2e can't run in this session (the Prisma client can't be regenerated here), so they run in CI on the PR: check (tsc, build, database tests) and e2e (55 tests) pass on 390f251.

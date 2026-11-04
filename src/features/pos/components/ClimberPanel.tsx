@@ -17,7 +17,7 @@ import Typography from "@mui/material/Typography";
 import { useEffect, useState, useTransition } from "react";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
-import { formatDate } from "@/features/climbers/format";
+import { formatDate, membershipDateLine } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { findPosClimbers, revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
@@ -43,10 +43,9 @@ const MEMBERSHIP: Record<MembershipStatus, { status: Status; label: string }> = 
 // day pass or punch card.
 function passDetail(c: PosClimber): string | null {
   const parts: string[] = [];
-  if (c.membershipRenewsOn && c.membershipStatus !== "none") {
-    const date = formatDate(c.membershipRenewsOn, true);
-    parts.push(c.membershipStatus === "expired" ? `Ended ${date}` : `Renews ${date}`);
-  }
+  // No date while paused (#124); "Runs until" for a one-off plan (#132).
+  const line = membershipDateLine(c.membershipStatus, c.membershipRenewsOn, c.membershipRecurring);
+  if (line) parts.push(line);
   if (c.hasDayPass) parts.push("Day pass for today");
   if (c.punchesLeft > 0) parts.push(`${c.punchesLeft} ${c.punchesLeft === 1 ? "punch" : "punches"} left`);
   return parts.length ? parts.join(" · ") : null;

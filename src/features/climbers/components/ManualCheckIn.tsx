@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
-import { formatDate } from "../format";
+import { formatDate, membershipDateLine } from "../format";
 import type { CheckInCandidate, MembershipStatus } from "../types";
 import WaiverBadge from "./WaiverBadge";
 
@@ -39,10 +39,7 @@ function membershipDetail(c: CheckInCandidate): string | null {
   if (c.punchesLeft > 0 && c.membershipStatus !== "active") {
     return `${c.punchesLeft} ${c.punchesLeft === 1 ? "punch" : "punches"} left`;
   }
-  if (!c.membershipRenewsOn) return null;
-  const date = formatDate(c.membershipRenewsOn, true);
-  if (c.membershipStatus === "expired") return `Ended ${date}`;
-  return `Renews ${date}`;
+  return membershipDateLine(c.membershipStatus, c.membershipRenewsOn, c.membershipRecurring);
 }
 
 // Why this climber can't be checked in yet, or null when they can.

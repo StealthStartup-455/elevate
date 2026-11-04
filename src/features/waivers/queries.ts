@@ -64,7 +64,7 @@ export async function getWaiverStatus(
     orderBy: { signedAt: "desc" },
     select: { id: true, signedAt: true, version: true },
   });
-  const summary = summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date());
+  const summary = summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date(), gym.timeZone);
   return { ...summary, waiverId: latest?.id };
 }
 
@@ -81,6 +81,8 @@ export type SignedWaiverView = {
   emergencyContact: { name: string; phone: string } | null;
   /** The exact wording they signed; null for imported or placeholder waivers. */
   template: { title: string; paragraphs: string[]; clauses: string[] } | null;
+  /** The wording's SHA-256 saved when they signed; null for imported or placeholder waivers. */
+  bodyHash: string | null;
   /** False if the wording no longer matches the hash saved when they signed. */
   wordingIntact: boolean;
 };
@@ -127,7 +129,7 @@ export async function getStaffWaiverPanel(climberId: string): Promise<StaffWaive
     select: { id: true, signedAt: true, version: true },
   });
   return {
-    ...summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date()),
+    ...summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date(), gym.timeZone),
     waiverId: latest?.id,
     signedOn: latest
       ? new Intl.DateTimeFormat("en-CA", { dateStyle: "long", timeZone: gym.timeZone }).format(latest.signedAt)
@@ -169,6 +171,7 @@ async function findSignedWaiver(
     template: template
       ? { title: template.title, paragraphs: paragraphsOf(template.body), clauses: template.clauses }
       : null,
+    bodyHash: waiver.bodyHash,
     // Hash the text again rather than trusting the template's stored hash.
     wordingIntact: !template || hashWaiver(template) === waiver.bodyHash,
   };

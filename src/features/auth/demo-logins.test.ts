@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ACCOUNTS } from "@/features/climbers/demo-accounts";
-import { getTestLogins } from "./demo-logins";
+import { getLoginPageTestLogins, getTestLogins } from "./demo-logins";
 
 const groups = getTestLogins();
 const all = groups.flatMap((g) => g.logins);
@@ -39,5 +39,21 @@ describe("getTestLogins", () => {
       expect(l.password).not.toBe("");
       expect(l.note).not.toBe("");
     }
+  });
+});
+
+describe("getLoginPageTestLogins", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists the test logins in demo mode", () => {
+    vi.stubEnv("APP_ENV", "staging");
+    vi.stubEnv("DEMO_MODE", "true");
+    expect(getLoginPageTestLogins()).toEqual(getTestLogins());
+  });
+
+  it("lists nothing on a production deployment, even with DEMO_MODE set", () => {
+    vi.stubEnv("APP_ENV", "production");
+    vi.stubEnv("DEMO_MODE", "true");
+    expect(getLoginPageTestLogins()).toEqual([]);
   });
 });
