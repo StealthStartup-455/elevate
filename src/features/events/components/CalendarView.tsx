@@ -14,15 +14,16 @@ import type { Announcement, ClassItem } from "../queries";
 import { formatDay } from "../time";
 import ClassList from "./ClassList";
 
-export type ClosedDay = { day: string; note: string | null };
+/** One day's hours: "6 AM – 10 PM", or null when the gym is closed all day. */
+export type CalendarDay = { day: string; hours: string | null; special: boolean; note: string | null };
 
 type Props = {
   /** Today on the gym's clock. */
   today: string;
   classes: ClassItem[];
   events: Announcement[];
-  /** Days in the coming week the gym is closed all day. */
-  closed: ClosedDay[];
+  /** The gym's hours for each day the calendar shows; empty if it hasn't set its hours. */
+  hours: CalendarDay[];
 };
 
 type Selected = { kind: "class" | "event"; id: string } | null;
@@ -34,7 +35,7 @@ const DOT = { class: "primary.main", event: "highlight.bg", closed: "error.main"
 // The Calendar view of the Classes tab (#101): a month of days with a dot for each kind of
 // thing on them, the chosen day's classes and events underneath, and a bottom sheet with the
 // details when one is tapped. A class's sheet signs up or cancels like the Classes list.
-export default function CalendarView({ today, classes, events, closed }: Props) {
+export default function CalendarView({ today, classes, events, hours }: Props) {
   // An event that started before today and is still on shows on today.
   const eventDay = (e: Announcement) => (e.day < today ? today : e.day);
   const months = calendarMonths(today, [...classes.map((c) => c.day), ...events.map(eventDay)]);
@@ -45,7 +46,11 @@ export default function CalendarView({ today, classes, events, closed }: Props) 
 
   const classesOn = (d: string) => classes.filter((c) => c.day === d);
   const eventsOn = (d: string) => events.filter((e) => eventDay(e) === d);
-  const closedOn = (d: string) => closed.find((c) => c.day === d);
+  const hoursOn = (d: string) => hours.find((h) => h.day === d);
+  const closedOn = (d: string) => {
+    const h = hoursOn(d);
+    return h && h.hours === null ? h : undefined;
+  };
 
   const monthIndex = Math.max(0, months.indexOf(month));
   function pick(d: string) {
@@ -56,6 +61,7 @@ export default function CalendarView({ today, classes, events, closed }: Props) 
   const dayClasses = classesOn(day);
   const dayEvents = eventsOn(day);
   const dayClosed = closedOn(day);
+  const dayHours = hoursOn(day);
   const nextDay = [...new Set([...classes.map((c) => c.day), ...events.map(eventDay)])]
     .filter((d) => d > day)
     .sort()[0];
@@ -137,6 +143,12 @@ export default function CalendarView({ today, classes, events, closed }: Props) 
             </Typography>
           ) : null}
         </div>
+        {dayHours?.hours ? (
+          <Typography variant="secondary" data-testid="calendar-hours">
+            {dayHours.special ? "Special hours" : "Open"} {dayHours.hours}
+            {dayHours.note ? ` · ${dayHours.note}` : ""}
+          </Typography>
+        ) : null}
 
         {dayClosed ? (
           <Box sx={{ bgcolor: "background.paper", borderRadius: 5, p: 4, display: "flex", gap: 3, alignItems: "center" }}>

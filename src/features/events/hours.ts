@@ -52,19 +52,21 @@ function hoursOf(closed: boolean, opensAt: number | null, closesAt: number | nul
 }
 
 /**
- * The next seven days on the gym's calendar, today first. A special day wins
- * over the regular week; a weekday with no row is closed.
+ * The next seven days on the gym's calendar (or `count` days, for the climber's month
+ * calendar), today first. A special day wins over the regular week; a weekday with no row is
+ * closed.
  */
 export function weekAhead(
   now: Date,
   timeZone: string,
   weekly: WeeklyHours[],
   special: SpecialDay[],
+  count: number = DAYS_SHOWN,
 ): DayHours[] {
   const today = gymClockAt(now, timeZone).day;
   const byWeekday = new Map(weekly.map((w) => [w.weekday, w]));
   const byDay = new Map(special.map((s) => [s.day, s]));
-  return Array.from({ length: DAYS_SHOWN }, (_, i) => {
+  return Array.from({ length: count }, (_, i) => {
     const day = addDays(today, i);
     const weekday = weekdayOf(day);
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : weekdayName(weekday);

@@ -28,7 +28,16 @@ import {
   startsIn,
   type SetChangeState,
 } from "./schedule";
-import { addDays, formatClockRange, formatDay, formatSpan, gymClockAt, MINUTES_PER_DAY, weekdayName } from "./time";
+import {
+  addDays,
+  daysBetween,
+  formatClockRange,
+  formatDay,
+  formatSpan,
+  gymClockAt,
+  MINUTES_PER_DAY,
+  weekdayName,
+} from "./time";
 
 // Reads for the gym calendar: the climber dashboard (/me) and the desk's
 // Events page (/desk/events). The climber side reads the signed-in climber's
@@ -79,6 +88,30 @@ async function loadGymWeek(gym: Gym, now: Date): Promise<GymWeek | null> {
     status: openStatus(now, gym.timeZone, days),
     now: { weekday: today.weekday, hour: Math.floor(today.minutes / 60) },
   };
+}
+
+/**
+ * The gym's hours for every day the climber's calendar can show: from today to the end of the
+ * month 60 days ahead (as far as events go). Null if the gym hasn't set its hours, so the
+ * calendar shows none rather than "Closed" every day.
+ */
+export async function getMyCalendarHours(): Promise<DayHours[] | null> {
+  await connection();
+  const gym = await myGym();
+  if (!gym) return null;
+  const now = new Date();
+  const today = gymClockAt(now, gym.timeZone).day;
+  const [y, m] = addDays(today, 60).split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const [weekly, special] = await Promise.all([
+    db.openingHours.findMany({
+      where: { gymId: gym.id },
+      select: { weekday: true, closed: true, opensAt: true, closesAt: true },
+    }),
+    loadSpecialDays(gym.id, today, last),
+  ]);
+  if (weekly.length === 0) return null;
+  return weekAhead(now, gym.timeZone, weekly, special, daysBetween(today, last) + 1);
 }
 
 /** Today on the signed-in climber's gym's clock ("2026-11-03"), for the calendar view. */

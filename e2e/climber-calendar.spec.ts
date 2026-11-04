@@ -35,6 +35,8 @@ test("a climber finds a class on the calendar and signs up from its sheet", asyn
   await expect(dayWithClass).toHaveAttribute("aria-pressed", "true");
   const day = page.getByTestId("calendar-day");
   await expect(day.getByRole("heading", { level: 2 })).toHaveText(label.split(":")[0]);
+  // The seed opens every day it has a class: its hours show under the date.
+  await expect(day.getByTestId("calendar-hours")).toHaveText(/^(Open|Special hours) \d/);
 
   await day.getByRole("list").getByRole("button").last().click();
   const sheet = page.getByRole("dialog");
