@@ -64,7 +64,7 @@ export async function getWaiverStatus(
     orderBy: { signedAt: "desc" },
     select: { id: true, signedAt: true, version: true },
   });
-  const summary = summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date());
+  const summary = summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date(), gym.timeZone);
   return { ...summary, waiverId: latest?.id };
 }
 
@@ -129,7 +129,7 @@ export async function getStaffWaiverPanel(climberId: string): Promise<StaffWaive
     select: { id: true, signedAt: true, version: true },
   });
   return {
-    ...summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date()),
+    ...summarizeWaiver(latest ?? undefined, gym.waiverVersion, new Date(), gym.timeZone),
     waiverId: latest?.id,
     signedOn: latest
       ? new Intl.DateTimeFormat("en-CA", { dateStyle: "long", timeZone: gym.timeZone }).format(latest.signedAt)

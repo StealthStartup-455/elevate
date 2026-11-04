@@ -320,6 +320,7 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     waiverExpiresOn: c.waiverExpiresOn,
     membershipStatus: c.membershipStatus,
     membershipRenewsOn: c.membershipRenewsOn,
+    membershipRecurring: c.membershipRecurring,
     hasDayPass: c.hasDayPass,
     punchesLeft: c.punchesLeft,
   }));

@@ -58,6 +58,7 @@ export type PosClimber = {
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;
+  membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
 };
