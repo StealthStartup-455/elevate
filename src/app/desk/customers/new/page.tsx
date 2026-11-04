@@ -9,10 +9,10 @@ export default function NewClimberPage() {
   return (
     <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start gap-1">
-        <LinkButton href="/desk/climbers" variant="text">
-          ← Climbers
+        <LinkButton href="/desk/customers" variant="text">
+          ← Customers
         </LinkButton>
-        <Typography variant="pageTitle">New climber</Typography>
+        <Typography variant="pageTitle">New customer</Typography>
       </div>
       <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
         <CardContent>

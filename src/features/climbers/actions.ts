@@ -38,9 +38,9 @@ function invalid(
 
 function refreshClimberPages(climberId?: string) {
   revalidatePath("/desk");
-  revalidatePath("/desk/climbers");
+  revalidatePath("/desk/customers");
   revalidatePath("/me");
-  if (climberId) revalidatePath(`/desk/climbers/${climberId}`);
+  if (climberId) revalidatePath(`/desk/customers/${climberId}`);
 }
 
 // The columns for the fields the form edits. Waiver and membership are not
@@ -79,7 +79,7 @@ export async function joinAsCustomer(
   };
 }
 
-// /desk/climbers/new: staff add a climber with the same fields, then land on
+// /desk/customers/new: staff add a climber with the same fields, then land on
 // their page with the waiver step, as /join does (#88).
 export async function createClimberAtDesk(
   _prev: FormState,
@@ -99,10 +99,10 @@ export async function createClimberAtDesk(
   });
   logEvent("climber_created", { gymId, climberId: climber.id, source: "desk" });
   refreshClimberPages();
-  redirect(`/desk/climbers/${climber.id}?added=1`);
+  redirect(`/desk/customers/${climber.id}?added=1`);
 }
 
-// /desk/climbers/[climberId]: staff edit an existing climber's details.
+// /desk/customers/[climberId]: staff edit an existing climber's details.
 export async function updateClimber(
   climberId: string,
   _prev: FormState,

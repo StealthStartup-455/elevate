@@ -51,7 +51,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
       />
 
       <TableContainer sx={{ mt: 3 }}>
-        <Table size="small" aria-label="Climbers">
+        <Table size="small" aria-label="Customers">
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
@@ -67,7 +67,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
             {visible.map((row) => (
               <TableRow key={row.id} hover>
                 <TableCell>
-                  <MuiLink component={Link} href={`/desk/climbers/${row.id}`}>
+                  <MuiLink component={Link} href={`/desk/customers/${row.id}`}>
                       {row.name}
                     </MuiLink>
                 </TableCell>
@@ -84,7 +84,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
                   {/* Opens the climber's page in the form (#89). */}
                   <MuiLink
                     component={Link}
-                    href={`/desk/climbers/${row.id}?edit=1`}
+                    href={`/desk/customers/${row.id}?edit=1`}
                     aria-label={`Edit ${row.name}`}
                   >
                     Edit
@@ -95,7 +95,7 @@ export default function ClimberTable({ rows }: { rows: ClimberRow[] }) {
             {visible.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5}>
-                  {rows.length === 0 ? "No climbers yet." : "No climbers match."}
+                  {rows.length === 0 ? "No customers yet." : "No customers match."}
                 </TableCell>
               </TableRow>
             )}

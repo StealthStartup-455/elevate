@@ -156,7 +156,7 @@ export default function ClimberPanel({
             <Button variant="outlined" size="small" onClick={onChange}>
               Change climber
             </Button>
-            <LinkArrow href={`/desk/climbers/${selected.id}`}>Open account</LinkArrow>
+            <LinkArrow href={`/desk/customers/${selected.id}`}>Open account</LinkArrow>
           </div>
         </CardContent>
       </Card>

@@ -12,8 +12,8 @@ async function logInAsDesk(page: Page) {
 }
 
 async function addClimber(page: Page, lastName: string) {
-  await page.goto("/desk/climbers/new");
-  // /desk/climbers/new briefly renders the form twice while it loads (seen
+  await page.goto("/desk/customers/new");
+  // /desk/customers/new briefly renders the form twice while it loads (seen
   // on dev too); wait for one before typing.
   await expect(page.locator('input[name="dateOfBirth"]')).toHaveCount(1);
   await page.getByRole("textbox", { name: "First name" }).fill("Robin");
@@ -21,7 +21,7 @@ async function addClimber(page: Page, lastName: string) {
   await page.getByRole("textbox", { name: "Phone number" }).fill(`250557${lastName.slice(-4)}`);
   await page.getByLabel("Date of birth").fill("1990-05-05");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/desk\/climbers\/[0-9a-f-]+/);
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+/);
 }
 
 test("staff view a climber, then edit and save from the page", async ({ page }) => {
@@ -46,7 +46,7 @@ test("the climber table's Edit link opens the form", async ({ page }) => {
   const last = `Table${Date.now().toString().slice(-6)}`;
   await addClimber(page, last);
 
-  await page.goto("/desk/climbers");
+  await page.goto("/desk/customers");
   await page.getByRole("link", { name: `Edit Robin ${last}` }).click();
   await expect(page).toHaveURL(/\?edit=1/);
   await expect(page.getByRole("textbox", { name: "First name" })).toHaveValue("Robin");

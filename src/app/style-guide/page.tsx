@@ -62,6 +62,10 @@ const SWATCHES: { group: string; items: [string, string, string, string, string,
     items: [
       ["Data", "chart.data", "bg-chart-data", L.chart.data, D.chart.data, "Bars and lines"],
       ["Now", "chart.now", "bg-chart-now", L.chart.now, D.chart.now, "The current hour or latest value"],
+      ["Heat 1", "chart.heat1", "bg-chart-heat1", L.chart.heat1, D.chart.heat1, "Heat map: a little busy"],
+      ["Heat 2", "chart.heat2", "bg-chart-heat2", L.chart.heat2, D.chart.heat2, "Heat map"],
+      ["Heat 3", "chart.heat3", "bg-chart-heat3", L.chart.heat3, D.chart.heat3, "Heat map"],
+      ["Heat 4", "chart.heat4", "bg-chart-heat4", L.chart.heat4, D.chart.heat4, "Heat map: busy"],
     ],
   },
 ];

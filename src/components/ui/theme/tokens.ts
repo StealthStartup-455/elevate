@@ -43,7 +43,10 @@ export interface SchemeColors {
   warn: StatusColor;
   bad: StatusColor;
   sidebar: { bg: string; text: string; muted: string; active: string; activeText: string; mark: string };
-  chart: { data: string; now: string };
+  // One blue for data, the current value darker. heat1-heat4 are the heat map's
+  // levels from a little busy to busy; quiet uses `subtle`. Checked for
+  // colour blindness and contrast with the dataviz palette validator.
+  chart: { data: string; now: string; heat1: string; heat2: string; heat3: string; heat4: string };
   floatShadow: string; // tooltips, menus, dialogs. Nothing else gets a shadow.
 }
 
@@ -87,7 +90,7 @@ export const colors: Record<ColorScheme, SchemeColors> = {
       activeText: "#FFFFFF",
       mark: "#BCC6CD",
     },
-    chart: { data: "#7A8187", now: "#30363B" },
+    chart: { data: "#3987E5", now: "#0D366B", heat1: "#86B6EF", heat2: "#3987E5", heat3: "#1C5CAB", heat4: "#0D366B" },
     floatShadow: "0 6px 18px rgb(20 24 28 / 0.18)",
   },
   dark: {
@@ -129,7 +132,7 @@ export const colors: Record<ColorScheme, SchemeColors> = {
       activeText: "#FFFFFF",
       mark: "#AFB9C0",
     },
-    chart: { data: "#7A8187", now: "#D9DFE3" },
+    chart: { data: "#2A78D6", now: "#B7D3F6", heat1: "#184F95", heat2: "#2A78D6", heat3: "#6DA7EC", heat4: "#B7D3F6" },
     floatShadow: "0 6px 18px rgb(0 0 0 / 0.5)",
   },
 };

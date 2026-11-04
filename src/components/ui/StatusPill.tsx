@@ -15,13 +15,22 @@ const STATUS = {
   neutral: { color: "default", icon: null },
 } as const;
 
-export default function StatusPill({ status, label }: { status: Status; label: string }) {
+export default function StatusPill({
+  status,
+  label,
+  // Only for the exception in STYLE_GUIDE.md (Valid in the Check-in table's Waiver column).
+  showIcon = true,
+}: {
+  status: Status;
+  label: string;
+  showIcon?: boolean;
+}) {
   const { color, icon } = STATUS[status];
   return (
     <Chip
       color={color}
       label={label}
-      icon={icon ? <span aria-hidden="true">{icon}</span> : undefined}
+      icon={icon && showIcon ? <span aria-hidden="true">{icon}</span> : undefined}
     />
   );
 }
