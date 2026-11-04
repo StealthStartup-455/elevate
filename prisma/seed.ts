@@ -9,6 +9,8 @@
 // - the climbers the busyness mock check-ins refer to (src/features/analytics/mock),
 //   saved with the mock's id (climber-12) as externalId so the desk can link
 //   a check-in to the real climber
+// - front desk check-ins earlier today and last week, for the Check-in page
+//   (deskCheckIns below)
 // - one demo account for every waiver and membership state, which log in with
 //   their username as the password (src/features/climbers/demo-accounts.ts)
 // - two real Supabase logins, desk@elevate.test and climber@elevate.test, if
@@ -23,6 +25,8 @@ import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
 import { hashWaiver } from "../src/features/waivers/hash";
 import { SAMPLE_WAIVER } from "../src/features/waivers/sample-waiver";
 import { toStoredPhone } from "../src/features/climbers/phone";
+import { startOfGymDay } from "../src/features/check-ins/day";
+import { endOfGymDay } from "../src/features/climbers/status";
 import { seedLogins } from "./seed-logins";
 import type { Prisma } from "../src/generated/prisma/client";
 import type {
@@ -208,6 +212,48 @@ function passesFor(c: SeedClimber, gymId: string, n: number) {
   }
 }
 
+// Front desk check-ins for the Check-in page (#168), from busyness climbers
+// only: the team and demo climbers are left for the tests. All of them more
+// than 2 hours ago, so they don't block a test's check-in or add to the
+// busyness count. Most
+// also came last week, so only a few are first visits. One came in on a day
+// pass, two on punch cards (one used its last punch), and one member's
+// waiver runs out this week.
+const MINUTE = 60 * 1000;
+const DESK_MEMBERS = 24;
+
+type Seeded = { id: string; c: SeedClimber };
+
+function deskCheckIns(seeded: Seeded[], gymId: string, timeZone: string) {
+  const busyness = seeded.filter((s) => s.c.externalId?.startsWith("climber-") && s.c.waiver === "valid");
+  const members = busyness.filter((s) => s.c.membership === "active").slice(0, DESK_MEMBERS);
+  const [dayPass, punch, lastPunch] = busyness.filter((s) => s.c.membership === "expired");
+  const visitors = [...members, dayPass, punch, lastPunch].filter((s): s is Seeded => !!s);
+
+  // Spread over up to 8 hours, from no earlier than the gym's midnight, so
+  // they show as today unless the seed runs in the first two hours of the day.
+  const latest = Date.now() - 130 * MINUTE;
+  const midnight = startOfGymDay(new Date(), timeZone).getTime() + MINUTE;
+  const earliest = Math.min(latest, Math.max(midnight, latest - 8 * 60 * MINUTE));
+  const checkIns: Prisma.CheckInCreateManyInput[] = [];
+  const passes: Prisma.PassCreateManyInput[] = [];
+  visitors.forEach((s, i) => {
+    const at = new Date(latest - ((latest - earliest) * i) / Math.max(visitors.length - 1, 1));
+    checkIns.push({ gymId, climberId: s.id, method: "FRONT_DESK", checkedInAt: at });
+    // A day pass visitor is new; every eighth member is on their first visit too.
+    if (s !== dayPass && i % 8 !== 0) {
+      checkIns.push({ gymId, climberId: s.id, method: "FRONT_DESK", checkedInAt: new Date(at.getTime() - 7 * DAY) });
+    }
+    if (s === dayPass) {
+      passes.push({ gymId, climberId: s.id, kind: "DAY", startsAt: new Date(at.getTime() - MINUTE), expiresAt: endOfGymDay(new Date(), timeZone) });
+    }
+    if (s === punch || s === lastPunch) {
+      passes.push({ gymId, climberId: s.id, kind: "PUNCH", startsAt: daysFromNow(-20), visitsLeft: s === punch ? 4 : 0 });
+    }
+  });
+  return { checkIns, passes, expiringWaiver: members[1]?.id };
+}
+
 async function main() {
   const gym = await db.gym.upsert({
     where: { slug: DEFAULT_GYM_SLUG },
@@ -257,6 +303,7 @@ async function main() {
 
       const waivers = [];
       const passes = [];
+      const seeded: Seeded[] = [];
       for (const [i, c] of all.entries()) {
         const n = c.externalId ? numberOf(c.externalId) || i + 1 : i + 1;
         const climber = await tx.climber.create({
@@ -273,9 +320,16 @@ async function main() {
         });
         for (const w of waiversFor(c, gym.id, n)) waivers.push({ ...w, climberId: climber.id });
         for (const p of passesFor(c, gym.id, n)) passes.push({ ...p, climberId: climber.id });
+        seeded.push({ id: climber.id, c });
+      }
+      const desk = deskCheckIns(seeded, gym.id, gym.timeZone);
+      for (const w of waivers) {
+        // Signed a year ago less a few days, so it runs out this week.
+        if (w.climberId === desk.expiringWaiver) w.signedAt = daysFromNow(-361);
       }
       await tx.waiver.createMany({ data: waivers });
-      await tx.pass.createMany({ data: passes });
+      await tx.pass.createMany({ data: [...passes, ...desk.passes] });
+      await tx.checkIn.createMany({ data: desk.checkIns });
     },
     { timeout: 60_000 },
   );
