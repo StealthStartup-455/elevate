@@ -81,6 +81,13 @@ async function loadGymWeek(gym: Gym, now: Date): Promise<GymWeek | null> {
   };
 }
 
+/** Today on the signed-in climber's gym's clock ("2026-11-03"), for the calendar view. */
+export async function getMyGymToday(): Promise<string | null> {
+  await connection();
+  const gym = await myGym();
+  return gym ? gymClockAt(new Date(), gym.timeZone).day : null;
+}
+
 /** The signed-in climber's gym hours for the week ahead. Null if it hasn't set them. */
 export async function getMyGymWeek(): Promise<GymWeek | null> {
   await connection();
@@ -97,6 +104,8 @@ export type Announcement = {
   /** "In 12 days", "Tomorrow", "On now". */
   startsIn: string;
   canceled: boolean;
+  /** The day it starts on the gym's clock ("2026-11-14"), for the calendar view. */
+  day: string;
 };
 
 /**
@@ -140,6 +149,7 @@ async function loadMyEvents(days: number): Promise<Announcement[]> {
       when: formatSpan(e.startsAt, e.endsAt, gym.timeZone),
       startsIn: startsIn(now, e.startsAt, gym.timeZone),
       canceled: e.canceledAt !== null,
+      day: gymClockAt(e.startsAt, gym.timeZone).day,
     }));
 }
 
@@ -208,6 +218,8 @@ export type ClassItem = {
   spots: string;
   booked: boolean;
   canceled: boolean;
+  /** The day on the gym's clock ("2026-11-05"), for the calendar view. */
+  day: string;
 };
 
 /**
@@ -255,6 +267,7 @@ export async function getMyClasses(): Promise<ClassItem[]> {
         spots: describeSpots(left),
         booked: c.bookings.length > 0,
         canceled: c.canceledAt !== null,
+        day: start.day,
       };
     });
 }
