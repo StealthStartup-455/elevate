@@ -2,11 +2,18 @@
 
 import { getSessionClimberId } from "@/features/auth/queries";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
-import { getClimber } from "@/features/climbers/queries";
+import { formatTime } from "@/features/analytics/components/format";
+import { getClimber, getSavedCheckIns } from "@/features/climbers/queries";
+import type { Climber } from "@/features/climbers/types";
+import { isPosEnabled } from "@/features/pos/queries";
+import { getStaffWaiverPanel, type StaffWaiverPanel } from "@/features/waivers/queries";
+import { ageOn } from "@/features/waivers/validate";
 import { db } from "@/lib/db";
+import { getGymById } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
 import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
+import { startOfGymDay } from "./day";
 import { finishScan, isScanWaiting, oldestWaitingScan, saveScan } from "./scan-store";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -119,4 +126,45 @@ export async function finishDeskScan(
     waitMs: Date.now() - scan.scannedAt.getTime(),
     outcome: outcome === "checked_in" ? "checked_in" : "closed",
   });
+}
+
+export type DeskClimberPanel = {
+  climber: Climber;
+  gymName: string;
+  /** Whole years, from their date of birth. */
+  age: number;
+  waiver: StaffWaiverPanel;
+  /** "12:21 p.m." on the gym's clock when they checked in today; null if they haven't. */
+  checkedInAt: string | null;
+  /** The gym sells passes in Elevate, so Sell pass has somewhere to go. */
+  posEnabled: boolean;
+};
+
+// The climber panel on the Check-in page (#169). Reads only what the desk
+// already reads elsewhere: the climber (getClimber, as the climber page),
+// their waiver (getStaffWaiverPanel), today's check-ins (getSavedCheckIns) and
+// whether the POS is on. Staff only, and only the staff member's own gym: a
+// climber from another gym, or an id that isn't one, comes back null.
+export async function getDeskClimberPanel(climberId: string): Promise<DeskClimberPanel | null> {
+  await requireStaff();
+  const staff = await getStaffContext();
+  if (!staff || !UUID.test(climberId)) return null;
+  const [climber, gym] = await Promise.all([getClimber(climberId), getGymById(staff.gymId)]);
+  if (!climber || !gym) return null;
+  const now = new Date();
+  const [waiver, today, posEnabled] = await Promise.all([
+    getStaffWaiverPanel(climber.id),
+    getSavedCheckIns(startOfGymDay(now, gym.timeZone)),
+    isPosEnabled(),
+  ]);
+  // Newest first, so this is their latest check-in today.
+  const latest = today.find((c) => c.climberId === climber.id);
+  return {
+    climber,
+    gymName: gym.name,
+    age: ageOn(climber.dateOfBirth, now),
+    waiver,
+    checkedInAt: latest ? formatTime(latest.timestamp, gym.timeZone) : null,
+    posEnabled,
+  };
 }
