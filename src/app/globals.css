@@ -51,6 +51,10 @@
   --color-sidebar-active-fg: var(--mui-palette-sidebar-activeText);
   --color-chart-data: var(--mui-palette-chart-data);
   --color-chart-now: var(--mui-palette-chart-now);
+  --color-chart-heat1: var(--mui-palette-chart-heat1);
+  --color-chart-heat2: var(--mui-palette-chart-heat2);
+  --color-chart-heat3: var(--mui-palette-chart-heat3);
+  --color-chart-heat4: var(--mui-palette-chart-heat4);
 
   /* Text size and weight come from MUI <Typography variant>, never from Tailwind. */
   --text-*: initial;

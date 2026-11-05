@@ -1,9 +1,8 @@
 // Shared by the heat map and the climber's busyness strips.
 
-// Fill for heat levels 0 (quiet) to 4 (busy), as shades of the chart colour (data, not an action).
-export const SHADES = [0.08, 0.25, 0.45, 0.7, 1].map(
-  (opacity) => `color-mix(in srgb, var(--mui-palette-chart-now) ${opacity * 100}%, transparent)`,
-);
+// Fill for heat levels 0 (quiet) to 4 (busy): quiet is the plain cell, then
+// four steps of the chart blue (data, not an action).
+export const SHADES = ["background.subtle", "chart.heat1", "chart.heat2", "chart.heat3", "chart.heat4"];
 
 // The climber theme's busy-times shades (climber/tokens.ts heat), quiet to busy, for legends.
 export const SHADES_LEGEND = [0, 1, 2, 3, 4].map((i) => `heat.${i}`);

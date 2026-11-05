@@ -141,6 +141,6 @@ export async function submitWaiver(
   });
   revalidatePath("/me", "layout");
   revalidatePath("/desk");
-  revalidatePath(`/desk/climbers/${climberId}`);
+  revalidatePath(`/desk/customers/${climberId}`);
   return { status: "success", waiverId: waiver.id };
 }

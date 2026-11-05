@@ -1,5 +1,6 @@
 // TypeScript additions for the MUI theme in theme.ts. See STYLE_GUIDE.md.
 import "@mui/material/styles";
+import "@mui/material/Chip";
 import "@mui/material/Typography";
 import type { CSSProperties } from "react";
 
@@ -29,7 +30,7 @@ declare module "@mui/material/styles" {
 
   interface Palette {
     sidebar: { bg: string; text: string; muted: string; active: string; activeText: string; mark: string };
-    chart: { data: string; now: string };
+    chart: { data: string; now: string; heat1: string; heat2: string; heat3: string; heat4: string };
     floatShadow: string;
     // Climber app only (climber/theme.ts): the dark announcement card, its amber tag and the
     // busy-times shades. Missing in the desk theme.
@@ -65,6 +66,13 @@ declare module "@mui/material/styles" {
     body?: CSSProperties;
     secondary?: CSSProperties;
     label?: CSSProperties;
+  }
+}
+
+declare module "@mui/material/Chip" {
+  // Pass badges on the desk's Check-in table (see BadgePill).
+  interface ChipPropsVariantOverrides {
+    badge: true;
   }
 }
 

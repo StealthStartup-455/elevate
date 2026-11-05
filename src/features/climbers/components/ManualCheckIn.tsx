@@ -259,7 +259,7 @@ export default function ManualCheckIn() {
               {blocked ? (
                 <Alert severity="warning" sx={{ mt: 5 }}>
                   {blocked}{" "}
-                  <Link href={`/desk/climbers/${selected.id}`}>Open their account</Link>
+                  <Link href={`/desk/customers/${selected.id}`}>Open their account</Link>
                 </Alert>
               ) : null}
               {error ? (

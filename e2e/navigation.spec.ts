@@ -13,7 +13,7 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 }
 
 const menus = [
-  { user: "desk", home: /\/desk/, shown: ["Check-in", "Climbers", "Events"], hidden: ["/desk/waivers"] },
+  { user: "desk", home: /\/desk/, shown: ["Check-in", "Customers", "Events"], hidden: ["/desk/waivers"] },
   { user: "demo-valid-active", home: /\/me/, shown: ["Home", "Check in", "Membership", "Classes"], hidden: ["/me/stats"] },
 ];
 
@@ -29,3 +29,21 @@ for (const { user, home, shown, hidden } of menus) {
     }
   });
 }
+
+test("the desk marks the page you're on, and old Climbers links open Customers", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  const nav = page.getByRole("navigation");
+  await expect(nav.getByRole("link", { name: "Check-in", exact: true })).toHaveAttribute("aria-current", "page");
+
+  await nav.getByRole("link", { name: "Customers", exact: true }).click();
+  await expect(page).toHaveURL(/\/desk\/customers$/);
+  await expect(nav.getByRole("link", { name: "Customers", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Check-in", exact: true })).not.toHaveAttribute("aria-current", "page");
+
+  // The pages used to live under /desk/climbers.
+  await page.goto("/desk/climbers/new?from=bookmark");
+  await expect(page).toHaveURL(/\/desk\/customers\/new\?from=bookmark$/);
+  await page.goto("/desk/climbers");
+  await expect(page).toHaveURL(/\/desk\/customers$/);
+  await expect(page.getByRole("heading", { name: "Customers", level: 1 })).toBeVisible();
+});

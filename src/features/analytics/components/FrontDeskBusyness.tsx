@@ -27,7 +27,7 @@ export default async function FrontDeskBusyness({ gymId }: { gymId: string }) {
     const climber = climbers.get(checkIn.climber.id);
     return {
       id: checkIn.id,
-      href: climber ? `/desk/climbers/${climber.id}` : undefined,
+      href: climber ? `/desk/customers/${climber.id}` : undefined,
       name: `${checkIn.climber.firstName} ${checkIn.climber.lastName}`,
       phone: checkIn.climber.phone,
       checkedInAt: checkIn.timestamp.getTime(),

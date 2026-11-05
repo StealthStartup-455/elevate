@@ -35,10 +35,10 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
   await expect(page).toHaveURL(landsOn);
 }
 
-// "28 check-ins in the last 2 hours" on the desk.
+// "28 check-ins in the last 2 hours" in the Check-in page's header.
 async function deskCount(desk: Page): Promise<number> {
-  const heading = desk.getByRole("heading", { name: /check-ins in the last/ });
-  const text = (await heading.textContent()) ?? "";
+  // Inside <main>: while the page streams in, a second copy can briefly sit outside it.
+  const text = (await desk.getByRole("main").getByTestId("busyness-count").textContent()) ?? "";
   const match = text.match(/^(\d+) check-ins/);
   if (!match) throw new Error(`No check-in count in "${text}"`);
   return Number(match[1]);
@@ -76,7 +76,7 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
   await test.step("waiver status: missing until signed, then signed", async () => {
     await phone.goto("/me");
     // Scoped to <main>: while /me streams in, a second copy of the card can
-    // briefly sit outside it (also seen on /desk/climbers/new in PR #115).
+    // briefly sit outside it (also seen on /desk/customers/new in PR #115).
     await expect(phone.getByRole("main").getByText("No waiver on file")).toBeVisible();
     await phone.getByRole("main").getByRole("link", { name: "Sign the waiver" }).click();
     await expect(phone).toHaveURL(/\/me\/waiver/);

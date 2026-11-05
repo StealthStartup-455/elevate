@@ -27,12 +27,12 @@ const MEMBERSHIP: Record<MembershipStatus, { status: Status; label: string }> = 
 export default function ClimberPage({
   params,
   searchParams,
-}: PageProps<"/desk/climbers/[climberId]">) {
+}: PageProps<"/desk/customers/[climberId]">) {
   return (
     <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start">
-        <LinkButton href="/desk/climbers" variant="text">
-          ← Climbers
+        <LinkButton href="/desk/customers" variant="text">
+          ← Customers
         </LinkButton>
       </div>
       <Suspense fallback={<p>Loading...</p>}>
@@ -45,7 +45,7 @@ export default function ClimberPage({
 async function ClimberCard({
   params,
   searchParams,
-}: Pick<PageProps<"/desk/climbers/[climberId]">, "params" | "searchParams">) {
+}: Pick<PageProps<"/desk/customers/[climberId]">, "params" | "searchParams">) {
   const { climberId } = await params;
   // ?added=1: staff just created this climber at the desk (#88).
   const query = await searchParams;
@@ -129,7 +129,7 @@ async function ClimberCard({
             {climber.waiverStatus !== "valid" ? (
               <WaiverStep
                 climberId={climber.id}
-                laterHref={justAdded ? "/desk/climbers" : undefined}
+                laterHref={justAdded ? "/desk/customers" : undefined}
               />
             ) : null}
           </ClimberDetails>

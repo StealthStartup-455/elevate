@@ -71,7 +71,7 @@ function palette(c: ClimberColors, scheme: ColorScheme) {
     heatNow: c.heatNow,
     // The desk's palette has these; climber screens only use chart.
     sidebar: { bg: c.surface, text: c.text, muted: c.muted, active: c.subtle, activeText: c.text, mark: c.action.main },
-    chart: { data: c.heat[1], now: c.heatNow },
+    chart: { data: c.heat[1], now: c.heatNow, heat1: c.heat[1], heat2: c.heat[2], heat3: c.heat[3], heat4: c.heat[4] },
     floatShadow: c.floatShadow,
   };
 }

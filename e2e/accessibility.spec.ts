@@ -22,8 +22,8 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
     paths: [
       "/desk",
       "/desk/pos",
-      "/desk/climbers",
-      "/desk/climbers/new",
+      "/desk/customers",
+      "/desk/customers/new",
       "/desk/events/hours",
       "/desk/events/class-types",
       "/desk/events/classes",

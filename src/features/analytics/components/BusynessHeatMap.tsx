@@ -5,8 +5,11 @@ import { getGymBusynessSettings } from "../config";
 import { getWeeklyBusyness } from "../queries";
 import { SHADES, shortHour } from "./heat";
 
-function Swatch({ shade }: { shade: string }) {
-  return <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: shade }} />;
+// The current hour: a ring with a gap, so it shows on light and dark cells.
+const NOW_RING = { outline: "2px solid", outlineColor: "text.primary", outlineOffset: "1px" } as const;
+
+function Swatch({ shade, now = false }: { shade: string; now?: boolean }) {
+  return <Box sx={{ width: 16, height: 16, borderRadius: 0.5, bgcolor: shade, ...(now ? NOW_RING : {}) }} />;
 }
 
 type Props = {
@@ -35,8 +38,8 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
         aria-label={view === "week" ? "Typical busyness by day and hour" : "Typical busyness today by hour"}
         sx={{
           display: "grid",
-          gridTemplateColumns: `${view === "week" ? "2.25rem" : "2.75rem"} repeat(${hours.length}, minmax(0, 1fr))`,
-          gap: "3px",
+          gridTemplateColumns: `${view === "week" ? "2.5rem" : "3rem"} repeat(${hours.length}, minmax(0, 1fr))`,
+          gap: 0.5,
           alignItems: "center",
         }}
       >
@@ -44,9 +47,9 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
         {hours.map((hour) => (
           <Typography
             key={hour}
-            variant="caption"
-            color="text.secondary"
-            sx={{ lineHeight: 1.5, whiteSpace: "nowrap", overflow: "visible" }}
+            variant="secondary"
+            color={hour === week.now.hour ? "text.primary" : "text.secondary"}
+            sx={{ fontWeight: hour === week.now.hour ? 600 : 400, whiteSpace: "nowrap", overflow: "visible" }}
           >
             {hour % 3 === 0 ? shortHour(hour) : ""}
           </Typography>
@@ -55,8 +58,9 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
         {rows.map(({ day, d }) => (
           <Box key={day} sx={{ display: "contents" }}>
             <Typography
-              variant="caption"
-              sx={{ fontWeight: d === week.now.day ? 700 : 400 }}
+              variant="body"
+              color={d === week.now.day ? "text.primary" : "text.secondary"}
+              sx={{ fontWeight: d === week.now.day ? 600 : 400 }}
             >
               {view === "today" ? "Today" : day}
             </Typography>
@@ -68,14 +72,12 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
                   key={hour}
                   role="img"
                   aria-label={`${day} ${shortHour(hour)}: about ${value} climbers${isNow ? " (now)" : ""}`}
-                  title={`${day} ${shortHour(hour)}: ~${value} climbers`}
+                  title={`${day} ${shortHour(hour)}: ~${value} climbers${isNow ? " (now)" : ""}`}
                   sx={{
-                    aspectRatio: "1",
+                    height: { xs: 20, sm: 24 },
                     borderRadius: 0.5,
                     bgcolor: SHADES[heatLevel(value, thresholds)],
-                    outline: isNow ? "2px solid" : "none",
-                    outlineColor: "text.primary",
-                    outlineOffset: "-1px",
+                    ...(isNow ? NOW_RING : {}),
                   }}
                 />
               );
@@ -83,13 +85,6 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
           </Box>
         ))}
       </Box>
-
-      {week.sample && (
-        // Stopgap until #39: the week is generated, not this gym's history (#64).
-        <Typography variant="secondary" sx={{ mt: 2 }} data-testid="sample-week">
-          Demo data: a sample week, not this gym&apos;s history.
-        </Typography>
-      )}
 
       {legend && (
       <Box
@@ -102,17 +97,25 @@ export default async function BusynessHeatMap({ gymId, view = "week", legend = t
           mt: 3,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Typography variant="caption">Quiet</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="secondary">Quiet</Typography>
           {SHADES.map((shade) => (
             <Swatch key={shade} shade={shade} />
           ))}
-          <Typography variant="caption">Busy</Typography>
+          <Typography variant="secondary">Busy</Typography>
         </Box>
-        <Typography variant="caption" color="text.secondary">
-          Outlined = now
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Swatch shade="background.subtle" now />
+          <Typography variant="secondary">Now</Typography>
+        </Box>
       </Box>
+      )}
+
+      {week.sample && (
+        // Stopgap until #39: the week is generated, not this gym's history (#64).
+        <Typography variant="secondary" sx={{ mt: 2 }} data-testid="sample-week">
+          Demo data: a sample week, not this gym&apos;s history.
+        </Typography>
       )}
     </Box>
   );
