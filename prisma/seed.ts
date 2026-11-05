@@ -292,6 +292,9 @@ async function main() {
       await tx.saleLine.deleteMany({ where: { gymId: gym.id } });
       await tx.sale.deleteMany({ where: { gymId: gym.id } });
       await tx.climber.deleteMany({ where: { gymId: gym.id } });
+      // Wording published from the desk editor (#110) goes too, now that no
+      // waiver points at it, so the demo starts again from v1 alone.
+      await tx.waiverTemplate.deleteMany({ where: { gymId: gym.id, version: { not: WAIVER_VERSION } } });
 
       // Products keep their ids across seeds; a product no longer listed
       // here is switched off, never deleted.
