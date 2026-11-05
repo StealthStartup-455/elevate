@@ -153,11 +153,11 @@ export default function DeskDayTable({
                   <BadgePill badge={row.badge} />
                 </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  {/* Valid drops its ✓ to keep a long column quiet; problems keep ! or ✕ (STYLE_GUIDE.md). */}
+                  {/* Valid and Expired are text-only here, as requested (STYLE_GUIDE.md). */}
                   <StatusPill
                     status={PILL[row.waiver.tone]}
                     label={row.waiver.text}
-                    showIcon={row.waiver.tone !== "normal"}
+                    showIcon={row.waiver.tone !== "normal" && row.waiver.text !== "Expired"}
                   />
                 </TableCell>
                 <TableCell>
