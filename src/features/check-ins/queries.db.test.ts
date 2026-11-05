@@ -135,20 +135,25 @@ describe("getDeskDay", () => {
     await Promise.all([ensureDemoDay(demo, now), ensureDemoDay(demo, now)]);
     await ensureDemoDay(demo, new Date(now.getTime() + 60_000));
     const before = await getDeskDay({}, now);
-    expect(before.total).toBe(1);
-    expect(before.hourly.reduce((a, b) => a + b, 0)).toBe(1);
-    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 1, sampleCount: 1 });
+    expect(before.total).toBe(4);
+    expect(before.hourly.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 4, sampleCount: 4 });
+
+    const examples = new Map(before.rows.map((r) => [r.lastName, r]));
+    expect(examples.get("Employee")).toMatchObject({ badge: "EMPLOYEE", message: { text: "Employee access" } });
+    expect(examples.get("Day pass")).toMatchObject({ badge: "DAY_PASS", waiver: { text: "Valid" } });
+    expect(examples.get("Expired waiver")).toMatchObject({ waiver: { text: "Expired" }, message: { text: "Waiver expired" } });
 
     const arrival = await climber("New", "Arrival");
     await checkIn(arrival, now.toISOString());
     const after = await getDeskDay({}, now);
-    expect(after.total).toBe(2);
-    expect(after.hourly.reduce((a, b) => a + b, 0)).toBe(2);
-    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 2, sampleCount: 1 });
+    expect(after.total).toBe(5);
+    expect(after.hourly.reduce((a, b) => a + b, 0)).toBe(5);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 5, sampleCount: 4 });
 
     // Saved visits really age out; refreshing doesn't move their timestamps.
     await ensureDemoDay(demo, new Date(now.getTime() + 121 * 60_000));
-    expect(await db.checkIn.count({ where: { gymId } })).toBe(2);
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(5);
     vi.setSystemTime(new Date(now.getTime() + 121 * 60_000));
     expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 0, sampleCount: 0 });
 
@@ -156,9 +161,9 @@ describe("getDeskDay", () => {
     const tomorrow = new Date(now.getTime() + DAY_MS);
     vi.setSystemTime(tomorrow);
     await ensureDemoDay(demo, tomorrow);
-    expect((await getDeskDay({}, tomorrow)).total).toBe(1);
-    expect((await getDeskDay({ date: before.day }, tomorrow)).total).toBe(2);
-    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 1, sampleCount: 1 });
+    expect((await getDeskDay({}, tomorrow)).total).toBe(4);
+    expect((await getDeskDay({ date: before.day }, tomorrow)).total).toBe(5);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 4, sampleCount: 4 });
   });
 
   it("never populates attendance in production or an unrelated gym", async () => {

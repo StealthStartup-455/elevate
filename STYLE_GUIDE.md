@@ -373,3 +373,5 @@ The rules are deliberately hard to bypass. To change them:
 Tailwind's own palette, type scale, radii and shadows are also removed in `globals.css`, so those classes render nothing even if lint is skipped.
 
 Lint doesn't yet check MUI variant names or `sx` values. Reviewers check those.
+
+The Check-in demo includes an Employee pass badge using the existing neutral badge styling. This is a fictional display fixture, not a new staff permission or a new token.

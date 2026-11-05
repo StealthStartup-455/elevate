@@ -40,3 +40,5 @@ The popup waits while another desk dialog is open (manual check in, POS checkout
 `npm run db:seed` saves 27 check-ins earlier today (and return visits last week) for busyness climbers, all over 2 hours old so tests can still check people in.
 
 Daily demo attendance is initialized by `demo-day.ts` in demo mode for the fictional `demo-gym` only. Both day and recent-window reads await initialization before querying. Deterministic daily ids and `skipDuplicates` prevent duplicates across concurrent requests. Starting visits are saved once per local day, never shifted on refresh. `MOCK_BUSYNESS_SCENARIO=none` disables new daily visits.
+
+The daily demo also has exactly one Employee pass, one Day pass and one Expired waiver example, created once per gym day alongside ordinary sample visits. Employee pass is a demo-only badge backed by a membership, not a new authorization role. The expired-waiver row is a display fixture; real check-in actions still require a valid waiver. All saved visits, including these fixtures, age out of the recent count after two hours.

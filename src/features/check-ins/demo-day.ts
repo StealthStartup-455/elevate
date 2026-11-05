@@ -3,6 +3,7 @@ import { demoAttendanceCount, DEMO_CHECK_IN_PREFIX } from "@/features/analytics/
 import { isDemoMode } from "@/features/auth/demo-mode";
 import { db } from "@/lib/db";
 import { gymDay, startOfGymDay } from "./day";
+import { ensureDemoExamples } from "./demo-examples";
 
 /** Once per gym day, give the fictional demo gym a saved starting attendance.
  * Deterministic ids make simultaneous desk/member requests safe. Never move
@@ -16,7 +17,10 @@ export async function ensureDemoDay(
   const count = demoAttendanceCount();
   if (!count) return;
   const prefix = `${DEMO_CHECK_IN_PREFIX}${gym.id}:${gymDay(now, gym.timeZone)}:`;
-  if (await db.checkIn.findFirst({ where: { gymId: gym.id, id: { startsWith: prefix } }, select: { id: true } })) return;
+  if (await db.checkIn.findFirst({ where: { gymId: gym.id, id: { startsWith: prefix } }, select: { id: true } })) {
+    await ensureDemoExamples(gym, now, prefix);
+    return;
+  }
 
   // Only the seed's fictional busyness members; team/demo login accounts stay
   // available for the person presenting to check in themselves.
@@ -36,7 +40,10 @@ export async function ensureDemoDay(
     take: count,
     select: { id: true },
   });
-  if (!climbers.length) return;
+  if (!climbers.length) {
+    await ensureDemoExamples(gym, now, prefix);
+    return;
+  }
   const midnight = startOfGymDay(now, gym.timeZone).getTime();
   const earliest = Math.max(midnight, now.getTime() - 90 * 60_000);
   await db.checkIn.createMany({
@@ -49,4 +56,5 @@ export async function ensureDemoDay(
     })),
     skipDuplicates: true,
   });
+  await ensureDemoExamples(gym, now, prefix);
 }
