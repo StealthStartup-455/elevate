@@ -1,3 +1,4 @@
+import { ensureDemoDay } from "@/features/check-ins/demo-day";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { usernameFor } from "@/features/auth/mock-users";
@@ -284,7 +285,7 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
 // Visits saved in the CheckIn table inside the active window, newest first.
 // Only front desk check-ins are saved so far (see checkInClimber).
 // No staff check: the busyness count on /me reads this too.
-export async function getSavedCheckIns(since: Date): Promise<
+export async function getSavedCheckIns(since: Date, until: Date = new Date()): Promise<
   {
     id: string;
     climberId: string;
@@ -314,9 +315,10 @@ export async function getSavedCheckIns(since: Date): Promise<
   if (!gymId) return [];
   const gym = await getGymById(gymId);
   if (!gym) return [];
-  const now = new Date();
+  const now = until;
+  await ensureDemoDay(gym, now);
   const rows = await db.checkIn.findMany({
-    where: { gymId: gym.id, checkedInAt: { gt: since } },
+    where: { gymId: gym.id, checkedInAt: { gt: since, lte: until } },
     orderBy: { checkedInAt: "desc" },
     include: {
       climber: {

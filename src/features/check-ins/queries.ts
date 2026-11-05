@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { ensureDemoDay } from "./demo-day";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimberStatuses } from "@/features/climbers/queries";
 import type { WaiverSummary } from "@/features/climbers/status";
@@ -77,6 +78,7 @@ export async function getDeskDay(
   const gym = await getGymById(staff.gymId);
   if (!gym) return emptyDay(now, "UTC");
 
+  await ensureDemoDay(gym, now);
   const today = gymDay(now, gym.timeZone);
   const day = parseDay(input.date, today);
   const { start, end } = gymDayBounds(day, gym.timeZone);

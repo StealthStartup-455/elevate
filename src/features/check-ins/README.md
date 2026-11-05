@@ -38,3 +38,5 @@ The popup waits while another desk dialog is open (manual check in, POS checkout
 ## Seeded check-ins
 
 `npm run db:seed` saves 27 check-ins earlier today (and return visits last week) for busyness climbers, all over 2 hours old so tests can still check people in.
+
+Daily demo attendance is initialized by `demo-day.ts` in demo mode for the fictional `demo-gym` only. Both day and recent-window reads await initialization before querying. Deterministic daily ids and `skipDuplicates` prevent duplicates across concurrent requests. Starting visits are saved once per local day, never shifted on refresh. `MOCK_BUSYNESS_SCENARIO=none` disables new daily visits.

@@ -32,6 +32,18 @@ export type MockWeek = {
 const SCENARIOS = { quiet, moderate, busy } as Record<string, MockScenario>;
 export const MOCK_SCENARIO_NAMES = Object.keys(SCENARIOS);
 const DEFAULT_SCENARIO = "moderate";
+export const DEMO_CHECK_IN_PREFIX = "demo-checkin:";
+
+/** The daily demo's starting attendance; visits themselves live in CheckIn. */
+export function demoAttendanceCount(): number {
+  const scenario = currentScenario();
+  if (!scenario) return 0;
+  const now = Date.parse(scenario.referenceTime);
+  return scenario.checkIns.filter((c) => {
+    const at = Date.parse(c.timestamp);
+    return at > now - 120 * 60_000 && at <= now;
+  }).length;
+}
 
 // Which scenario runs when MOCK_BUSYNESS_SCENARIO isn't set: `none` in the
 // production environment, so a real gym never sees generated check-ins by
