@@ -12,6 +12,7 @@ import { formatTime } from "@/features/analytics/components/format";
 import { DEMO_GYM_ID, DESK_BUSYNESS_REFRESH_MS } from "@/features/analytics/config";
 import { getFrontDeskBusyness } from "@/features/analytics/queries";
 import BusyTimesDialog from "@/features/check-ins/components/BusyTimesDialog";
+import ClimberPanelProvider, { ClimberPanelArea } from "@/features/check-ins/components/ClimberPanel";
 import DayNav from "@/features/check-ins/components/DayNav";
 import DeskDayTable, { type DeskTableRow } from "@/features/check-ins/components/DeskDayTable";
 import FindClimber from "@/features/check-ins/components/FindClimber";
@@ -29,6 +30,10 @@ import { formatDate } from "@/features/climbers/format";
 //
 // The title and toolbar don't wait for data, so they show at once; the day's
 // navigation, busyness and table stream in as their data arrives.
+//
+// ?climber=<id> opens that climber's panel beside the table (#169). The panel
+// changes the URL on the client and loads its own data, so opening and
+// closing it doesn't render this page again.
 
 type SearchParams = PageProps<"/desk">["searchParams"];
 
@@ -50,47 +55,52 @@ const checkIns = (n: number) => `${n} check-in${n === 1 ? "" : "s"}`;
 
 export default function DeskPage({ searchParams }: PageProps<"/desk">) {
   return (
-    <div className="flex flex-col gap-3">
-      <AutoRefresh intervalMs={DESK_BUSYNESS_REFRESH_MS} />
+    <ClimberPanelProvider>
+      <div className="flex flex-col gap-3">
+        <AutoRefresh intervalMs={DESK_BUSYNESS_REFRESH_MS} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Typography variant="pageTitle">Check-in</Typography>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Typography variant="pageTitle">Check-in</Typography>
+            <Suspense fallback={null}>
+              <DayPicker searchParams={searchParams} />
+            </Suspense>
+          </div>
           <Suspense fallback={null}>
-            <DayPicker searchParams={searchParams} />
+            <Busyness searchParams={searchParams} />
           </Suspense>
         </div>
-        <Suspense fallback={null}>
-          <Busyness searchParams={searchParams} />
-        </Suspense>
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <FindClimber />
-        <div className="flex flex-wrap items-center gap-2">
-          <Suspense fallback={null}>
-            <ManualCheckInButton />
-          </Suspense>
-          <LinkButton href="/desk/customers/new" variant="outlined">
-            New customer
-          </LinkButton>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <FindClimber />
+          <div className="flex flex-wrap items-center gap-2">
+            <Suspense fallback={null}>
+              <ManualCheckInButton />
+            </Suspense>
+            <LinkButton href="/desk/customers/new" variant="outlined">
+              New customer
+            </LinkButton>
+          </div>
         </div>
-      </div>
 
-      <Suspense
-        fallback={
-          <Card>
-            <CardContent>
-              <Typography variant="secondary" role="status">
-                Loading check-ins...
-              </Typography>
-            </CardContent>
-          </Card>
-        }
-      >
-        <DayTable searchParams={searchParams} />
-      </Suspense>
-    </div>
+        {/* On a wide screen the climber panel opens beside the table. */}
+        <ClimberPanelArea>
+          <Suspense
+            fallback={
+              <Card>
+                <CardContent>
+                  <Typography variant="secondary" role="status">
+                    Loading check-ins...
+                  </Typography>
+                </CardContent>
+              </Card>
+            }
+          >
+            <DayTable searchParams={searchParams} />
+          </Suspense>
+        </ClimberPanelArea>
+      </div>
+    </ClimberPanelProvider>
   );
 }
 
