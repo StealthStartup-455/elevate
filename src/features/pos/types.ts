@@ -1,5 +1,6 @@
 import type { ProductKind, Tender } from "@/generated/prisma/enums";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
+import type { BankAccountSummary } from "@/features/eft/types";
 
 export type { ProductKind, Tender };
 
@@ -61,6 +62,12 @@ export type PosClimber = {
   membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
+  /**
+   * Their EFT bank account for monthly payments (#179). Only filled in when
+   * one climber is loaded (getPosClimber), not in search results; null means
+   * none on file.
+   */
+  bankAccount?: BankAccountSummary | null;
 };
 
 // One of today's sales, for the list under the POS.
@@ -89,8 +96,9 @@ export type RecentCheckIn = {
   time: string;
 };
 
-// A monthly recurring member whose month is ending (or just ended). No card
-// is stored, so the desk rings up the next month on the POS.
+// A monthly recurring member whose month is ending (or just ended). The desk
+// rings up the next month on the POS. Some have an EFT bank account on file
+// (#179); it is a mock, so nothing is debited and the desk still rings it up.
 export type RenewalDue = {
   climberId: string;
   name: string;
@@ -99,4 +107,6 @@ export type RenewalDue = {
   overdue: boolean;
   /** The recurring product they bought last time, when it's still for sale. */
   productId: string | null;
+  /** They have an EFT bank account on file (#179). */
+  hasBankAccount: boolean;
 };

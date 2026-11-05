@@ -13,7 +13,8 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 5. **Void:** any desk staff member, with a reason. The sale stays, marked voided, and its passes end now. The refund itself happens on the card machine or from the till.
 6. **Revoke membership:** on the picked climber's card, when their membership is active or paused. Every membership pass that hasn't ended stops now (a renewal bought early too) and stops renewing. The sales stay paid; to refund, void the sale.
 7. **Cash out:** the **Cash out** button on Today's sales opens the end of day summary (`cashout.ts`): paid sales today by payment type (Card, Cash, Online) with count, subtotal, GST, PST and total, a grand total, and the voided sales left out. Staff type the cash counted in the till (without the float) and see whether it matches, or is over or short. Nothing is saved: it reads the same sales as the table.
-8. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
+8. **EFT on file:** the climber card says whether the climber has a mock EFT bank account on file for monthly payments, with Add bank account, Change and Remove (`DeskBankAccount`), and Renewals due rows add "· EFT on file" (`features/eft`, #179). Nothing is debited, so the desk still rings up the month.
+9. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
 
 ## Passes a sale gives (`passes.ts`)
 

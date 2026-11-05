@@ -15,6 +15,8 @@ import WaiverStep from "@/features/climbers/components/WaiverStep";
 import { membershipDateLine } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
 import type { MembershipStatus } from "@/features/climbers/types";
+import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
+import { getBankAccountForStaff } from "@/features/eft/queries";
 import { getStaffWaiverPanel } from "@/features/waivers/queries";
 
 const MEMBERSHIP: Record<MembershipStatus, { status: Status; label: string }> = {
@@ -58,7 +60,10 @@ async function ClimberCard({
   await requireStaff();
   const climber = await getClimber(climberId);
   if (!climber) notFound();
-  const waiver = await getStaffWaiverPanel(climber.id);
+  const [waiver, bankAccount] = await Promise.all([
+    getStaffWaiverPanel(climber.id),
+    getBankAccountForStaff(climber.id),
+  ]);
   const membership = MEMBERSHIP[climber.membershipStatus];
   const membershipLine = membershipDateLine(
     climber.membershipStatus,
@@ -124,6 +129,17 @@ async function ClimberCard({
                     {membershipLine}
                   </Typography>
                 ) : null}
+              </div>
+              {/* EFT for a monthly membership, a mock (#179). */}
+              <div className="flex flex-col gap-1">
+                <Typography variant="secondary">Monthly payments</Typography>
+                <DeskBankAccount
+                  key={climber.id}
+                  climberId={climber.id}
+                  climberName={`${climber.firstName} ${climber.lastName}`}
+                  account={bankAccount ?? null}
+                  detailed
+                />
               </div>
             </div>
             {climber.waiverStatus !== "valid" ? (

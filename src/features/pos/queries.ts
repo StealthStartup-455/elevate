@@ -4,6 +4,7 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import type { Climber } from "@/features/climbers/types";
 import { formatPhone } from "@/features/climbers/phone";
 import { isoDay } from "@/features/climbers/status";
+import { climbersWithBankAccount } from "@/features/eft/queries";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
 import { startOfGymDay } from "./day";
@@ -208,6 +209,7 @@ async function getRenewalsDue(gymId: string, now: Date): Promise<RenewalDue[]> {
     select: { id: true },
   });
   const forSale = new Set(products.map((p) => p.id));
+  const withBank = await climbersWithBankAccount(gymId, [...names.keys()]);
 
   // Each climber's membership that ends last, leaving out voided sales.
   const latest = new Map<string, (typeof memberships)[number]>();
@@ -229,6 +231,7 @@ async function getRenewalsDue(gymId: string, now: Date): Promise<RenewalDue[]> {
         dueOn: isoDay(m.expiresAt!),
         overdue: m.expiresAt! <= now,
         productId: productId && forSale.has(productId) ? productId : (products[0]?.id ?? null),
+        hasBankAccount: withBank.has(m.climberId),
       };
     });
 }
