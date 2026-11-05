@@ -343,6 +343,10 @@ const components: ThemeOptions["components"] = {
               props: { variant: "badge", color: "primary" },
               style: { backgroundColor: p.primary.soft, color: p.primary.main },
             },
+            {
+              props: { variant: "badge", color: "info" },
+              style: { backgroundColor: p.info.soft, color: p.info.main },
+            },
           ],
         };
       },

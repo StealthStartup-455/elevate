@@ -11,7 +11,7 @@ const BADGE = {
   MEMBER: { label: "Member", color: "secondary" },
   PUNCH_CARD: { label: "Punch card", color: "default" },
   DAY_PASS: { label: "Day pass", color: "primary" },
-  EMPLOYEE: { label: "Employee pass", color: "default" },
+  EMPLOYEE: { label: "Employee pass", color: "info" },
 } as const;
 
 export default function BadgePill({ badge }: { badge: Badge }) {
