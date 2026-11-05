@@ -7,6 +7,7 @@ import { getDemoClimberId } from "@/features/auth/session";
 import { getStaffContext, isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
+import { memberCode, membershipPlanName } from "./format";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
@@ -131,14 +132,14 @@ export async function getMyMembership(): Promise<Membership> {
     lastName: climber.lastName,
     // The product they bought (#132); a membership from before the POS has
     // no product, so it's named by whether it renews.
-    plan: climber.membershipPlan ?? (climber.membershipRecurring ? "Monthly" : "Membership"),
+    plan: membershipPlanName(climber.membershipPlan, climber.membershipRecurring),
     status: climber.membershipStatus,
     renewsOn: climber.membershipRenewsOn,
     recurring: climber.membershipRecurring ?? false,
     waiverStatus: climber.waiverStatus,
     waiverExpiresOn: climber.waiverExpiresOn,
     // Printed code until real member numbers exist.
-    memberCode: `ELV-${climber.id.slice(0, 6).toUpperCase()}`,
+    memberCode: memberCode(climber.id),
     hasDayPass: climber.hasDayPass,
     punchesLeft: climber.punchesLeft,
   };

@@ -25,3 +25,16 @@ export function membershipDateLine(
   if (status === "expired") return `Ended ${date}`;
   return recurring ? `Renews ${date}` : `Runs until ${date}`;
 }
+
+/** The code printed for a climber until real member numbers exist: "ELV-B07C44". */
+export function memberCode(climberId: string): string {
+  return `ELV-${climberId.slice(0, 6).toUpperCase()}`;
+}
+
+/**
+ * What a membership is called: the product it was sold as (#132). One from
+ * before the POS has no product, so it's named by whether it renews.
+ */
+export function membershipPlanName(plan: string | undefined, recurring: boolean | undefined): string {
+  return plan ?? (recurring ? "Monthly" : "Membership");
+}
