@@ -5,6 +5,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import type { PopperProps } from "@mui/material/Popper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
@@ -141,6 +142,34 @@ function TestLoginsHint({ groups }: { groups: TestLoginGroup[] }) {
   );
 }
 
+// The tooltip is long. Positioned `absolute` it ran past the bottom of the
+// window, gave the page a second scrollbar and shifted the layout sideways.
+// `fixed` keeps it out of the page's scroll height, and fitToViewport caps its
+// height to the room left beside the (i), so only the tooltip itself scrolls.
+const VIEWPORT_GAP = 16;
+const TEST_LOGINS_POPPER_OPTIONS: NonNullable<PopperProps["popperOptions"]> = {
+  strategy: "fixed",
+  modifiers: [
+    {
+      name: "fitToViewport",
+      enabled: true,
+      phase: "beforeWrite",
+      fn: ({
+        state,
+      }: {
+        state: { placement: string; elements: { reference: Element; popper: HTMLElement } };
+      }) => {
+        const anchor = state.elements.reference.getBoundingClientRect();
+        const room = state.placement.startsWith("top")
+          ? anchor.top
+          : window.innerHeight - anchor.bottom;
+        const maxHeight = Math.max(room - 2 * VIEWPORT_GAP, 120);
+        state.elements.popper.style.setProperty("--test-logins-max-height", `${maxHeight}px`);
+      },
+    },
+  ],
+};
+
 /**
  * The (i) next to "Log in": a testing guide and every test login by kind of
  * user. Only in demo mode, decided at request time by the login page (#137).
@@ -160,10 +189,11 @@ export function TestLoginsInfo({ testLogins }: { testLogins: TestLoginGroup[] })
       leaveTouchDelay={15000}
       // Long, so it scrolls; the tooltip stays open while the pointer is on it.
       slotProps={{
+        popper: { popperOptions: TEST_LOGINS_POPPER_OPTIONS },
         tooltip: {
           sx: {
             maxWidth: "min(440px, calc(100vw - 32px))",
-            maxHeight: "80vh",
+            maxHeight: "var(--test-logins-max-height, 80vh)",
             overflowY: "auto",
           },
         },

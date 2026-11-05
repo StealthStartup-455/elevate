@@ -1,0 +1,21 @@
+# 2026-11-04 23:43 UTC: End of day cash out on the POS
+
+- **Developer:** @zack122
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** #177 / not opened yet
+- **Branch:** `fix/177-adding-checkout-feature-in-staff-pos`
+- **What the agent did:**
+  - New outlined **Cash out** button in the Today's sales card header on `/desk/pos`. It opens a dialog (`CashOutDialog.tsx`) with today's paid sales by payment type (Card, Cash, Online): count, subtotal, GST, PST and total, then a Total row. Voided sales are left out and listed underneath ("1 voided sale ($39.69) not counted above").
+  - A "Cash counted in the till" field compares the count with cash sales and shows "Till matches" (StatusPill) or "The till is over/short by $X" (warning Alert).
+  - Pure `cashOutSummary(sales)` and `parseDollars(text)` in `src/features/pos/cashout.ts`, with unit tests. `TENDER_LABEL` moved there from `TodaysSales.tsx` so the dialog and the table share it without a circular import.
+  - `SaleSummary` now carries `subtotalCents`, `gstCents` and `pstCents` (read in `listSales`).
+- **Files touched:** `src/features/pos/{cashout.ts,cashout.test.ts,types.ts,queries.ts,README.md}`, `src/features/pos/components/{CashOutDialog.tsx,TodaysSales.tsx}`, `e2e/pos.spec.ts`
+- **Decisions and why:**
+  - Nothing is saved: no schema change. The cash out reads the same sales as the table, so it's always current. Saving a cash out record (who, when, counted amount) needs a new model.
+  - "Today" is the same window as the table (`startOfGymDay` in the gym's time zone).
+  - Online sales get their own row but aren't in the till or on the card machine; the row says "Paid in the app".
+  - The counted cash is compared with cash sales only; the helper text tells staff to leave out the float, since Elevate doesn't know the float.
+  - The dialog ignores backdrop clicks, like Void (#134), and reports to `useDeskDialogOpen` so the scan popup waits.
+- **Gotchas:** `npx tsc` fails on stale `.next/types` until `npm run build` regenerates them (as noted in an earlier entry). Playwright needed `npx playwright install chromium` on this machine.
+- **Open follow-ups:** Store each cash out (staff, time, counted cash, over/short), and maybe a float amount per gym. A printable or emailed end-of-day report. A date picker to cash out a past day.
+- **Verification:** `npm run lint` clean. `npm test`: 32 files, 316 passed, 2 todo. `npm run build` succeeded, then `npx tsc --noEmit` clean. `npx playwright test e2e/pos.spec.ts`: 2 passed (after `npm run db:seed`). Checked the dialog in light and dark mode with Playwright screenshots.
