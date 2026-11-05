@@ -81,7 +81,7 @@ export default function ClimberProfile({
         <Photo />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <BadgePill badge={badgeFor(c)} />
+            <BadgePill badge={panel.employee ? "EMPLOYEE" : badgeFor(c)} />
             <Typography variant="secondary" component="span">
               {panel.gymName}
             </Typography>
@@ -111,9 +111,12 @@ export default function ClimberProfile({
         <PassesAndDetails climber={c} onChanged={onChanged} />
         <Attributes panel={panel} />
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
-        <SellPass climberId={climberId} posEnabled={panel.posEnabled} variant="outlined" />
-      </div>
+      {/* Staff on an employee pass don't buy passes. */}
+      {panel.employee ? null : (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
+          <SellPass climberId={climberId} posEnabled={panel.posEnabled} variant="outlined" />
+        </div>
+      )}
     </>
   );
 }

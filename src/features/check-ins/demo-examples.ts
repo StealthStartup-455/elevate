@@ -1,7 +1,16 @@
 import type { Gym } from "@/generated/prisma/client";
+import { DEMO_CHECK_IN_PREFIX } from "@/features/analytics/mock-data";
 import { db } from "@/lib/db";
 import { endOfGymDay } from "@/features/climbers/status";
 import { startOfGymDay } from "./day";
+
+/**
+ * The demo's employee example visit (Employee pass badge). One rule for the
+ * Check-in table and the climber panel, so the two always agree.
+ */
+export function isDemoEmployeeCheckIn(checkInId: string): boolean {
+  return checkInId.startsWith(DEMO_CHECK_IN_PREFIX) && checkInId.endsWith("example:employee");
+}
 
 /** Display fixtures only. This never changes the rules for real check-ins. */
 export async function ensureDemoExamples(

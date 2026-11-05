@@ -14,6 +14,7 @@ import { logEvent, logWarning } from "@/lib/log";
 import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { startOfGymDay } from "./day";
+import { isDemoEmployeeCheckIn } from "./demo-examples";
 import { finishScan, isScanWaiting, oldestWaitingScan, saveScan } from "./scan-store";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -138,6 +139,8 @@ export type DeskClimberPanel = {
   checkedInAt: string | null;
   /** The gym sells passes in Elevate, so Sell pass has somewhere to go. */
   posEnabled: boolean;
+  /** Came in on the demo's employee pass today: shown like the table, and nothing to sell. */
+  employee: boolean;
 };
 
 // The climber panel on the Check-in page (#169). Reads only what the desk
@@ -166,5 +169,6 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
     waiver,
     checkedInAt: latest ? formatTime(latest.timestamp, gym.timeZone) : null,
     posEnabled,
+    employee: !!latest && isDemoEmployeeCheckIn(latest.id),
   };
 }

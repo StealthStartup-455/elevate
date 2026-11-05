@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { ensureDemoDay } from "./demo-day";
-import { DEMO_CHECK_IN_PREFIX } from "@/features/analytics/mock-data";
+import { isDemoEmployeeCheckIn } from "./demo-examples";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimberStatuses } from "@/features/climbers/queries";
 import type { WaiverSummary } from "@/features/climbers/status";
@@ -146,7 +146,7 @@ export async function getDeskDay(
     const waiver: WaiverSummary = status
       ? { status: status.waiverStatus, expiresOn: status.waiverExpiresOn }
       : { status: "missing" };
-    const badge: Badge = c.id.startsWith(DEMO_CHECK_IN_PREFIX) && c.id.endsWith("example:employee") ? "EMPLOYEE" : badgeAt(
+    const badge: Badge = isDemoEmployeeCheckIn(c.id) ? "EMPLOYEE" : badgeAt(
       passes.filter((p) => p.climberId === c.climberId),
       c.checkedInAt,
     );
