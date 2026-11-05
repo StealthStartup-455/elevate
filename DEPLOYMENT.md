@@ -202,6 +202,7 @@ The server writes one JSON line per event to standard output (`src/lib/log.ts`).
 | `climber_created` / `climber_updated` | Join, desk add, desk edit | `climberId`, `source`: `self` or `desk` |
 | `climber_form_invalid` | A form was sent back with errors | `form`, `fields` (field names only) |
 | `waiver_signed` | Placeholder waiver signed | `climberId`, `version` |
+| `waiver_published` | New waiver wording published from the desk (#110) | `gymId`, `version` (the new one), `staffId` (null for the demo login) |
 | `waiver_pdf_downloaded` | A signed waiver was downloaded as a PDF (#111) | `waiverId`, `climberId`, `source`: `self` or `desk` |
 | `scan_saved` / `scan_taken` | Phone scan saved; staff dealt with it at the desk (checked in or closed the popup) | `climberId`; `waitMs` (time from tap to staff dealing with it), `outcome` (`checked_in` or `closed`) |
 | `perf_db` / `perf_auth` / `perf_action` | Only when `PERF_LOG="true"` (see "Finding slow requests") | `model` and `operation`, or `where` (`proxy`, `page`), or `name`; `ms` |

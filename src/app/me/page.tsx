@@ -7,6 +7,7 @@ import ReadyToClimb from "@/features/climbers/components/ReadyToClimb";
 import { getMyMembership } from "@/features/climbers/queries";
 import EventBanner from "@/features/events/components/EventBanner";
 import SetChanges from "@/features/events/components/SetChanges";
+import BankAccountCard from "@/features/eft/components/BankAccountCard";
 
 // Home tab: who's signed in, an event coming up, anything stopping them climbing, then
 // whether the gym is open and how busy it is, the week's hours and the set changes (#101).
@@ -19,6 +20,10 @@ export default function HomePage() {
       {/* Only there while an event is coming up. */}
       <Suspense fallback={null}>
         <EventBanner />
+      </Suspense>
+      {/* EFT for a monthly membership, a mock (#179). */}
+      <Suspense fallback={null}>
+        <BankAccountCard />
       </Suspense>
       <Suspense fallback={null}>
         <ReadyToClimb />

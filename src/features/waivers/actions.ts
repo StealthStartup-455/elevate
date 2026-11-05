@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/features/auth/queries";
+import { getStaffContext } from "@/features/auth/staff";
 import { db } from "@/lib/db";
-import { getGym } from "@/lib/gym";
+import { forgetGym, getGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
-import { canActForClimber } from "./access";
+import { canActForClimber, canEditWaiver } from "./access";
 import { hashWaiver } from "./hash";
 import { parseWaiverSignature, type WaiverFieldErrors } from "./validate";
+import { nextVersion, parseWaiverWording, type WordingFieldErrors } from "./wording";
 
 // Server actions are public POST endpoints, so submitWaiver checks the caller
 // itself, and reads the climber and the wording from the database rather than
@@ -143,4 +146,89 @@ export async function submitWaiver(
   revalidatePath("/desk");
   revalidatePath(`/desk/customers/${climberId}`);
   return { status: "success", waiverId: waiver.id };
+}
+
+export type WordingFormState = {
+  status: "idle" | "error";
+  message?: string;
+  errors?: WordingFieldErrors;
+  /** Echoed back after an error so the editor keeps what was typed. */
+  values?: { title: string; body: string; clauses: string; confirm: boolean };
+};
+
+type Published = { kind: "published"; version: string } | { kind: "stale" } | { kind: "unchanged" };
+
+/**
+ * Publishes new waiver wording for the staff member's gym (#110). It never
+ * edits a published version: it adds the next one ("v2") and points
+ * Gym.waiverVersion at it, so every climber must sign again.
+ */
+export async function publishWaiver(
+  _prev: WordingFormState,
+  formData: FormData,
+): Promise<WordingFormState> {
+  const staff = await getStaffContext();
+  if (!staff || !(await canEditWaiver())) {
+    return { status: "error", message: "Only a manager or owner can publish the waiver." };
+  }
+
+  const values = {
+    title: String(formData.get("title") ?? ""),
+    body: String(formData.get("body") ?? ""),
+    clauses: String(formData.get("clauses") ?? ""),
+    confirm: formData.get("confirm") === "on",
+  };
+  const parsed = parseWaiverWording(formData);
+  if (!parsed.ok) {
+    return { status: "error", message: "Check the highlighted fields.", errors: parsed.errors, values };
+  }
+  const bodyHash = hashWaiver(parsed.value);
+  // The version the editor was opened on, so two managers can't overwrite each other.
+  const baseVersion = String(formData.get("baseVersion") ?? "");
+
+  let result: Published;
+  try {
+    result = await db.$transaction(async (tx): Promise<Published> => {
+      const gym = await tx.gym.findUniqueOrThrow({
+        where: { id: staff.gymId },
+        select: { waiverVersion: true },
+      });
+      if (baseVersion !== (gym.waiverVersion ?? "")) return { kind: "stale" };
+      const templates = await tx.waiverTemplate.findMany({
+        where: { gymId: staff.gymId },
+        select: { version: true, bodyHash: true },
+      });
+      const current = templates.find((t) => t.version === gym.waiverVersion);
+      if (current?.bodyHash === bodyHash) return { kind: "unchanged" };
+
+      const version = nextVersion(templates.map((t) => t.version));
+      await tx.waiverTemplate.create({
+        data: { gymId: staff.gymId, version, ...parsed.value, bodyHash },
+      });
+      await tx.gym.update({ where: { id: staff.gymId }, data: { waiverVersion: version } });
+      return { kind: "published", version };
+    });
+  } catch (error) {
+    // Someone published the same next version at the same moment (unique gymId + version).
+    if ((error as { code?: string }).code === "P2002") result = { kind: "stale" };
+    else throw error;
+  }
+
+  if (result.kind === "stale") {
+    return {
+      status: "error",
+      message: "Someone else published a new version while you were editing. Reload and start from it.",
+      values,
+    };
+  }
+  if (result.kind === "unchanged") {
+    return { status: "error", message: "Nothing changed: this is the wording climbers sign now.", values };
+  }
+
+  // The gym row is cached for a minute per server; this server forgets it now.
+  forgetGym();
+  logEvent("waiver_published", { gymId: staff.gymId, version: result.version, staffId: staff.id });
+  revalidatePath("/desk", "layout");
+  revalidatePath("/me", "layout");
+  redirect(`/desk/waivers?published=${result.version}`);
 }

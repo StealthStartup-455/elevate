@@ -13,7 +13,7 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 }
 
 const menus = [
-  { user: "desk", home: /\/desk/, shown: ["Check-in", "Customers", "Events"], hidden: ["/desk/waivers"] },
+  { user: "desk", home: /\/desk/, shown: ["Check-in", "Customers", "Events", "Waivers"], hidden: [] },
   { user: "demo-valid-active", home: /\/me/, shown: ["Home", "Check in", "Membership", "Classes"], hidden: ["/me/stats"] },
 ];
 
