@@ -58,6 +58,19 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
   await voiding.getByRole("button", { name: "Void sale" }).click();
   await expect(voiding).toBeHidden();
   await expect(sales.getByRole("row").filter({ hasText: "Test sale" }).first()).toContainText("Voided");
+
+  // End of day: totals by payment type, and the till counted against cash sales.
+  await page.getByRole("button", { name: "Cash out" }).click();
+  const cashOut = page.getByRole("dialog", { name: "Cash out" });
+  const byTender = cashOut.getByRole("table", { name: "Cash out by payment type" });
+  for (const tender of ["Card", "Cash", "Online", "Total"]) {
+    await expect(byTender.getByRole("row").filter({ hasText: tender }).first()).toBeVisible();
+  }
+  await expect(cashOut).toContainText(/voided sales? \(/);
+  await cashOut.getByLabel("Cash counted in the till").fill("abc");
+  await expect(cashOut).toContainText("Enter an amount");
+  await cashOut.getByRole("button", { name: "Done" }).click();
+  await expect(cashOut).toBeHidden();
 });
 
 test("a missing waiver is a warning, not a block", async ({ page }) => {

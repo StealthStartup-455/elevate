@@ -26,9 +26,7 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             </Suspense>
             <NavLink href="/desk/customers">Customers</NavLink>
             <NavLink href="/desk/events">Events</NavLink>
-            {/* Waivers is hidden until its page has content (#65). The route
-                stays, so work on it can continue: add the link back in the
-                same PR that fills the page. */}
+            <NavLink href="/desk/waivers">Waivers</NavLink>
             <LogoutButton />
           </nav>
           <main className="p-4 sm:p-6">{children}</main>

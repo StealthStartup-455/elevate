@@ -23,6 +23,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Product` | Something the desk sells on the POS | 10-punch card, $200 |
 | `Sale` | One POS sale, for one climber | Kim, $217.35 by card |
 | `SaleLine` | One line of a sale | 10-punch card ×1, $200 |
+| `BankAccount` | A climber's EFT bank account for monthly payments (mock) | Kim's RBC account ending 7890 |
 | `OpeningHours` | One weekday of the gym's regular week | Monday, 6 AM to 10 PM |
 | `SpecialHours` | One date with different hours | Nov 11, closed, "Remembrance Day" |
 | `GymEvent` | Something the gym announces to climbers | Fall bouldering comp, Sat 10 AM |
@@ -45,6 +46,7 @@ Gym
       ├── Waiver ── WaiverTemplate
       ├── CheckIn ── Staff
       ├── QrScan
+      ├── BankAccount
       └── Sale ── Staff
            └── SaleLine ── Product
 ```
@@ -55,7 +57,7 @@ Gym
 - Prices are stored (agreed 2026-10-29, elevate-docs#56; this used to say they weren't). The desk POS sells `Product`s and records each `Sale`. The money itself is taken on the gym's own card machine or in cash: Elevate never sees card details.
 - Money is whole cents (`priceCents`, `totalCents`), never decimals. Tax is added at checkout and each tax is rounded once: GST on the whole subtotal at the gym's `gstRateBps`, and BC PST at `pstRateBps` only on the lines whose product has `chargesPst` (rentals and retail goods; admissions and memberships are GST only).
 - A sale copies each product's name and price onto its `SaleLine`, so changing a price never rewrites old sales.
-- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end. A canceled event, set change or class keeps its row, and an archived class type keeps its row with `active = false` with `canceledAt`, so climbers can be told; a cancelled class place keeps its `ClassBooking` row too, and a removed special day keeps its row with `removedAt`. Opening hours are edited in place: there is one row per weekday.
+- Rows are never deleted. Staff who leave are set to `active = false`. Waivers are legal records, so re-signing creates a new row. Waiver wording is never edited either: a new wording is a new `WaiverTemplate` row. Products are switched off with `active = false`. A voided sale stays, marked `VOIDED` with when and why, and its passes end. A canceled event, set change or class keeps its row, and an archived class type keeps its row with `active = false` with `canceledAt`, so climbers can be told; a cancelled class place keeps its `ClassBooking` row too, and a removed special day keeps its row with `removedAt`. Opening hours are edited in place: there is one row per weekday. The one exception is `BankAccount`: when a climber removes their bank details, the row is deleted, and it goes with the climber if the climber is deleted.
 
 ## Gym isolation
 
@@ -143,9 +145,22 @@ Searchable by phone, email and last name within a gym.
 | `expiresAt` | timestamp | no | Empty means no end date |
 | `visitsLeft` | integer | no | Punch cards only |
 | `pausedAt` | timestamp | no | Memberships only. Set while the membership is on hold |
-| `renews` | boolean | yes | Monthly recurring membership. No card is stored, so the POS lists it under "Renewals due" and the desk rings up the next month |
+| `renews` | boolean | yes | Monthly recurring membership. The POS lists it under "Renewals due" and the desk rings up the next month. A `BankAccount` on file is a mock and is never debited |
 | `saleLineId` | text | no | The POS sale line that paid for it. Empty for passes from before the POS, the #62 free day pass, or another system |
 | `externalId` | text | no | Its id in the gym's own system. Unique per gym |
+
+### BankAccount
+
+A mock (#179): nothing is ever debited. See `src/features/eft/README.md`.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId`, `climberId` | text | yes | One per climber (`climberId`, `gymId` unique) |
+| `holderName` | text | yes | Name on the account |
+| `institutionNumber` | text | yes | 3 digits; names the bank (`003` is RBC) |
+| `transitNumber` | text | yes | 5 digits; the branch |
+| `accountLast4` | text | yes | Last four digits only. The full account number is never stored |
+| `token` | text | yes | `mock_eft_<uuid>`, in place of a payment processor's token |
 
 ### How the app shows waiver and membership status
 

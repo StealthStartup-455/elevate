@@ -1,0 +1,23 @@
+# 2026-11-05 00:25 UTC: Gym admin edits the waiver wording
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#110 / PR pending
+- **Branch:** `feature/110-waiver-editor`
+- **What the agent did:**
+  - `/desk/waivers` (now in the desk menu): the current waiver (title, version, published date, signatures) and a table of every version with its signature count. Managers and owners get an **Edit the wording** link; other staff see why they can't.
+  - `/desk/waivers/edit` (`components/WaiverEditor.tsx`): title, text (blank lines between paragraphs) and rules (one per line), starting from the current version. A warning says every climber must sign again, and a tick box confirms it. **Publish vN** sends back to `/desk/waivers?published=vN`.
+  - `publishWaiver` (`actions.ts`): in one transaction, adds the next `WaiverTemplate` (`v2`, ...) with its hash and points `Gym.waiverVersion` at it. It refuses unchanged wording, an edit opened on an older version (two managers at once), and anyone who isn't a manager or owner. Then `forgetGym()`, a `waiver_published` log line, and revalidates `/desk` and `/me`.
+  - `wording.ts`: `parseWaiverWording` (tidies spaces so the same text hashes the same; title, text, up to 20 rules, the confirm box) and `nextVersion`. `access.ts`: `canEditWaiver()`. `queries.ts`: `getStaffWaiverWording()` (staff only, own gym).
+  - Seed: removes demo-gym templates other than `v1`, so a reseed undoes a publish.
+- **Files touched:** `src/features/waivers/{actions,access,queries,wording,wording.test,actions.db.test}.ts`, `components/WaiverEditor.tsx`, `README.md`, `src/app/desk/waivers/{page.tsx,edit/page.tsx}`, `src/app/desk/layout.tsx`, `prisma/seed.ts`, `e2e/{waiver-editor,navigation,accessibility}.spec.ts`, `DEPLOYMENT.md`
+- **Decisions and why:**
+  - Publish only adds a version, never edits one, so every signed waiver keeps the exact text and hash it was signed on (#35's rule). Climbers sign again through the existing check: `summarizeWaiver` treats an older version as expired.
+  - Managers and owners only, plus the demo "desk" login so the demo can show it (asked Khanh; switch in `canEditWaiver`). Nothing else in the app checks staff roles yet.
+  - Signatures per version are counted by `Waiver.version`, not `templateId`, so seeded and imported waivers (no template) count too.
+  - No e2e publish: the suite shares the seeded gym, and a new version would make every seeded climber sign again and break later tests. Publishing is covered by `actions.db.test.ts` on its own test gym.
+- **Gotchas:**
+  - The gym row is cached for a minute per server (`GYM_CACHE_MS`). `publishWaiver` clears this server's cache; another server instance can show the old version for up to a minute.
+  - `logEvent`'s `version` field overwrites the app version in the log line (same as `waiver_signed`).
+- **Open follow-ups:** View an old version's full text from the table; a preview before publishing; real manager logins (today only the demo login and Supabase staff with role MANAGER or OWNER can publish).
+- **Verification:** `npm run lint` and `npx tsc --noEmit` clean; `npm test` 318 passed (2 todo), 7 new in `wording.test.ts`; `npm run test:db` 71 passed, 8 new in `actions.db.test.ts`; `npm run build` passed; `npx playwright test` 65 passed, 3 skipped (real Supabase logins), including axe on `/desk/waivers` and `/desk/waivers/edit` in light and dark. By hand: published v2 from the editor, the page showed it as current, and a climber with a valid v1 waiver was asked to sign v2.

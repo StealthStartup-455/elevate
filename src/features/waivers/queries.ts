@@ -176,3 +176,58 @@ async function findSignedWaiver(
     wordingIntact: !template || hashWaiver(template) === waiver.bodyHash,
   };
 }
+
+export type WaiverVersionRow = {
+  id: string;
+  version: string;
+  title: string;
+  publishedAt: Date;
+  /** How many waivers were signed on this wording. */
+  signatures: number;
+  /** The one climbers must sign now (Gym.waiverVersion). */
+  current: boolean;
+};
+
+export type StaffWaiverWording = {
+  /** The current wording, as stored, to start the editor from; null if there is none. */
+  current: { version: string; title: string; body: string; clauses: string[] } | null;
+  /** Every published version, newest first. */
+  versions: WaiverVersionRow[];
+  timeZone: string;
+};
+
+/**
+ * The gym's waiver wording for the desk's Waivers page (#110): the current
+ * version and every earlier one with its number of signatures. Staff only,
+ * limited to the staff member's own gym; anyone else gets null.
+ */
+export async function getStaffWaiverWording(): Promise<StaffWaiverWording | null> {
+  await connection();
+  const staff = await getStaffContext();
+  if (!staff) return null;
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return null;
+
+  const [templates, counts] = await Promise.all([
+    db.waiverTemplate.findMany({ where: { gymId: gym.id }, orderBy: { publishedAt: "desc" } }),
+    // By version, not templateId: waivers from before online signing only have the version.
+    db.waiver.groupBy({ by: ["version"], where: { gymId: gym.id }, _count: { _all: true } }),
+  ]);
+  const signed = new Map(counts.map((c) => [c.version, c._count._all]));
+  const current = templates.find((t) => t.version === gym.waiverVersion);
+
+  return {
+    current: current
+      ? { version: current.version, title: current.title, body: current.body, clauses: current.clauses }
+      : null,
+    versions: templates.map((t) => ({
+      id: t.id,
+      version: t.version,
+      title: t.title,
+      publishedAt: t.publishedAt,
+      signatures: signed.get(t.version) ?? 0,
+      current: t.version === gym.waiverVersion,
+    })),
+    timeZone: gym.timeZone,
+  };
+}

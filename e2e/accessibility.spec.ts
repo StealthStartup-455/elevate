@@ -30,6 +30,7 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
       "/desk/events/set-changes",
       "/desk/events/announcements",
       "/desk/waivers",
+      "/desk/waivers/edit",
     ],
     phone: false,
   },
