@@ -126,11 +126,13 @@ Email and password live in Supabase Auth, not here.
 |---|---|---|---|
 | `gymId` | text | yes | |
 | `firstName`, `lastName` | text | yes | |
+| `accountUsername` | text | no | The username from the customer's Elevate account |
 | `email` | text | no | Lowercase. Not unique |
 | `phone` | text | no | Format `+12505551234`. Not unique |
 | `dateOfBirth` | date | yes | |
 | `authUserId` | text | no | The login that manages this climber |
 | `createdByStaffId` | text | no | Who added them. Empty means they signed up themselves |
+| `onboardingComplete` | boolean | yes | `false` only while a demo customer must still choose the demo gym |
 | `externalId` | text | no | Their id in Redpoint or Rock Gym Pro. Unique per gym |
 
 Searchable by phone, email and last name within a gym.

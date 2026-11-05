@@ -52,6 +52,7 @@ export async function getActiveCheckIns(
   // so they are cut off by the real active window.
   const saved = await getSavedCheckIns(
     activeWindowStart(new Date(), ACTIVE_WINDOW_MINUTES),
+    gymId,
   );
   const live: ActiveCheckIn[] = saved.map((c) => ({
     id: c.id,

@@ -9,6 +9,7 @@ const fake = vi.hoisted(() => ({
   signOut: vi.fn(),
   findAccount: vi.fn(),
   clearSession: vi.fn(),
+  setActiveClimberSession: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("./queries", () => ({ findAccount: fake.findAccount }));
 vi.mock("./session", () => ({
   clearSession: fake.clearSession,
+  setActiveClimberSession: fake.setActiveClimberSession,
   setSession: vi.fn(),
   setDeskSession: vi.fn(),
 }));
@@ -80,12 +82,9 @@ describe("login", () => {
     expect(fake.findAccount).not.toHaveBeenCalled();
   });
 
-  it("signs a login with no staff row or climber straight back out", async () => {
+  it("sends a login with no staff row or climber to gym discovery", async () => {
     fake.findAccount.mockResolvedValue(account(false, []));
-    expect(await login({}, form("stranger@elevate.test", "pw"))).toEqual({
-      error: "This login isn't set up for the gym yet.",
-    });
-    expect(fake.signOut).toHaveBeenCalled();
+    await expect(login({}, form("stranger@elevate.test", "pw"))).rejects.toThrow("redirect /me/explore");
   });
 
   it("doesn't call Supabase when a field is empty", async () => {

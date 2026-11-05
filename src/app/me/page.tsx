@@ -1,8 +1,12 @@
 import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import LinkArrow from "@/components/ui/LinkArrow";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { VersionLink } from "@/components/ui/AppVersion";
 import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
-import { DEMO_GYM_ID } from "@/features/analytics/config";
+import { getSessionClimberId } from "@/features/auth/queries";
 import ReadyToClimb from "@/features/climbers/components/ReadyToClimb";
 import { getMyMembership } from "@/features/climbers/queries";
 import EventBanner from "@/features/events/components/EventBanner";
@@ -13,10 +17,33 @@ import BankAccountCard from "@/features/eft/components/BankAccountCard";
 // whether the gym is open and how busy it is, the week's hours and the set changes (#101).
 export default function HomePage() {
   return (
+    <Suspense fallback={<Typography variant="pageTitle">Home</Typography>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
+  // Membership data reaches Prisma timestamps, so this must run after a real
+  // request rather than during the cache-component prerender.
+  await connection();
+  if (!(await getSessionClimberId())) {
+    return (
+      <>
+        <Typography variant="pageTitle">Welcome to Elevate</Typography>
+        <Card>
+          <CardContent className="flex flex-col items-start gap-2">
+            <Typography variant="body">Find a gym whenever you&apos;re ready to start climbing.</Typography>
+            <LinkArrow href="/me/explore">Explore gyms</LinkArrow>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+  const membership = await getMyMembership();
+  return (
     <>
-      <Suspense fallback={<Typography variant="pageTitle">Home</Typography>}>
-        <Greeting />
-      </Suspense>
+      <Greeting membership={membership} />
       {/* Only there while an event is coming up. */}
       <Suspense fallback={null}>
         <EventBanner />
@@ -29,7 +56,7 @@ export default function HomePage() {
         <ReadyToClimb />
       </Suspense>
       <Suspense fallback={<Typography variant="secondary">Loading hours…</Typography>}>
-        <CustomerBusyness gymId={DEMO_GYM_ID} />
+        <CustomerBusyness gymId={membership.gymId} />
       </Suspense>
       <Suspense fallback={null}>
         <SetChanges />
@@ -43,8 +70,12 @@ export default function HomePage() {
 }
 
 // Who is signed in, for someone sharing a phone or switching between logins (#144).
-async function Greeting() {
-  const { firstName, lastName } = await getMyMembership();
+function Greeting({
+  membership,
+}: {
+  membership: Awaited<ReturnType<typeof getMyMembership>>;
+}) {
+  const { firstName, lastName } = membership;
   return (
     <div className="flex flex-col gap-1">
       <Typography variant="pageTitle">Hi, {firstName}</Typography>

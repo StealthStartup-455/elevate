@@ -57,6 +57,8 @@ model Staff {
   id         String    @id @default(uuid())
   gymId      String
   authUserId String // their Supabase login
+  demoEmail  String?   @unique // local-demo owner login; never used outside demo mode
+  demoPasswordHash String? // local-demo owner password, stored only as a hash
   name       String
   role       StaffRole @default(DESK)
   active     Boolean   @default(true) // switch off when someone leaves
@@ -78,11 +80,13 @@ model Climber {
   gymId            String
   firstName        String
   lastName         String
+  accountUsername  String? // chosen on Elevate account creation; unique within a gym when set
   email            String? // saved lowercased
   phone            String? // saved like +12505551234
   dateOfBirth      DateTime @db.Date
   authUserId       String? // the login that manages this climber; one parent login can manage several kids
   createdByStaffId String? // empty means they signed themselves up
+  onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
   externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -100,6 +104,7 @@ model Climber {
   @@unique([id, gymId])
   @@unique([gymId, externalId])
   @@index([gymId, phone])
+  @@index([gymId, accountUsername])
   @@index([gymId, email])
   @@index([gymId, lastName])
   @@index([authUserId])

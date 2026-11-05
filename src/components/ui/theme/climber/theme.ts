@@ -182,6 +182,15 @@ const components: ThemeOptions["components"] = {
               },
             },
             {
+              props: { variant: "outlined", color: "primary" },
+              style: {
+                backgroundColor: p.primary.soft,
+                borderColor: p.primary.border,
+                color: p.primary.main,
+                "&:hover": { backgroundColor: p.primary.softHover, borderColor: p.primary.main },
+              },
+            },
+            {
               props: { variant: "outlined", color: "error" },
               style: { color: p.error.main, "&:hover": { backgroundColor: p.error.soft, borderColor: p.error.main } },
             },

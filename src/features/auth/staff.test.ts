@@ -13,7 +13,10 @@ vi.mock("./queries", () => ({
   getCurrentUser: async () => signedIn.user,
   getSessionClimberId: async () => signedIn.demoClimberId ?? signedIn.user?.climberIds[0],
 }));
-vi.mock("./session", () => ({ hasDemoDeskSession: async () => signedIn.demoDesk }));
+vi.mock("./session", () => ({
+  hasDemoDeskSession: async () => signedIn.demoDesk,
+  getDemoDeskGymId: async () => undefined,
+}));
 vi.mock("@/lib/gym", () => ({ getGym: async () => ({ id: "demo-gym" }) }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {

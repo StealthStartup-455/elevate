@@ -4,13 +4,14 @@ import Box from "@mui/material/Box";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { tabBar } from "@/components/ui/theme/climber/tokens";
-import { CalendarIcon, CardIcon, HomeIcon, QrIcon } from "./icons";
+import { CalendarIcon, CardIcon, CompassIcon, HomeIcon, QrIcon } from "./icons";
 
 export const CLIMBER_TABS = [
   { href: "/me", label: "Home", Icon: HomeIcon },
   { href: "/me/check-in", label: "Check in", Icon: QrIcon },
   { href: "/me/membership", label: "Membership", Icon: CardIcon },
   { href: "/me/classes", label: "Classes", Icon: CalendarIcon },
+  { href: "/me/explore", label: "Explore", Icon: CompassIcon },
 ] as const;
 
 export type ClimberTab = (typeof CLIMBER_TABS)[number]["href"];
@@ -31,7 +32,7 @@ export default function TabBar({ current, sticky = true }: { current?: ClimberTa
   return <TabBarView active={current ?? tabFor(pathname)} sticky={sticky} />;
 }
 
-// The bar itself, like most phone apps: four tabs, an icon over a label, the current one in teal
+// The bar itself, like most phone apps: five tabs, an icon over a label, the current one in teal
 // and marked aria-current. It stays at the bottom of the screen (`sticky={false}` for the style
 // guide) and clears the phone's home indicator.
 export function TabBarView({ active, sticky = true }: { active: ClimberTab | null; sticky?: boolean }) {
