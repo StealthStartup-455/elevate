@@ -32,11 +32,21 @@ declare module "@mui/material/styles" {
     sidebar: { bg: string; text: string; muted: string; active: string; activeText: string; mark: string };
     chart: { data: string; now: string; heat1: string; heat2: string; heat3: string; heat4: string };
     floatShadow: string;
+    // Climber app only (climber/theme.ts): the dark announcement card, its amber tag and the
+    // busy-times shades. Missing in the desk theme.
+    inverse?: { bg: string; text: string; muted: string };
+    highlight?: { bg: string; text: string };
+    heat?: string[];
+    heatNow?: string;
   }
   interface PaletteOptions {
     sidebar?: Palette["sidebar"];
     chart?: Palette["chart"];
     floatShadow?: string;
+    inverse?: Palette["inverse"];
+    highlight?: Palette["highlight"];
+    heat?: string[];
+    heatNow?: string;
   }
 
   // The six text styles. MUI's built-in variants still exist for MUI's own components and older

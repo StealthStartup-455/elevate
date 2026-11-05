@@ -23,7 +23,7 @@ export default function PurchaseHistory({ purchases }: { purchases: MyPurchase[]
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
+      <Button variant="outlined" size="small" onClick={() => setOpen(true)}>
         Purchase history
       </Button>
       <Dialog

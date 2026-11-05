@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openTab } from "./climber";
 
 // Fixes found while testing the release candidate (#149): switching logins,
 // who is signed in, the desk reading a waiver, and Open in POS. Needs the demo
@@ -40,8 +41,9 @@ test("the climber dashboard says who is signed in (#144)", async ({ page }) => {
   await expect(page.getByText("Signed in as Demo Valid-Active")).toHaveCount(0);
 });
 
-test("the demo QR code on /me is a real, full-size QR code (#146)", async ({ page }) => {
+test("the demo QR code on the Check in tab is a real, full-size QR code (#146)", async ({ page }) => {
   await logIn(page, "demo-valid-active", /\/me/);
+  await openTab(page, "Check in");
   const code = page.getByRole("img", { name: /Demo check-in code for ELV-/ });
   await expect(code).toBeVisible();
   // The placeholder is 25 modules (viewBox 29); a code for a link is bigger.

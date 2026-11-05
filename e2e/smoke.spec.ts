@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab, pressScan, signUpDemoCustomer } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
 // The Milestone 3 demo, end to end: a climber on a phone and the front desk
@@ -46,7 +47,7 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   await logIn(phone, "demo-valid-active", /\/me/);
 
   // First scan: the desk pops up the member and checks them in.
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const popup = desk.getByRole("dialog");
   await expect(popup).toContainText("Demo Valid-Active", { timeout: 20_000 });
   await popup.getByRole("button", { name: "Check in" }).click();
@@ -56,7 +57,7 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   // Second scan within two hours: shown again, but not counted twice.
   await phone.keyboard.press("Escape");
   await phone.reload();
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   await expect(popup).toContainText("Demo Valid-Active", { timeout: 20_000 });
   await popup.getByRole("button", { name: "Check in" }).click();
   await expect(popup).toContainText("Already checked in");
@@ -70,7 +71,7 @@ test("a scan made before the desk opens still shows when it opens", async ({ bro
   const desk = await newPage(browser);
   await logIn(phone, "demo-expired-active", /\/me/);
   // Scan while nobody is at the desk, and wait until the phone says it's sent.
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   await expect(phone.getByRole("dialog")).toContainText("Sent to the desk", { timeout: 20_000 });
 
   // The desk opens afterwards: the arrival is waiting for it (#127).
@@ -90,7 +91,7 @@ test("a scan waits while manual check in is open, so dialogs never stack", async
   await desk.getByRole("button", { name: /manual check in/i }).click();
   await expect(desk.getByRole("dialog")).toHaveCount(1);
 
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   await desk.waitForTimeout(6_000); // two polls
   // Still only manual check in (#92). MUI hides a dialog under another from
   // the accessibility tree, so count the dialogs in the page, not by role.
@@ -111,23 +112,24 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await logIn(desk, "desk", /\/desk/);
 
   const unique = Date.now().toString().slice(-6);
-  await phone.goto("/join");
-  await phone.getByLabel("First name").fill("Taylor");
-  await phone.getByLabel("Last name").fill(`Test${unique}`);
-  await phone.getByLabel("Phone number").fill(`250555${unique.slice(-4)}`);
-  await phone.getByLabel("Date of birth").fill("1995-03-03");
-  await phone.getByRole("button", { name: "Create account" }).click();
-  await phone.getByRole("link", { name: /sign the waiver/i }).click();
-  await expect(phone).toHaveURL(/\/me\/waiver/);
+  await signUpDemoCustomer(phone, {
+    firstName: "Taylor",
+    lastName: `Test${unique}`,
+    phone: `250555${unique.slice(-4)}`,
+    dateOfBirth: "1995-03-03",
+  });
+  await phone.getByRole("main").getByRole("link", { name: "Sign waiver" }).click();
+  await expect(phone).toHaveURL(/\/me\/waiver/, { timeout: 20_000 });
   await signWaiverForm(phone);
   await expect(phone.getByText(/You.re all set/)).toBeVisible();
   await phone.getByRole("link", { name: "Continue" }).click();
   await expect(phone).toHaveURL(/\/me$/);
-  await expect(phone.getByText("✓ Waiver signed")).toBeVisible();
+  await openTab(phone, "Check in");
+  await expect(phone.getByRole("main").getByText("Waiver signed", { exact: true }).first()).toBeVisible();
 
   // Known gap (proposal item D1): a new climber has no membership yet, so the
   // desk is told why it can't check them in instead of offering Check in.
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const popup = desk.getByRole("dialog");
   await expect(popup).toContainText(`Taylor Test${unique}`, { timeout: 20_000 });
   await expect(popup).toContainText("has no active membership");

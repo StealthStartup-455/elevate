@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signUpDemoCustomer } from "./climber";
 
 // Release candidate fixes for the Milestone 3 demo (#149): a reload after
 // joining (#133) and a double-click on Checkout (#134). Needs the demo login
@@ -16,19 +17,19 @@ test("after joining, a reload says who is signed in and links to the dashboard (
   page,
 }) => {
   const unique = Date.now().toString().slice(-6);
-  await page.goto("/join");
-  await page.getByLabel("First name").fill("Robin");
-  await page.getByLabel("Last name").fill(`Reload${unique}`);
-  await page.getByLabel("Phone number").fill(`250556${unique.slice(-4)}`);
-  await page.getByLabel("Date of birth").fill("1991-02-02");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("link", { name: "Go to your dashboard" })).toBeVisible();
+  await signUpDemoCustomer(page, {
+    firstName: "Robin",
+    lastName: `Reload${unique}`,
+    phone: `250556${unique.slice(-4)}`,
+    dateOfBirth: "1991-02-02",
+  });
+  await expect(page.getByRole("link", { name: "Go to dashboard" })).toBeVisible();
 
   await page.reload();
-  // In the page: while it streams in, React briefly keeps a hidden copy outside it.
+  // The registration screen persists after a reload.
   const main = page.getByRole("main");
-  await expect(main.getByText(`You're signed in as Robin Reload${unique}`)).toBeVisible();
-  await main.getByRole("link", { name: "Go to your dashboard" }).click();
+  await expect(main.getByText(`Welcome, Robin. Sign the waiver to finish getting ready to climb.`)).toBeVisible();
+  await main.getByRole("link", { name: "Go to dashboard" }).click();
   await expect(page).toHaveURL(/\/me$/);
 });
 

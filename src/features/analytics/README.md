@@ -20,6 +20,8 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 
 Shown on the front desk (`/desk`) and the member dashboard (`/me`). The desk re-renders every 5 minutes (and straight after each check-in it makes); the member card every minute (#86).
 
+On `/me` the card also carries the gym's opening hours (#101, from `features/events`): open or closed now, then the week's hours, each day opening into a strip of how busy its open hours usually are. "Now" there is the real clock, since hours have to be right; the live count still follows the mock scenario's clock below. A gym that hasn't set its hours gets the old today-plus-week heat map instead.
+
 - **Computed, not stored.** A climber counts as in the gym for `ACTIVE_WINDOW_MINUTES` (120) after check-in. There is no checked-out state and no job that flips records.
 - **Swap point.** `queries.ts` is the only place that reads data. To go live, replace the bodies of `getActiveCheckIns` and `getWeeklyBusyness` with real queries and make `busynessNow()` return `new Date()`. Then delete `mock-data.ts` and `mock/`.
 - **Config** is in `config.ts`: the window, refresh intervals, and per-gym level thresholds (placeholder defaults: low < 20, medium 20 to 40, high > 40) and time zone.

@@ -2,6 +2,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill from "@/components/ui/StatusPill";
@@ -32,6 +33,9 @@ export default function WaiverPage({ searchParams }: PageProps<"/me/waiver">) {
 }
 
 async function WaiverDetails({ searchParams }: Pick<PageProps<"/me/waiver">, "searchParams">) {
+  // Waiver and customer data contain request-time timestamps, so defer this
+  // boundary until a request arrives under cache components.
+  await connection();
   const next = safeNext((await searchParams).next);
   const climberId = await getSessionClimberId();
   if (!climberId) redirect("/");

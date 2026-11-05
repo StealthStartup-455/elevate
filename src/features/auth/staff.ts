@@ -1,8 +1,8 @@
 import type { StaffRole } from "@/generated/prisma/client";
 import { redirect } from "next/navigation";
-import { getGym } from "@/lib/gym";
+import { getGym, getGymById } from "@/lib/gym";
 import { getCurrentUser, getSessionClimberId } from "./queries";
-import { hasDemoDeskSession } from "./session";
+import { getDemoDeskGymId, hasDemoDeskSession } from "./session";
 
 // The staff check for everything under /desk. The proxy only checks that
 // someone is signed in, and a check in the desk layout alone isn't enough: a
@@ -18,7 +18,9 @@ export type StaffContext = {
 
 export async function getStaffContext(): Promise<StaffContext | null> {
   if (await hasDemoDeskSession()) {
-    const gym = await getGym();
+    const demoGymId = await getDemoDeskGymId();
+    const gym = demoGymId ? await getGymById(demoGymId) : await getGym();
+    if (!gym) return null;
     return { id: null, gymId: gym.id, role: "DESK" };
   }
   const user = await getCurrentUser();

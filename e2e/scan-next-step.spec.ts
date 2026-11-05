@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { pressScan, signUpDemoCustomer } from "./climber";
 
 // A scan with a problem (#90): the phone says the desk will help, and the
 // desk popup offers each fix in turn until the climber can check in.
@@ -23,16 +24,16 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
   // Join without signing the waiver: no waiver, no membership.
   const phone = await newPage(browser, true);
   const unique = Date.now().toString().slice(-6);
-  await phone.goto("/join");
-  await phone.getByLabel("First name").fill("Jesse");
-  await phone.getByLabel("Last name").fill(`Scan${unique}`);
-  await phone.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
-  await phone.getByLabel("Date of birth").fill("1994-06-06");
-  await phone.getByRole("button", { name: "Create account" }).click();
-  await expect(phone.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
+  await signUpDemoCustomer(phone, {
+    firstName: "Jesse",
+    lastName: `Scan${unique}`,
+    phone: `250558${unique.slice(-4)}`,
+    dateOfBirth: "1994-06-06",
+  });
+  await expect(phone.getByRole("link", { name: "Sign waiver" })).toBeVisible();
   await phone.goto("/me");
 
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const phoneDialog = phone.getByRole("dialog");
   await expect(phoneDialog).toContainText("Sent to the desk", { timeout: 10_000 });
   await expect(phoneDialog).toContainText("They'll help you sign a waiver.");

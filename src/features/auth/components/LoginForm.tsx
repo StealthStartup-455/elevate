@@ -16,7 +16,7 @@ import { type LoginState, login } from "../actions";
 import type { TestLoginGroup } from "../demo-logins";
 
 // What to try as each kind of user, for whoever is testing. The steps follow
-// the desk POS (/desk/pos) and the climber's Purchase tab (/me/purchase).
+// the desk POS (/desk/pos) and the climber's Membership tab (/me/membership).
 const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
   {
     title: "Front desk",
@@ -31,8 +31,8 @@ const TEST_GUIDE: { title: string; login: string; steps: string[] }[] = [
     title: "Climber who just joined (no waiver, no membership)",
     login: "demo-missing-none",
     steps: [
-      "Open the Purchase tab, open Membership, pick a plan and press Pay. It's a demo: nothing is charged.",
-      "Your plan turns Active, and the Membership section goes away. The waiver can still be signed from the dashboard.",
+      "Open the Membership tab, open Membership under your plan, pick one and press Pay. It's a demo: nothing is charged.",
+      "Your plan turns Active, and the Membership section goes away. The waiver can still be signed from Home.",
       "Rentals and chalk can be bought too. Purchase history lists everything bought.",
       "Log in as desk: the purchase is in the POS under Today's sales, as Online.",
     ],
@@ -231,7 +231,25 @@ export function TestLoginsInfo({ testLogins }: { testLogins: TestLoginGroup[] })
 // Email because this page is built ahead of time, but in demo mode a demo
 // username works there too (see actions.ts). The "i" next to the title lists
 // a testing guide and the test logins (TestLoginsInfo, passed in as `info`).
-export default function LoginForm({ info }: { info?: ReactNode }) {
+type Props = {
+  info?: ReactNode;
+  title?: string;
+  subtitle?: string;
+  signupHref?: string;
+  signupLabel?: string;
+  alternateHref?: string;
+  alternateLabel?: string;
+};
+
+export default function LoginForm({
+  info,
+  title = "Log in",
+  subtitle = "Welcome back to Elevate.",
+  signupHref = "/signup",
+  signupLabel = "Sign up",
+  alternateHref = "/gym/signup",
+  alternateLabel = "I manage a gym",
+}: Props) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, {});
 
   return (
@@ -239,12 +257,12 @@ export default function LoginForm({ info }: { info?: ReactNode }) {
       <CardContent>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
-            Log in
+            {title}
           </Typography>
           {info}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 5 }}>
-          Welcome back to Elevate.
+          {subtitle}
         </Typography>
 
         <Box component="form" action={formAction} noValidate>
@@ -272,8 +290,11 @@ export default function LoginForm({ info }: { info?: ReactNode }) {
             <Button type="submit" variant="contained" size="large" disabled={pending}>
               {pending ? "Logging in…" : "Log in"}
             </Button>
-            <Button component={Link} href="/join" variant="outlined" size="large">
-              Join the gym
+            <Button component={Link} href={signupHref} variant="outlined" size="large">
+              {signupLabel}
+            </Button>
+            <Button component={Link} href={alternateHref} variant="outlined" size="large">
+              {alternateLabel}
             </Button>
           </Stack>
         </Box>

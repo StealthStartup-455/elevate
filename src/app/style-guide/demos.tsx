@@ -101,3 +101,14 @@ export function FormDemo() {
     </div>
   );
 }
+
+// The climber app's segmented control (Classes | Events), inside ClimberTheme.
+export function SegmentedDemo() {
+  const [view, setView] = useState("classes");
+  return (
+    <ToggleButtonGroup exclusive fullWidth value={view} onChange={(_, v) => v && setView(v)} aria-label="Show">
+      <ToggleButton value="classes">Classes</ToggleButton>
+      <ToggleButton value="events">Events</ToggleButton>
+    </ToggleButtonGroup>
+  );
+}

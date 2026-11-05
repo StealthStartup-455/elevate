@@ -3,19 +3,10 @@ import Typography from "@mui/material/Typography";
 import { heatLevel } from "../busyness";
 import { getGymBusynessSettings } from "../config";
 import { getWeeklyBusyness } from "../queries";
-
-// Fill for heat levels 0 (quiet) to 4 (busy): quiet is the plain cell, then
-// four steps of the chart blue (data, not an action).
-const SHADES = ["background.subtle", "chart.heat1", "chart.heat2", "chart.heat3", "chart.heat4"];
+import { SHADES, shortHour } from "./heat";
 
 // The current hour: a ring with a gap, so it shows on light and dark cells.
 const NOW_RING = { outline: "2px solid", outlineColor: "text.primary", outlineOffset: "1px" } as const;
-
-// 18 -> "6p", 12 -> "12p", 6 -> "6a"
-function shortHour(hour: number): string {
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}${hour < 12 ? "a" : "p"}`;
-}
 
 function Swatch({ shade, now = false }: { shade: string; now?: boolean }) {
   return <Box sx={{ width: 16, height: 16, borderRadius: 0.5, bgcolor: shade, ...(now ? NOW_RING : {}) }} />;

@@ -16,9 +16,9 @@ features/climbers/
 
 Pages in `src/app/` import from here. Nothing outside this folder talks to its tables directly.
 
-## Membership card (mock)
+## On the climber app
 
-`/me` shows `components/MembershipCard.tsx`: plan, status, renewal date, waiver status and a check-in code.
+The Check in tab (`/me/check-in`, `features/check-ins/components/CheckInCard.tsx`) shows the check-in code, the member code and whether the membership and waiver are in order. Home shows `components/ReadyToClimb.tsx` ("Before you climb") only when the waiver or a pass is missing. The plan itself is on the Membership tab (`features/purchase/components/PlanCard.tsx`).
 
-- `getMyMembership()` in `queries.ts` returns one demo member until auth and the memberships table exist.
+- A customer may have one `Climber` record per gym. The active one is selected through the `elevate_active_climber` cookie only after `getSessionClimberId()` confirms it belongs to the authenticated user. `/me/explore` is where customers find and join another Elevate gym.
 - `DemoQrCode` is a real, scannable QR code in demo mode (it opens a song, for the class demo, #146) and a placeholder that only looks like one everywhere else. Nothing reads its content: check-in goes through "Simulate scan". Replace it once the check-in ticket picks a code format.

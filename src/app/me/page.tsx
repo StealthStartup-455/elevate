@@ -1,45 +1,92 @@
 import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import LinkArrow from "@/components/ui/LinkArrow";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { VersionLink } from "@/components/ui/AppVersion";
 import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
-import MembershipCard from "@/features/climbers/components/MembershipCard";
+import { getSessionClimberId } from "@/features/auth/queries";
+import ReadyToClimb from "@/features/climbers/components/ReadyToClimb";
 import { getMyMembership } from "@/features/climbers/queries";
+import EventBanner from "@/features/events/components/EventBanner";
+import SetChanges from "@/features/events/components/SetChanges";
 import BankAccountCard from "@/features/eft/components/BankAccountCard";
+import { DEFAULT_GYM_SLUG } from "@/lib/gym";
 
-export default function MePage() {
+// Home tab: who's signed in, an event coming up, anything stopping them climbing, then
+// whether the gym is open and how busy it is, the week's hours and the set changes (#101).
+export default function HomePage() {
   return (
-    <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
-      <div className="flex flex-col gap-1">
-        <Typography variant="pageTitle">My dashboard</Typography>
-        <Suspense fallback={null}>
-          <SignedInAs />
-        </Suspense>
-      </div>
-      <Suspense fallback={<p>Loading membership...</p>}>
-        <MembershipCard />
+    <Suspense fallback={<Typography variant="pageTitle">Home</Typography>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
+  // Membership data reaches Prisma timestamps, so this must run after a real
+  // request rather than during the cache-component prerender.
+  await connection();
+  if (!(await getSessionClimberId())) {
+    return (
+      <>
+        <Typography variant="pageTitle">Welcome to Elevate</Typography>
+        <Card>
+          <CardContent className="flex flex-col items-start gap-2">
+            <Typography variant="body">Find a gym whenever you&apos;re ready to start climbing.</Typography>
+            <LinkArrow href="/me/explore">Explore gyms</LinkArrow>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+  const membership = await getMyMembership();
+  return (
+    <>
+      <Greeting membership={membership} />
+      {/* Only there while an event is coming up. */}
+      <Suspense fallback={null}>
+        <EventBanner />
       </Suspense>
       {/* EFT for a monthly membership, a mock (#179). */}
       <Suspense fallback={null}>
         <BankAccountCard />
       </Suspense>
-      <Suspense fallback={<p>Loading busyness...</p>}>
-        <CustomerBusyness gymId={DEMO_GYM_ID} />
+      <Suspense fallback={null}>
+        <ReadyToClimb />
+      </Suspense>
+      <Suspense fallback={<Typography variant="secondary">Loading hours…</Typography>}>
+        <CustomerBusyness
+          gymId={membership.gymId}
+          mockGymId={membership.gymSlug === DEFAULT_GYM_SLUG ? DEMO_GYM_ID : undefined}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SetChanges />
       </Suspense>
       {/* Where climbers find the version, rather than a footer on every page (#103). */}
-      <Typography variant="secondary" component="p">
+      <Typography variant="secondary" component="p" sx={{ textAlign: "center" }}>
         About: Elevate <VersionLink />
       </Typography>
-    </div>
+    </>
   );
 }
 
 // Who is signed in, for someone sharing a phone or switching between logins (#144).
-async function SignedInAs() {
-  const { firstName, lastName } = await getMyMembership();
+function Greeting({
+  membership,
+}: {
+  membership: Awaited<ReturnType<typeof getMyMembership>>;
+}) {
+  const { firstName, lastName } = membership;
   return (
-    <Typography variant="secondary">
-      Signed in as {firstName} {lastName}
-    </Typography>
+    <div className="flex flex-col gap-1">
+      <Typography variant="pageTitle">Hi, {firstName}</Typography>
+      <Typography variant="secondary">
+        Signed in as {firstName} {lastName}
+      </Typography>
+    </div>
   );
 }

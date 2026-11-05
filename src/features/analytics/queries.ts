@@ -37,12 +37,13 @@ async function busynessNow(): Promise<Date> {
 export async function getActiveCheckIns(
   gymId: string,
   now: Date,
+  mockGymId = gymId,
 ): Promise<ActiveCheckIn[]> {
   const since = activeWindowStart(now, ACTIVE_WINDOW_MINUTES);
   const climbers = new Map(mockClimbers().map((c) => [c.id, c]));
 
   const mock = mockCheckIns()
-    .filter((c) => c.gymId === gymId && c.timestamp > since && c.timestamp <= now)
+    .filter((c) => c.gymId === mockGymId && c.timestamp > since && c.timestamp <= now)
     .flatMap((c) => {
       const climber = climbers.get(c.climberId);
       return climber ? [{ ...c, climber, sample: true }] : [];
@@ -52,6 +53,7 @@ export async function getActiveCheckIns(
   // so they are cut off by the real active window.
   const saved = await getSavedCheckIns(
     activeWindowStart(new Date(), ACTIVE_WINDOW_MINUTES),
+    gymId,
   );
   const live: ActiveCheckIn[] = saved.map((c) => ({
     id: c.id,
@@ -92,11 +94,12 @@ function summarize(
 // Staff view: count, level and the check-ins behind them.
 export async function getFrontDeskBusyness(
   gymId: string,
+  mockGymId = gymId,
 ): Promise<FrontDeskBusyness> {
   const now = await busynessNow();
   // Names and phone numbers: staff only.
   await requireStaff();
-  const checkIns = await getActiveCheckIns(gymId, now);
+  const checkIns = await getActiveCheckIns(gymId, now, mockGymId);
   return { ...summarize(gymId, checkIns, now), checkIns };
 }
 
@@ -104,9 +107,10 @@ export async function getFrontDeskBusyness(
 // other climbers reaches a member's browser.
 export async function getBusynessSummary(
   gymId: string,
+  mockGymId = gymId,
 ): Promise<BusynessSummary> {
   const now = await busynessNow();
-  const checkIns = await getActiveCheckIns(gymId, now);
+  const checkIns = await getActiveCheckIns(gymId, now, mockGymId);
   return summarize(gymId, checkIns, now);
 }
 

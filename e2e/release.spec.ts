@@ -1,4 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signUpDemoCustomer } from "./climber";
+import { openTab, pressScan } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
 // Release check (#43): the pilot journey from start to finish, in the order a
@@ -63,13 +65,13 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
   const countBefore = await deskCount(desk);
 
   await test.step("join: a new climber registers on their phone", async () => {
-    await phone.goto("/join");
-    await phone.getByLabel("First name").fill(firstName);
-    await phone.getByLabel("Last name").fill(lastName);
-    await phone.getByLabel("Phone number").fill(`250559${unique.slice(-4)}`);
-    await phone.getByLabel("Date of birth").fill("1993-07-07");
-    await phone.getByRole("button", { name: "Create account" }).click();
-    await expect(phone.getByText("You're registered.")).toBeVisible();
+    await signUpDemoCustomer(phone, {
+      firstName,
+      lastName,
+      phone: `250559${unique.slice(-4)}`,
+      dateOfBirth: "1993-07-07",
+    });
+    await expect(phone.getByRole("heading", { name: "You're registered" })).toBeVisible();
   });
 
   await test.step("waiver status: missing until signed, then signed", async () => {
@@ -83,25 +85,29 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await expect(phone.getByText(/You.re all set/)).toBeVisible();
     await phone.getByRole("link", { name: "Continue" }).click();
     await expect(phone).toHaveURL(/\/me$/);
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible({ timeout: 5_000 });
+    // Home stops asking for it; the Membership tab says it's signed.
+    await expect(phone.getByRole("main").getByText("No waiver on file")).toHaveCount(0, { timeout: 5_000 });
+    await openTab(phone, "Membership");
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
     // Still signed after a fresh load: it was saved, not just shown.
     await phone.reload();
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible();
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
   });
 
   await test.step("sign in again: the climber logs out and back in", async () => {
-    await phone.getByRole("button", { name: "Log out" }).click();
+    await phone.getByRole("button", { name: "Log out" }).first().click();
     await expect(phone).not.toHaveURL(/\/me/);
     await phone.goto("/me");
     await expect(phone).toHaveURL(/\/login/);
     await logIn(phone, username, /\/me$/);
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible();
+    await openTab(phone, "Membership");
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
   });
 
   const popup = desk.getByRole("dialog");
 
   await test.step("purchase: the desk gives a day pass to a climber with no membership", async () => {
-    await phone.getByRole("button", { name: /scan/i }).click();
+    await pressScan(phone);
     await expect(popup).toContainText(name, { timeout: 20_000 });
     await expect(popup).toContainText("has no active membership");
     // The no-charge day pass is the stopgap until the POS (#53, PR #119);

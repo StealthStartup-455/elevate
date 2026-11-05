@@ -13,8 +13,8 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 }
 
 const menus = [
-  { user: "desk", home: /\/desk/, shown: ["Check-in", "Customers", "Waivers"], hidden: ["/desk/events"] },
-  { user: "demo-valid-active", home: /\/me/, shown: ["Home"], hidden: ["/me/events", "/me/stats"] },
+  { user: "desk", home: /\/desk/, shown: ["Check-in", "Customers", "Events", "Waivers"], hidden: [] },
+  { user: "demo-valid-active", home: /\/me/, shown: ["Home", "Check in", "Membership", "Classes"], hidden: ["/me/stats"] },
 ];
 
 for (const { user, home, shown, hidden } of menus) {

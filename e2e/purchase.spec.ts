@@ -1,25 +1,30 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openTab } from "./climber";
 
-// The climber's Purchase tab (elevate-docs#58): a Membership section for
-// climbers without one, rentals and chalk for everyone, and a Purchase history
-// dialog. Needs the demo login (DEMO_MODE) and seeded products
+// Buying on the climber's Membership tab (elevate-docs#58, #101): a Membership
+// section for climbers without one, rentals and chalk for everyone, and a
+// Purchase history dialog. Needs the demo login (DEMO_MODE) and seeded products
 // (`npm run db:seed`, which also resets the demo climbers).
 
-async function openPurchase(page: Page, username: string) {
+async function logIn(page: Page, username: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(username);
   await page.getByLabel("Password").fill(username);
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).toHaveURL(/\/me/);
-  await page.getByRole("link", { name: "Purchase", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Purchase", level: 1 })).toBeVisible();
+}
+
+async function openPurchase(page: Page, username: string) {
+  await logIn(page, username);
+  await openTab(page, "Membership");
+  await expect(page.getByRole("heading", { name: "Membership", level: 1 })).toBeVisible();
 }
 
 test("a climber with no waiver buys a membership from the Membership section", async ({ page }) => {
   await openPurchase(page, "demo-missing-none");
 
   // The waiver is a nudge, never a block.
-  await expect(page.getByText(/haven't signed the waiver yet/)).toBeVisible();
+  await expect(page.getByTestId("waiver-card")).toContainText("No waiver on file");
 
   // No membership: the Membership section is there and open, with no notice.
   const membership = page.getByRole("button", { name: "Membership", exact: true });
@@ -43,7 +48,7 @@ test("a climber with no waiver buys a membership from the Membership section", a
   await expect(done).toBeHidden();
 
   // The plan updates without a reload, and the Membership section goes away.
-  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("plan-card")).toContainText("Active");
   await expect(page.getByRole("button", { name: "Membership", exact: true })).toHaveCount(0);
   await expect(
     page.getByText("You already have an active membership, so you don't need a day pass."),
@@ -140,52 +145,37 @@ test("an order holds one membership or pass: picking another replaces it (#143)"
   await expect(order).not.toContainText("Day pass");
 });
 
-async function openDashboard(page: Page, username: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(username);
-  await page.getByLabel("Password").fill(username);
-  await page.getByRole("button", { name: /log in|sign in/i }).click();
-  await expect(page).toHaveURL(/\/me/);
-  await expect(page.getByText("Scan at desk")).toBeVisible();
-}
-
-test("the dashboard's Purchase Membership button is under 'Buy a membership' and opens the Purchase tab", async ({
-  page,
-}) => {
-  await openDashboard(page, "demo-valid-none");
-  const text = page.getByText("Buy a membership to start climbing");
-  const button = page.getByRole("link", { name: "Purchase Membership" });
-  const [t, b] = [await text.boundingBox(), await button.boundingBox()];
-  // Below the text, in the same left column.
-  expect(b!.y).toBeGreaterThan(t!.y + t!.height);
-  expect(Math.abs(b!.x - t!.x)).toBeLessThan(2);
-  // Not under the QR code any more.
-  const scan = (await page.getByText("Scan at desk").boundingBox())!;
-  expect(b!.x + b!.width).toBeLessThan(scan.x);
-  await button.click();
-  await expect(page).toHaveURL(/\/me\/purchase/);
+test("Home's Before you climb card offers Buy a membership, which opens the Membership tab", async ({ page }) => {
+  await logIn(page, "demo-valid-none");
+  const ready = page.getByTestId("ready-to-climb");
+  await expect(ready).toContainText("No membership");
+  await ready.getByRole("link", { name: "Buy a membership" }).click();
+  await expect(page).toHaveURL(/\/me\/membership/);
+  await expect(page.getByRole("button", { name: "Membership", exact: true })).toHaveAttribute("aria-expanded", "true");
 });
 
-test("the QR code, its label and the scan button stay centred for every waiver and membership state", async ({
-  page,
-}) => {
+test("the old Purchase tab address opens the Membership tab", async ({ page }) => {
+  await logIn(page, "demo-valid-active");
+  await page.goto("/me/purchase");
+  await expect(page).toHaveURL(/\/me\/membership/);
+});
+
+test("the Check in tab centres the code, the member code and the scan button for every state", async ({ page }) => {
   for (const user of ["demo-valid-none", "demo-valid-active", "demo-missing-expired", "demo-expired-paused"]) {
     await page.context().clearCookies();
-    await openDashboard(page, user);
-    const label = (await page.getByText("Scan at desk").boundingBox())!;
-    const code = (await page.getByText(/^ELV-/).boundingBox())!;
+    await logIn(page, user);
+    await openTab(page, "Check in");
+    const code = (await page.getByRole("img", { name: /Demo check-in code/ }).boundingBox())!;
+    const member = (await page.getByText(/^ELV-/).boundingBox())!;
     const scan = (await page.getByRole("button", { name: "Simulate scan" }).boundingBox())!;
     const middle = (box: { x: number; width: number }) => box.x + box.width / 2;
-    expect(Math.abs(middle(label) - middle(scan)), `${user}: scan button vs label`).toBeLessThan(2);
-    expect(Math.abs(middle(label) - middle(code)), `${user}: member code vs label`).toBeLessThan(2);
+    expect(Math.abs(middle(code) - middle(member)), `${user}: member code vs QR code`).toBeLessThan(2);
+    expect(Math.abs(middle(code) - middle(scan)), `${user}: scan button vs QR code`).toBeLessThan(2);
   }
 });
 
-test("a climber with a membership has no Purchase Membership button on the dashboard", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("demo-valid-active");
-  await page.getByLabel("Password").fill("demo-valid-active");
-  await page.getByRole("button", { name: /log in|sign in/i }).click();
-  await expect(page).toHaveURL(/\/me/);
-  await expect(page.getByRole("link", { name: "Purchase Membership" })).toHaveCount(0);
+test("a climber who is set to climb gets no Before you climb card", async ({ page }) => {
+  await logIn(page, "demo-valid-active");
+  await expect(page.getByRole("heading", { name: /^Hi, / })).toBeVisible();
+  await expect(page.getByTestId("ready-to-climb")).toHaveCount(0);
 });
