@@ -15,3 +15,25 @@ export async function pressScan(phone: Page) {
   if (!new URL(phone.url()).pathname.startsWith("/me/check-in")) await openTab(phone, "Check in");
   await phone.getByRole("button", { name: "Simulate scan" }).click();
 }
+
+export async function signUpDemoCustomer(
+  page: Page,
+  {
+    firstName,
+    lastName,
+    phone,
+    dateOfBirth,
+  }: { firstName: string; lastName: string; phone: string; dateOfBirth: string },
+) {
+  await page.goto("/signup");
+  await page.getByLabel("First name").fill(firstName);
+  await page.getByLabel("Last name").fill(lastName);
+  await page.getByLabel("Phone number").fill(phone);
+  await page.getByLabel("Email").fill(`${firstName}.${lastName}@elevate.test`);
+  await page.getByLabel("Date of birth").fill(dateOfBirth);
+  await page.getByLabel("Password").fill("test-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/me\/explore$/);
+  await page.getByRole("button", { name: "Elevate Demo Gym" }).click();
+  await expect(page).toHaveURL(/\/me\/register$/);
+}

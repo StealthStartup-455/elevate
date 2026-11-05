@@ -12,6 +12,7 @@ export type Climber = {
   id: string;
   /** The gym this record belongs to. */
   gymId: string;
+  gymSlug?: string;
   firstName: string;
   lastName: string;
   /** Shown like 250-555-0101. */

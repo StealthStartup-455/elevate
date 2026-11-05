@@ -17,6 +17,7 @@ import type { Climber, MembershipStatus, WaiverStatus } from "./types";
 export type Membership = {
   climberId: string;
   gymId: string;
+  gymSlug: string;
   firstName: string;
   lastName: string;
   plan: string;
@@ -80,7 +81,7 @@ type Row = Awaited<ReturnType<typeof findRows>>[number];
 
 function toClimber(
   row: Row,
-  gym: { waiverVersion: string | null; timeZone: string },
+  gym: { waiverVersion: string | null; timeZone: string; slug?: string },
   now: Date,
 ): Climber {
   const waiver = summarizeWaiver(row.waivers[0], gym.waiverVersion, now, gym.timeZone);
@@ -93,6 +94,7 @@ function toClimber(
   return {
     id: row.id,
     gymId: row.gymId,
+    ...(gym.slug ? { gymSlug: gym.slug } : {}),
     firstName: row.firstName,
     lastName: row.lastName,
     phone: row.phone ? formatPhone(row.phone) : "",
@@ -129,6 +131,7 @@ export async function getMyMembership(): Promise<Membership> {
   return {
     climberId: climber.id,
     gymId: climber.gymId,
+    gymSlug: climber.gymSlug ?? "",
     firstName: climber.firstName,
     lastName: climber.lastName,
     // The product they bought (#132); a membership from before the POS has

@@ -11,6 +11,7 @@ import BusynessLevelChip from "@/features/analytics/components/BusynessLevelChip
 import { formatTime } from "@/features/analytics/components/format";
 import { DEMO_GYM_ID, DESK_BUSYNESS_REFRESH_MS } from "@/features/analytics/config";
 import { getFrontDeskBusyness } from "@/features/analytics/queries";
+import { getStaffContext } from "@/features/auth/staff";
 import BusyTimesDialog from "@/features/check-ins/components/BusyTimesDialog";
 import DayNav from "@/features/check-ins/components/DayNav";
 import DeskDayTable, { type DeskTableRow } from "@/features/check-ins/components/DeskDayTable";
@@ -21,6 +22,7 @@ import { DESK_PAGE_SIZE, getDeskDay } from "@/features/check-ins/queries";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import ManualCheckInButton from "@/features/climbers/components/ManualCheckInButton";
 import { formatDate } from "@/features/climbers/format";
+import { DEFAULT_GYM_SLUG, getGymById } from "@/lib/gym";
 
 // The front desk's Check-in page (#168): the day's check-ins from the
 // database, with busyness in the header. ?date=YYYY-MM-DD&page=N hold the
@@ -100,7 +102,12 @@ async function DayPicker({ searchParams }: { searchParams: SearchParams }) {
 }
 
 async function Busyness({ searchParams }: { searchParams: SearchParams }) {
-  const [{ desk, now }, busyness] = await Promise.all([load(searchParams), getFrontDeskBusyness(DEMO_GYM_ID)]);
+  await connection();
+  const [{ desk, now }, staff] = await Promise.all([load(searchParams), getStaffContext()]);
+  if (!staff) return null;
+  const gym = await getGymById(staff.gymId);
+  const mockGymId = gym?.slug === DEFAULT_GYM_SLUG ? DEMO_GYM_ID : undefined;
+  const busyness = await getFrontDeskBusyness(staff.gymId, mockGymId);
   const isToday = desk.day === desk.today;
   return (
     <div className="flex flex-col items-end gap-1">
@@ -115,7 +122,7 @@ async function Busyness({ searchParams }: { searchParams: SearchParams }) {
           </Typography>
         </div>
         <BusyTimesDialog>
-          <BusynessHeatMap gymId={DEMO_GYM_ID} />
+          <BusynessHeatMap gymId={staff.gymId} />
         </BusyTimesDialog>
       </div>
       {busyness.sampleCount > 0 && (

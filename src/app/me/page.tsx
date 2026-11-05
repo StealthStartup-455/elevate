@@ -6,12 +6,14 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { VersionLink } from "@/components/ui/AppVersion";
 import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
+import { DEMO_GYM_ID } from "@/features/analytics/config";
 import { getSessionClimberId } from "@/features/auth/queries";
 import ReadyToClimb from "@/features/climbers/components/ReadyToClimb";
 import { getMyMembership } from "@/features/climbers/queries";
 import EventBanner from "@/features/events/components/EventBanner";
 import SetChanges from "@/features/events/components/SetChanges";
 import BankAccountCard from "@/features/eft/components/BankAccountCard";
+import { DEFAULT_GYM_SLUG } from "@/lib/gym";
 
 // Home tab: who's signed in, an event coming up, anything stopping them climbing, then
 // whether the gym is open and how busy it is, the week's hours and the set changes (#101).
@@ -56,7 +58,10 @@ async function HomeContent() {
         <ReadyToClimb />
       </Suspense>
       <Suspense fallback={<Typography variant="secondary">Loading hours…</Typography>}>
-        <CustomerBusyness gymId={membership.gymId} />
+        <CustomerBusyness
+          gymId={membership.gymId}
+          mockGymId={membership.gymSlug === DEFAULT_GYM_SLUG ? DEMO_GYM_ID : undefined}
+        />
       </Suspense>
       <Suspense fallback={null}>
         <SetChanges />

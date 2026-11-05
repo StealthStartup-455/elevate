@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Browser, type Download, type Page } from "@playwright/test";
+import { signUpDemoCustomer } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
 // Download a signed waiver as a PDF (#111): the climber from their waiver page,
@@ -26,13 +27,13 @@ test.afterEach(async ({ browser }) => {
 test("the climber and the desk download a signed waiver as a PDF", async ({ browser }) => {
   const phone = await newPage(browser, true);
   const unique = Date.now().toString().slice(-6);
-  await phone.goto("/join");
-  await phone.getByLabel("First name").fill("Morgan");
-  await phone.getByLabel("Last name").fill(`Pdf${unique}`);
-  await phone.getByLabel("Phone number").fill(`250557${unique.slice(-4)}`);
-  await phone.getByLabel("Date of birth").fill("1990-05-05");
-  await phone.getByRole("button", { name: "Create account" }).click();
-  await phone.getByRole("link", { name: "Sign the waiver" }).click();
+  await signUpDemoCustomer(phone, {
+    firstName: "Morgan",
+    lastName: `Pdf${unique}`,
+    phone: `250557${unique.slice(-4)}`,
+    dateOfBirth: "1990-05-05",
+  });
+  await phone.getByRole("link", { name: "Sign waiver" }).click();
   await signWaiverForm(phone);
   await phone.getByRole("link", { name: "View your waiver" }).click();
   await expect(phone).toHaveURL(/\/me\/waiver\/[0-9a-f-]+$/);
@@ -62,13 +63,13 @@ test("the climber and the desk download a signed waiver as a PDF", async ({ brow
   // A different logged-in climber can't download it: a waiver is a legal
   // record, so another climber gets a 404, not the PDF.
   const other = await newPage(browser, true);
-  await other.goto("/join");
-  await other.getByLabel("First name").fill("Avery");
-  await other.getByLabel("Last name").fill(`Other${unique}`);
-  await other.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
-  await other.getByLabel("Date of birth").fill("1991-06-06");
-  await other.getByRole("button", { name: "Create account" }).click();
-  await expect(other.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
+  await signUpDemoCustomer(other, {
+    firstName: "Avery",
+    lastName: `Other${unique}`,
+    phone: `250558${unique.slice(-4)}`,
+    dateOfBirth: "1991-06-06",
+  });
+  await expect(other.getByRole("link", { name: "Sign waiver" })).toBeVisible();
   const refused = await other.request.get(`/me/waiver/${waiverId}/pdf`, { maxRedirects: 0 });
   expect(refused.status()).toBe(404);
   expect(refused.headers()["content-type"]).not.toContain("application/pdf");

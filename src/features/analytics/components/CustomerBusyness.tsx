@@ -18,9 +18,15 @@ import WeekHours, { type WeekRow } from "./WeekHours";
 // Home's two busyness cards (#37, #101): "Right now" (open or closed, how busy it is, and how
 // today usually goes, hour by hour) and "Hours this week", each day opening into how busy it
 // usually is. Counts only, so no other climber's data reaches the phone.
-export default async function CustomerBusyness({ gymId }: { gymId: string }) {
+export default async function CustomerBusyness({
+  gymId,
+  mockGymId,
+}: {
+  gymId: string;
+  mockGymId?: string;
+}) {
   const [busyness, gymWeek, typical] = await Promise.all([
-    getBusynessSummary(gymId),
+    getBusynessSummary(gymId, mockGymId),
     getMyGymWeek(),
     getWeeklyBusyness(gymId),
   ]);

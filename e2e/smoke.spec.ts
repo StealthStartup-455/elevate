@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab, pressScan } from "./climber";
+import { openTab, pressScan, signUpDemoCustomer } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
 // The Milestone 3 demo, end to end: a climber on a phone and the front desk
@@ -112,14 +112,14 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await logIn(desk, "desk", /\/desk/);
 
   const unique = Date.now().toString().slice(-6);
-  await phone.goto("/join");
-  await phone.getByLabel("First name").fill("Taylor");
-  await phone.getByLabel("Last name").fill(`Test${unique}`);
-  await phone.getByLabel("Phone number").fill(`250555${unique.slice(-4)}`);
-  await phone.getByLabel("Date of birth").fill("1995-03-03");
-  await phone.getByRole("button", { name: "Create account" }).click();
-  await phone.getByRole("link", { name: /sign the waiver/i }).click();
-  await expect(phone).toHaveURL(/\/me\/waiver/);
+  await signUpDemoCustomer(phone, {
+    firstName: "Taylor",
+    lastName: `Test${unique}`,
+    phone: `250555${unique.slice(-4)}`,
+    dateOfBirth: "1995-03-03",
+  });
+  await phone.getByRole("main").getByRole("link", { name: "Sign waiver" }).click();
+  await expect(phone).toHaveURL(/\/me\/waiver/, { timeout: 20_000 });
   await signWaiverForm(phone);
   await expect(phone.getByText(/You.re all set/)).toBeVisible();
   await phone.getByRole("link", { name: "Continue" }).click();

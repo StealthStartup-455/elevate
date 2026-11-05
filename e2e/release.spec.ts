@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signUpDemoCustomer } from "./climber";
 import { openTab, pressScan } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
@@ -64,13 +65,13 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
   const countBefore = await deskCount(desk);
 
   await test.step("join: a new climber registers on their phone", async () => {
-    await phone.goto("/join");
-    await phone.getByLabel("First name").fill(firstName);
-    await phone.getByLabel("Last name").fill(lastName);
-    await phone.getByLabel("Phone number").fill(`250559${unique.slice(-4)}`);
-    await phone.getByLabel("Date of birth").fill("1993-07-07");
-    await phone.getByRole("button", { name: "Create account" }).click();
-    await expect(phone.getByText("You're registered.")).toBeVisible();
+    await signUpDemoCustomer(phone, {
+      firstName,
+      lastName,
+      phone: `250559${unique.slice(-4)}`,
+      dateOfBirth: "1993-07-07",
+    });
+    await expect(phone.getByRole("heading", { name: "You're registered" })).toBeVisible();
   });
 
   await test.step("waiver status: missing until signed, then signed", async () => {
@@ -94,8 +95,7 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
   });
 
   await test.step("sign in again: the climber logs out and back in", async () => {
-    // Log out is at the bottom of the Membership tab.
-    await phone.getByRole("button", { name: "Log out" }).click();
+    await phone.getByRole("button", { name: "Log out" }).first().click();
     await expect(phone).not.toHaveURL(/\/me/);
     await phone.goto("/me");
     await expect(phone).toHaveURL(/\/login/);
