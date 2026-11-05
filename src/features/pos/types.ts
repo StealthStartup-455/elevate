@@ -78,6 +78,9 @@ export type SaleSummary = {
   /** "4:12 p.m.", in the gym's time zone. */
   time: string;
   items: string;
+  subtotalCents: number;
+  gstCents: number;
+  pstCents: number;
   totalCents: number;
   tender: Tender;
   status: "PAID" | "VOIDED";
