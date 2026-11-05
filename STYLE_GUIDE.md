@@ -374,4 +374,4 @@ Tailwind's own palette, type scale, radii and shadows are also removed in `globa
 
 Lint doesn't yet check MUI variant names or `sx` values. Reviewers check those.
 
-The Check-in demo includes an Employee pass badge using the existing info blue tint, distinct from solid navy membership, teal day passes and grey punch cards. This is a fictional display fixture, not a new staff permission or a new token.
+The Check-in demo includes an Employee pass badge using a solid gold fill and contrasting text from the existing warning palette, distinct from navy membership, teal day passes and grey punch cards. The developer requested this category-color exception; warning statuses keep their pale fill and icon. This is a fictional display fixture, not a new staff permission or a new token.

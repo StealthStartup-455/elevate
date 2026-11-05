@@ -344,8 +344,8 @@ const components: ThemeOptions["components"] = {
               style: { backgroundColor: p.primary.soft, color: p.primary.main },
             },
             {
-              props: { variant: "badge", color: "info" },
-              style: { backgroundColor: p.info.soft, color: p.info.main },
+              props: { variant: "badge", color: "warning" },
+              style: { backgroundColor: p.warning.main, color: p.warning.contrastText },
             },
           ],
         };
