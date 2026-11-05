@@ -18,12 +18,14 @@ type Props = {
   startEditing?: boolean;
   /** Shown under the details when not editing: the waiver row and step. */
   children?: ReactNode;
+  /** After a save, for a view that shows the details elsewhere too (the Check-in climber panel). */
+  onSaved?: () => void;
 };
 
 // A climber's details on the desk (#89): read-only, with an Edit button that
 // swaps in the form. Editing hides the waiver step, so the card never has two
 // contained buttons.
-export default function ClimberDetails({ climberId, details, startEditing = false, children }: Props) {
+export default function ClimberDetails({ climberId, details, startEditing = false, children, onSaved }: Props) {
   const [editing, setEditing] = useState(startEditing);
   const [saved, setSaved] = useState(false);
 
@@ -32,6 +34,7 @@ export default function ClimberDetails({ climberId, details, startEditing = fals
     if (result.status === "success") {
       setEditing(false);
       setSaved(true);
+      onSaved?.();
     }
     return result;
   }
