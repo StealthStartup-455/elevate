@@ -15,7 +15,7 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   { user: "demo-missing-none", paths: ["/me/waiver"], phone: true },
   {
     user: "desk",
-    paths: ["/desk", "/desk/pos", "/desk/customers", "/desk/customers/new", "/desk/waivers"],
+    paths: ["/desk", "/desk/pos", "/desk/customers", "/desk/customers/new", "/desk/waivers", "/desk/waivers/edit"],
     phone: false,
   },
 ];
