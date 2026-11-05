@@ -30,15 +30,16 @@ model Gym {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  staff     Staff[]
-  climbers  Climber[]
-  passes    Pass[]
-  waivers   Waiver[]
-  checkIns  CheckIn[]
-  qrScans   QrScan[]
-  products  Product[]
-  sales     Sale[]
-  saleLines SaleLine[]
+  staff        Staff[]
+  climbers     Climber[]
+  passes       Pass[]
+  waivers      Waiver[]
+  checkIns     CheckIn[]
+  qrScans      QrScan[]
+  products     Product[]
+  sales        Sale[]
+  saleLines    SaleLine[]
+  bankAccounts BankAccount[]
 
   waiverTemplates WaiverTemplate[]
 }
@@ -79,13 +80,14 @@ model Climber {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  gym            Gym       @relation(fields: [gymId], references: [id])
-  createdByStaff Staff?    @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
+  gym            Gym          @relation(fields: [gymId], references: [id])
+  createdByStaff Staff?       @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
   passes         Pass[]
   waivers        Waiver[]
   checkIns       CheckIn[]
   qrScans        QrScan[]
   sales          Sale[]
+  bankAccount    BankAccount?
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
@@ -117,6 +119,30 @@ model Pass {
 
   @@unique([gymId, externalId])
   @@index([gymId, climberId, expiresAt])
+}
+
+// The bank account a climber keeps on file for EFT (pre-authorized debit)
+// of their monthly membership, one per climber. A mock (#179): nothing is
+// ever debited. The full account number is never stored, only its last four
+// digits and a made-up token standing in for one a payment processor would
+// give back (#31). Deleted when the climber removes it, unlike other rows.
+model BankAccount {
+  id                String   @id @default(uuid())
+  gymId             String
+  climberId         String
+  holderName        String
+  institutionNumber String // 3 digits, names the bank: 003 is RBC
+  transitNumber     String // 5 digits, the branch
+  accountLast4      String
+  token             String // mock_eft_<uuid>; the processor's token once payments are real
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  climber Climber @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Cascade)
+
+  @@unique([id, gymId])
+  @@unique([climberId, gymId]) // one per climber
 }
 
 // The waiver wording a gym asks climbers to sign, one row per version. A

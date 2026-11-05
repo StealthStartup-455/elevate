@@ -12,7 +12,8 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 4. **Tender:** `recordSale` re-reads prices from the database, saves the `Sale` and its `SaleLine`s and creates the passes in one transaction. The popup's key makes a double press or a retry return the first sale.
 5. **Void:** any desk staff member, with a reason. The sale stays, marked voided, and its passes end now. The refund itself happens on the card machine or from the till.
 6. **Revoke membership:** on the picked climber's card, when their membership is active or paused. Every membership pass that hasn't ended stops now (a renewal bought early too) and stops renewing. The sales stay paid; to refund, void the sale.
-7. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
+7. **EFT on file:** the climber card says whether the climber has a mock EFT bank account on file for monthly payments, with Add bank account, Change and Remove (`DeskBankAccount`), and Renewals due rows add "· EFT on file" (`features/eft`, #179). Nothing is debited, so the desk still rings up the month.
+8. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
 
 ## Passes a sale gives (`passes.ts`)
 

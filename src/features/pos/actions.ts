@@ -2,6 +2,7 @@
 
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimber, searchClimbers } from "@/features/climbers/queries";
+import { getBankAccount } from "@/features/eft/queries";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
@@ -180,5 +181,9 @@ export async function findPosClimbers(query: string): Promise<PosClimber[]> {
 export async function getPosClimber(climberId: string): Promise<PosClimber | null> {
   await requireStaff();
   const climber = await getClimber(String(climberId ?? ""));
-  return climber ? toPosClimber(climber) : null;
+  if (!climber) return null;
+  // getClimber has already limited the climber to the staff member's gym.
+  const gym = await getStaffGym();
+  const bank = gym ? await getBankAccount(gym.id, climber.id) : null;
+  return { ...toPosClimber(climber), bankAccount: bank };
 }

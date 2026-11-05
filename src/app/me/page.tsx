@@ -5,6 +5,7 @@ import CustomerBusyness from "@/features/analytics/components/CustomerBusyness";
 import { DEMO_GYM_ID } from "@/features/analytics/config";
 import MembershipCard from "@/features/climbers/components/MembershipCard";
 import { getMyMembership } from "@/features/climbers/queries";
+import BankAccountCard from "@/features/eft/components/BankAccountCard";
 
 export default function MePage() {
   return (
@@ -17,6 +18,10 @@ export default function MePage() {
       </div>
       <Suspense fallback={<p>Loading membership...</p>}>
         <MembershipCard />
+      </Suspense>
+      {/* EFT for a monthly membership, a mock (#179). */}
+      <Suspense fallback={null}>
+        <BankAccountCard />
       </Suspense>
       <Suspense fallback={<p>Loading busyness...</p>}>
         <CustomerBusyness gymId={DEMO_GYM_ID} />

@@ -1,0 +1,22 @@
+# 2026-11-05 00:38 UTC: Mock EFT bank account on file for monthly memberships
+
+- **Developer:** @zack122
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#179 / PR pending
+- **Branch:** `feature/179-pos-member-card-storage`
+- **What the agent did:**
+  - New `BankAccount` table (migration `20261105003233_eft_bank_account`, RLS on): one per climber, with name, institution and transit numbers, the account's last 4 digits and a `mock_eft_<uuid>` token. The full account number is never stored or logged.
+  - New `src/features/eft/`: `saveMyBankAccount` / `removeMyBankAccount` (climber from the session only), validation of Canadian account numbers, bank names from institution numbers, and the member's "Monthly payments" card on `/me` (add, change, remove, with a pre-authorized debit agreement box).
+  - POS: `getPosClimber` adds `bankAccount` (a `BankAccountSummary` or null) and `RenewalDue` gets `hasBankAccount` ("· EFT on file" on the Renewals due rows).
+  - Desk, at the developer's request: staff can add, change and remove a member's account on the POS climber card and on `/desk/customers/[id]` (`DeskBankAccount`, `saveClimberBankAccount` / `removeClimberBankAccount`, `getBankAccountForStaff`; staff only, own gym only). The form and the remove confirm are shared with `/me` (`BankAccountDialogs.tsx`) and hold the desk scan popup (`useDeskDialogOpen`).
+  - Tests: `eft/validate.test.ts`, `eft/actions.db.test.ts` (12 tests: last 4 only, replace, errors, not signed in, remove twice, POS shows it to the own gym only, cascade on climber delete, desk save/change/remove, other gym refused, non-staff refused), `e2e/eft.spec.ts` (member flow, desk flow).
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261105003233_eft_bank_account/`, `prisma/DATABASE.md`, `src/features/eft/`, `src/app/me/page.tsx`, `src/app/desk/customers/[climberId]/page.tsx`, `src/features/pos/{actions,queries,types}.ts`, `src/features/pos/components/ClimberPanel.tsx`, `src/features/pos/README.md`, `e2e/eft.spec.ts`.
+- **Decisions and why:**
+  - The issue title says "card", but the developer asked for EFT (bank account) for recurring monthly membership payments, kept as a mock. The branch name still says "card".
+  - Members add it on `/me`; staff can too, at the desk, for a member who gives their details in person. The staff form asks staff to confirm the member agreed to the debit. Nothing is debited, so Renewals due still works as before and the desk rings up the month.
+  - Removing deletes the row (an exception to "rows are never deleted", written up in `DATABASE.md`): bank details shouldn't be kept once a member takes them back. The climber FK cascades, so seed and test cleanups that delete climbers still work.
+  - Transit and institution numbers are kept in full (they're printed on every cheque and name the branch); the account number is cut to its last 4.
+  - The card is on `/me`, not `/me/purchase`, so it shows outside demo mode too; it moves no money.
+- **Gotchas:** On the POS climber card, `DeskBankAccount` and `RevokeMembership` must not share a `key` (both keyed by the climber at first, and React drew the bank line three times); the e2e checks it shows once. A `next dev` started before `prisma generate` has no `db.bankAccount` and `/me` errors; restart it after pulling. PR #176 (climber app with tabs) reworks `/me`, so expect a conflict in `src/app/me/page.tsx`: the card is one `<Suspense><BankAccountCard /></Suspense>`. PR #178 also changes the staff POS checkout.
+- **Open follow-ups:** Record which staff member added it (needs a column and staff id from auth); charge it on renewal once real payments exist (#31); a "renewals with EFT" one-click ring-up.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 317 passed (2 todo); `npm run test:db` 75 passed; `npm run build` passed. Against `npm run start` with `DEMO_MODE=true` on port 3100: `eft`, `pos`, `climber-details`, `accessibility` e2e 16 passed. Checked `/me` (empty, form with errors, saved), the POS climber card (add dialog, saved) and the customer page by screenshot in light and dark.

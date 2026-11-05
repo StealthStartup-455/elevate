@@ -22,6 +22,7 @@ import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { findPosClimbers, revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
+import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
 
 // Wait for a pause in typing before searching, as Manual check in does.
 const SEARCH_DELAY_MS = 200;
@@ -149,6 +150,16 @@ export default function ClimberPanel({
               {detail}
             </Typography>
           ) : null}
+          {selected.bankAccount !== undefined ? (
+            <DeskBankAccount
+              // Its own key: a sibling sharing RevokeMembership's key renders twice.
+              key={`bank-${selected.id}`}
+              climberId={selected.id}
+              climberName={selected.name}
+              account={selected.bankAccount}
+              onChanged={onUpdated}
+            />
+          ) : null}
           {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
             <RevokeMembership key={selected.id} climber={selected} onRevoked={onUpdated} />
           ) : null}
@@ -212,7 +223,7 @@ export default function ClimberPanel({
                       >
                         <ListItemText
                           primary={renewal.name}
-                          secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}`}
+                          secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}${renewal.hasBankAccount ? " · EFT on file" : ""}`}
                         />
                         <StatusPill status="warn" label={renewal.overdue ? "Overdue" : "Due"} />
                       </ListItemButton>
