@@ -18,7 +18,7 @@ const STATUS = {
 export default function StatusPill({
   status,
   label,
-  // Only for the exception in STYLE_GUIDE.md (Valid in the Check-in table's Waiver column).
+  // For the exceptions in STYLE_GUIDE.md (Valid and Expired in the Check-in table).
   showIcon = true,
 }: {
   status: Status;

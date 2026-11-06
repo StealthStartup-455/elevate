@@ -92,10 +92,11 @@ test("Busy times opens the typical week and closes again", async ({ page }) => {
   await expect(dialog).toHaveCount(0);
 });
 
-test("Find climber searches on the server and opens the climber's page", async ({ page }) => {
+test("Find climber searches on the server and opens the climber's panel", async ({ page }) => {
   await logIn(page);
   await page.getByRole("combobox", { name: "Find climber" }).fill("tyler le");
   await page.getByRole("option", { name: /Tyler Le/ }).click();
-  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { name: "Tyler Le", level: 1 })).toBeVisible();
+  // The panel opens on the Check-in page (#169); staff don't leave it.
+  await expect(page).toHaveURL(/\/desk\?climber=[0-9a-f-]+$/);
+  await expect(page.getByRole("heading", { name: "Le, Tyler", level: 2 })).toBeVisible();
 });

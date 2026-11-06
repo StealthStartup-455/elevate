@@ -32,16 +32,16 @@ async function load() {
 }
 
 beforeEach(() => {
-  saved.rows = [realVisit];
+  saved.rows = [realVisit, { ...realVisit, id: "demo-checkin:demo-gym:today:0" }];
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("sample check-ins", () => {
-  it("counts the generated check-ins mixed in with real ones", async () => {
+  it("counts saved demo visits alongside new check-ins", async () => {
     vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "moderate");
     const { getBusynessSummary } = await load();
     const summary = await getBusynessSummary("demo-gym");
-    expect(summary.sampleCount).toBeGreaterThan(0);
+    expect(summary.sampleCount).toBe(1);
     expect(summary.count).toBe(summary.sampleCount + 1);
   });
 
@@ -54,21 +54,18 @@ describe("sample check-ins", () => {
   });
 
   it("has nothing to label with real check-ins only", async () => {
+    saved.rows = [realVisit];
     vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "none");
     const { getBusynessSummary } = await load();
     const summary = await getBusynessSummary("demo-gym");
     expect(summary).toMatchObject({ count: 1, sampleCount: 0 });
   });
 
-  it("shows real check-ins only in production unless a scenario is set", async () => {
-    vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "");
-    let { getBusynessSummary } = await load();
-    expect(await getBusynessSummary("demo-gym")).toMatchObject({ count: 1, sampleCount: 0 });
-
+  it("never adds header-only mock visits even when a scenario is configured", async () => {
+    saved.rows = [];
     vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "moderate");
-    ({ getBusynessSummary } = await load());
-    expect((await getBusynessSummary("demo-gym")).sampleCount).toBeGreaterThan(0);
+    const { getBusynessSummary } = await load();
+    expect(await getBusynessSummary("demo-gym")).toMatchObject({ count: 0, sampleCount: 0 });
   });
 
   it("still labels the typical week, which is always generated for now", async () => {

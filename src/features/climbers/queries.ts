@@ -1,3 +1,4 @@
+import { ensureDemoDay } from "@/features/check-ins/demo-day";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { usernameFor } from "@/features/auth/mock-users";
@@ -6,6 +7,7 @@ import { getDemoClimberId } from "@/features/auth/session";
 import { getStaffContext, isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
+import { memberCode, membershipPlanName } from "./format";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
@@ -130,14 +132,14 @@ export async function getMyMembership(): Promise<Membership> {
     lastName: climber.lastName,
     // The product they bought (#132); a membership from before the POS has
     // no product, so it's named by whether it renews.
-    plan: climber.membershipPlan ?? (climber.membershipRecurring ? "Monthly" : "Membership"),
+    plan: membershipPlanName(climber.membershipPlan, climber.membershipRecurring),
     status: climber.membershipStatus,
     renewsOn: climber.membershipRenewsOn,
     recurring: climber.membershipRecurring ?? false,
     waiverStatus: climber.waiverStatus,
     waiverExpiresOn: climber.waiverExpiresOn,
     // Printed code until real member numbers exist.
-    memberCode: `ELV-${climber.id.slice(0, 6).toUpperCase()}`,
+    memberCode: memberCode(climber.id),
     hasDayPass: climber.hasDayPass,
     punchesLeft: climber.punchesLeft,
   };
@@ -284,7 +286,7 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
 // Visits saved in the CheckIn table inside the active window, newest first.
 // Only front desk check-ins are saved so far (see checkInClimber).
 // No staff check: the busyness count on /me reads this too.
-export async function getSavedCheckIns(since: Date): Promise<
+export async function getSavedCheckIns(since: Date, until: Date = new Date()): Promise<
   {
     id: string;
     climberId: string;
@@ -314,9 +316,10 @@ export async function getSavedCheckIns(since: Date): Promise<
   if (!gymId) return [];
   const gym = await getGymById(gymId);
   if (!gym) return [];
-  const now = new Date();
+  const now = until;
+  await ensureDemoDay(gym, now);
   const rows = await db.checkIn.findMany({
-    where: { gymId: gym.id, checkedInAt: { gt: since } },
+    where: { gymId: gym.id, checkedInAt: { gt: since, lte: until } },
     orderBy: { checkedInAt: "desc" },
     include: {
       climber: {

@@ -16,8 +16,10 @@ import NextLink from "next/link";
 import { useState } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
+import type { WaiverStatus } from "@/features/climbers/types";
 import type { Badge, Label, Tone } from "../day";
 import BadgePill from "./BadgePill";
+import { useClimberPanel } from "./ClimberPanel";
 
 // One row as the page hands it over: plain values, already formatted on the
 // server in the gym's time zone.
@@ -28,6 +30,7 @@ export type DeskTableRow = {
   time: string;
   badge: Badge;
   waiver: Label;
+  waiverStatus: WaiverStatus;
   message: Label;
 };
 
@@ -111,6 +114,7 @@ export default function DeskDayTable({
   paging: Paging;
 }) {
   const [filter, setFilter] = useState("");
+  const panel = useClimberPanel();
   const words = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const shown = rows.filter((r) => words.every((w) => r.name.toLowerCase().includes(w)));
 
@@ -126,7 +130,10 @@ export default function DeskDayTable({
           slotProps={{ htmlInput: { "aria-label": "Filter this page by name" } }}
         />
       </div>
-      <div className="overflow-x-auto">
+      {/* relative: the sr-only "Actions" header is absolutely positioned, and
+          without it that span escapes this scroll box and widens the whole page
+          on a phone (which also pushed the climber panel off screen). */}
+      <div className="relative overflow-x-auto">
         <Table size="small" aria-label={title}>
           <TableHead>
             <TableRow>
@@ -142,10 +149,22 @@ export default function DeskDayTable({
           </TableHead>
           <TableBody>
             {shown.map((row) => (
-              <TableRow key={row.id} hover>
+              // The open climber's rows stay highlighted while the panel is open.
+              <TableRow key={row.id} hover selected={panel?.openId === row.climberId}>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{row.time}</TableCell>
                 <TableCell>
-                  <Link component={NextLink} href={`/desk/customers/${row.climberId}`} sx={{ fontWeight: 600 }}>
+                  <Link
+                    component={NextLink}
+                    href={`/desk/customers/${row.climberId}`}
+                    sx={{ fontWeight: 600 }}
+                    onClick={(e) => {
+                      // A plain click opens the panel; Cmd/Ctrl-click still opens the
+                      // full profile in a new tab.
+                      if (!panel || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                      e.preventDefault();
+                      panel.openClimber(row.climberId);
+                    }}
+                  >
                     {row.name}
                   </Link>
                 </TableCell>
@@ -153,11 +172,11 @@ export default function DeskDayTable({
                   <BadgePill badge={row.badge} />
                 </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  {/* Valid drops its ✓ to keep a long column quiet; problems keep ! or ✕ (STYLE_GUIDE.md). */}
+                  {/* Valid and Expired are text-only here, as requested (STYLE_GUIDE.md). */}
                   <StatusPill
                     status={PILL[row.waiver.tone]}
                     label={row.waiver.text}
-                    showIcon={row.waiver.tone !== "normal"}
+                    showIcon={row.waiver.tone !== "normal" && row.waiverStatus !== "expired"}
                   />
                 </TableCell>
                 <TableCell>

@@ -95,7 +95,7 @@ export function deskHref(day: string, today: string, page = 1): string {
   return query ? `/desk?${query}` : "/desk";
 }
 
-export type Badge = "MEMBER" | "DAY_PASS" | "PUNCH_CARD" | "NO_PASS";
+export type Badge = "MEMBER" | "DAY_PASS" | "PUNCH_CARD" | "NO_PASS" | "EMPLOYEE";
 
 /**
  * What lets the climber in, in the order checkInClimber uses them: an active
@@ -200,6 +200,7 @@ export function rowMessage(r: RowFacts): Label {
     return { text: `Waiver expires ${whenWaiverExpires(r.waiver.expiresOn!, days)}`, tone: "warning" };
   }
   if (r.badge === "NO_PASS") return { text: "No pass", tone: "error" };
+  if (r.badge === "EMPLOYEE") return { text: "Employee access", tone: "normal" };
   const countsPunches = r.badge === "PUNCH_CARD" && r.latestVisit;
   if (countsPunches && r.punchesLeft === 0) return { text: "Last visit on the card", tone: "warning" };
   if (r.firstVisit) return { text: "First visit", tone: "normal" };
