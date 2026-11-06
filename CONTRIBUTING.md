@@ -175,7 +175,7 @@ AI coding agents (Claude Code, Copilot, Codex and others) follow every rule in t
 
 - **Before a task:** the agent fetches `origin/dev` and reads the newest entries, and checks the open pull requests for work in progress.
 - **After a task:** the agent adds one new file in the same pull request, using the template in `exchange-floor/README.md`.
-- Entries are never edited by anyone but their author's branch, never deleted, and never contain secrets.
+- Entries added only by the current branch may be updated or consolidated into one before merge. Entries already present on `origin/dev` or added by another branch must never be edited or deleted. Entries never contain secrets.
 - Developers: if you work without an agent, you may add entries too. Reviewers: ask for the entry if a PR has none.
 
 ### How the rules are enforced
