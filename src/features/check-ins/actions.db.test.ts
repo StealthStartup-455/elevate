@@ -33,7 +33,9 @@ vi.mock("@/lib/gym", () => ({
 
 const { getDeskClimberPanel } = await import("./actions");
 
-// 2 p.m. in Victoria (UTC-8 in November).
+// 2 p.m. in Los Angeles (UTC-8). Not Vancouver: tzdata 2026b keeps BC on
+// UTC-7 all year from November 2026, while older Node versions still switch
+// it to UTC-8.
 const NOW = new Date("2026-11-04T22:00:00Z");
 const MINUTE = 60_000;
 
@@ -42,7 +44,7 @@ let otherGymId = "";
 
 beforeAll(async () => {
   await cleanUp();
-  gymId = (await db.gym.create({ data: { name: "Panel test gym", slug: SLUG } })).id;
+  gymId = (await db.gym.create({ data: { name: "Panel test gym", slug: SLUG, timeZone: "America/Los_Angeles" } })).id;
   otherGymId = (await db.gym.create({ data: { name: "Other panel gym", slug: OTHER_SLUG } })).id;
 });
 
