@@ -25,10 +25,8 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
               <PosLink />
             </Suspense>
             <NavLink href="/desk/customers">Customers</NavLink>
+            <NavLink href="/desk/events">Events</NavLink>
             <NavLink href="/desk/waivers">Waivers</NavLink>
-            {/* Events is hidden until its page has content (#65). The route
-                stays, so work on it can continue: add the link back in the
-                same PR that fills the page. */}
             <LogoutButton />
           </nav>
           <main className="p-4 sm:p-6">{children}</main>

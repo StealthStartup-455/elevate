@@ -16,6 +16,16 @@ export const plexSans = localFont({
   declarations: [{ prop: "font-stretch", value: "75% 100%" }],
 });
 
+// Figtree is the climber app's face (climber/tokens.ts): rounder and easier to read on a phone.
+// Variable weight, latin subset, from Fontsource (SIL Open Font License, OFL-figtree.txt).
+export const figtree = localFont({
+  src: "./font-files/figtree-latin-wght-normal.woff2",
+  weight: "300 900",
+  style: "normal",
+  variable: "--font-figtree",
+  display: "swap",
+});
+
 export const plexMono = localFont({
   src: [
     { path: "./font-files/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },

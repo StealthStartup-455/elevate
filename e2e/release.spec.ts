@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab, pressScan } from "./climber";
 import { signWaiverForm } from "./sign-waiver";
 
 // Release check (#43): the pilot journey from start to finish, in the order a
@@ -83,25 +84,30 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await expect(phone.getByText(/You.re all set/)).toBeVisible();
     await phone.getByRole("link", { name: "Continue" }).click();
     await expect(phone).toHaveURL(/\/me$/);
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible({ timeout: 5_000 });
+    // Home stops asking for it; the Membership tab says it's signed.
+    await expect(phone.getByRole("main").getByText("No waiver on file")).toHaveCount(0, { timeout: 5_000 });
+    await openTab(phone, "Membership");
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
     // Still signed after a fresh load: it was saved, not just shown.
     await phone.reload();
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible();
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
   });
 
   await test.step("sign in again: the climber logs out and back in", async () => {
+    // Log out is at the bottom of the Membership tab.
     await phone.getByRole("button", { name: "Log out" }).click();
     await expect(phone).not.toHaveURL(/\/me/);
     await phone.goto("/me");
     await expect(phone).toHaveURL(/\/login/);
     await logIn(phone, username, /\/me$/);
-    await expect(phone.getByRole("main").getByText("✓ Waiver signed")).toBeVisible();
+    await openTab(phone, "Membership");
+    await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
   });
 
   const popup = desk.getByRole("dialog");
 
   await test.step("purchase: the desk gives a day pass to a climber with no membership", async () => {
-    await phone.getByRole("button", { name: /scan/i }).click();
+    await pressScan(phone);
     await expect(popup).toContainText(name, { timeout: 20_000 });
     await expect(popup).toContainText("has no active membership");
     // The no-charge day pass is the stopgap until the POS (#53, PR #119);

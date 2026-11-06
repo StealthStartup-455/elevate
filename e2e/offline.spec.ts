@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab, pressScan } from "./climber";
 
 // Losing the connection shows a message where it happened and lets staff or
 // the climber try again, instead of a blank page or an error page (#130).
@@ -27,15 +28,17 @@ test("a scan while the phone is offline says so, and works once back online", as
 }) => {
   const phone = await newPage(browser, true);
   await logIn(phone, "demo-valid-expired", /\/me/);
+  // Open the Check in tab while still online; the connection drops on that screen.
+  await openTab(phone, "Check in");
 
   await phone.context().setOffline(true);
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const dialog = phone.getByRole("dialog");
   await expect(dialog).toContainText("Couldn't reach the gym", { timeout: 20_000 });
   await dialog.getByRole("button", { name: "Back to menu" }).click();
 
   await phone.context().setOffline(false);
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   await expect(dialog).toContainText("Sent to the desk", { timeout: 20_000 });
 
   // Deal with the scan so it doesn't pop up in later tests.
@@ -56,7 +59,7 @@ test("a desk action while offline shows a message in the popup, and the popup st
   // Valid waiver, no membership: the popup offers a free day pass.
   await logIn(phone, "demo-valid-none", /\/me/);
 
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const popup = desk.getByRole("dialog");
   await expect(popup).toContainText("Demo Valid-None", { timeout: 20_000 });
 

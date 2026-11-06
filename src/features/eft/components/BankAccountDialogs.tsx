@@ -16,7 +16,7 @@ import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import type { BankAccountField, BankAccountInput, BankAccountResult, BankAccountSummary } from "../types";
 
 // The Add / Change bank account form and the Remove confirm, shared by the
-// member's card on /me and the desk (POS card, customer page). The caller
+// member's card on /me/membership and the desk (POS card, customer page). The caller
 // passes the server action to run. `climberName` set means the desk is
 // filling it in for that climber, so the wording speaks about them.
 

@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { pressScan } from "./climber";
 
 // A scan reaches the desk wherever staff are, and isn't lost until staff deal
 // with it (#127): on another desk page, after a reload, and on every open desk.
@@ -19,7 +20,7 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 }
 
 async function scan(phone: Page) {
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   await expect(phone.getByRole("dialog")).toContainText("Sent to the desk", { timeout: 20_000 });
 }
 

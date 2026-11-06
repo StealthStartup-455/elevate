@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { pressScan } from "./climber";
 
 // A scan with a problem (#90): the phone says the desk will help, and the
 // desk popup offers each fix in turn until the climber can check in.
@@ -32,7 +33,7 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
   await expect(phone.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
   await phone.goto("/me");
 
-  await phone.getByRole("button", { name: /scan/i }).click();
+  await pressScan(phone);
   const phoneDialog = phone.getByRole("dialog");
   await expect(phoneDialog).toContainText("Sent to the desk", { timeout: 10_000 });
   await expect(phoneDialog).toContainText("They'll help you sign a waiver.");

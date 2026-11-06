@@ -13,6 +13,8 @@
 //   (deskCheckIns below)
 // - one demo account for every waiver and membership state, which log in with
 //   their username as the password (src/features/climbers/demo-accounts.ts)
+// - the gym's calendar: opening hours, events, set changes and classes, dated
+//   from today (seed-calendar.ts)
 // - two real Supabase logins, desk@elevate.test and climber@elevate.test, if
 //   the keys are set (seed-logins.ts)
 
@@ -28,6 +30,7 @@ import { toStoredPhone } from "../src/features/climbers/phone";
 import { startOfGymDay } from "../src/features/check-ins/day";
 import { endOfGymDay } from "../src/features/climbers/status";
 import { seedLogins } from "./seed-logins";
+import { resetCalendar, seedCalendar } from "./seed-calendar";
 import type { Prisma } from "../src/generated/prisma/client";
 import type {
   MembershipStatus,
@@ -277,6 +280,8 @@ async function main() {
       bodyHash: hashWaiver(SAMPLE_WAIVER),
     },
   });
+  // Class bookings point at climbers, so the calendar goes before them.
+  await resetCalendar(gym.id);
 
   const all: SeedClimber[] = [...CLIMBERS, ...busynessClimbers(), ...demoClimbers()];
 
@@ -357,6 +362,7 @@ async function main() {
       `and ${PRODUCTS.length} products for the POS.`,
   );
 
+  await seedCalendar(gym.id);
   await seedLogins(gym.id);
 }
 

@@ -35,8 +35,7 @@ export type SaleResult =
 export function refreshSalePages(climberId: string) {
   revalidatePath("/desk/pos");
   revalidatePath("/desk");
-  revalidatePath("/me");
-  revalidatePath("/me/purchase");
+  revalidatePath("/me", "layout");
   revalidatePath(`/desk/customers/${climberId}`);
 }
 

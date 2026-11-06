@@ -50,19 +50,18 @@ export default function ScanButton(props: Props) {
     <>
       <Button
         variant="contained"
-        size="small"
+        size="large"
+        fullWidth
         onClick={() => setStep("processing")}
         disabled={step === "processing"}
-        sx={{ mt: 1 }}
       >
         {step === "processing" ? (
-          <CircularProgress size={18} color="inherit" aria-label="Processing" />
+          <CircularProgress size={22} color="inherit" aria-label="Processing" />
         ) : (
           "Simulate scan"
         )}
       </Button>
-      {/* width 0 + minWidth 100%: wraps to the QR code's width instead of widening the column. */}
-      <Typography variant="secondary" component="p" sx={{ mt: 1, width: 0, minWidth: "100%" }}>
+      <Typography variant="secondary" component="p" sx={{ mt: -2, textAlign: "center" }}>
         Demo only: at the gym, the desk scans your code.
       </Typography>
 

@@ -38,7 +38,7 @@ async function deskClimber(climberId: string): Promise<Owner | null> {
 }
 
 function refresh(climberId: string) {
-  revalidatePath("/me");
+  revalidatePath("/me/membership");
   revalidatePath("/desk/pos");
   revalidatePath(`/desk/customers/${climberId}`);
 }

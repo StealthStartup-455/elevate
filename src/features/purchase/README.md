@@ -1,26 +1,26 @@
 # purchase
 
-The climber's **Purchase** tab (`/me/purchase`, elevate-docs#58): see your plan and waiver, buy a membership, rentals or chalk, and see what you've bought. It is the climber's side of the desk POS ([`features/pos`](../pos/README.md)), for a climber who has joined and may not have signed the waiver yet.
+Buying on the climber's **Membership** tab (`/me/membership`, elevate-docs#58; it was the Purchase tab at `/me/purchase`, which now redirects there, #101): see your plan and waiver, buy a membership, rentals or chalk, and see what you've bought. It is the climber's side of the desk POS ([`features/pos`](../pos/README.md)), for a climber who has joined and may not have signed the waiver yet.
 
 **Owner:** _TBD_
 
 ## What a climber sees
 
 - **Purchase history** (button, top right): a dialog laid out like the desk's "Manual check in", listing the last 50 purchases, newest first. A voided one shows **Refunded**.
-- **Your plan:** the membership in effect (name, end date), one bought early, any day pass or punch card, and the waiver. A missing or expired waiver shows a **Sign waiver** step, but never blocks a purchase.
+- **Your plan** (`PlanCard`, the teal card): the membership in effect (name, end date), one bought early, any day pass or punch card. The waiver has its own card under it (`features/waivers/components/WaiverCard.tsx`); a missing or expired one shows **Sign the waiver**, but never blocks a purchase.
 - **Membership** (expandable, open by default): memberships, the day pass and the punch card. It only exists for a climber **without an active membership** (none, expired or paused). An active member instead sees "You already have an active membership, so you don't need a day pass." and no Membership section.
 - **Rentals and chalk:** shoe rental, harness rental and chalk, for everyone, member or not. Add as many as you need (each 0 to 20, for a friend or the kids); pay here and pick it up at the front desk.
 - **Your order:** what you have added so far, with a **Checkout** button. One order holds any rentals and chalk and **at most one** membership, day pass or punch card: picking another replaces it, and picking the same one again takes it out.
 
 **Checkout** opens a popup with the order, the subtotal, GST (and PST on rentals and chalk, as at the desk), total and any warning (a paused membership's new one starts when it ends, a day pass already bought today), then **Pay**.
 
-The dashboard (`/me`) shows **Purchase Membership** under the "Buy a membership to start climbing" text for a climber with no membership; it opens this tab. The QR column beside it stays centred whatever the waiver or membership status.
+Home (`/me`) shows a **Before you climb** card for a climber with nothing that covers today, with **Buy a membership** or **Renew membership**; it opens this tab.
 
 Nothing desk-only shows here: no climber search, Card/Cash, Tender, Void or Check in now.
 
 ## It is a mock, and only open in demo mode
 
-No card details are asked for and nothing is charged, yet **Pay** gives the pass. So the whole feature is on only when `isDemoMode()` is true (`next dev`, or a deploy with `DEMO_MODE="true"`; never with `APP_ENV="production"`): the Purchase tab and page, and `buyOnline`, which refuses otherwise. On a real gym's deployment nobody can give themselves a membership. The dashboard's Purchase Membership and Renew membership buttons are switched off ("Coming soon") when it's closed. The popup says it is a demo. The sale is recorded with tender `ONLINE`, so the desk's Today's sales shows it apart from card and cash. Real payments, with a payment provider and retry-safe confirmation, are #31 and #45; the gate comes off with them.
+No card details are asked for and nothing is charged, yet **Pay** gives the pass. So the whole feature is on only when `isDemoMode()` is true (`next dev`, or a deploy with `DEMO_MODE="true"`; never with `APP_ENV="production"`): buying on the Membership tab, and `buyOnline`, which refuses otherwise. On a real gym's deployment nobody can give themselves a membership. When it's closed, the Membership tab shows only the plan, the waiver and the account, and Home's Before you climb card says to ask at the front desk. The popup says it is a demo. The sale is recorded with tender `ONLINE`, so the desk's Today's sales shows it apart from card and cash. Real payments, with a payment provider and retry-safe confirmation, are #31 and #45; the gate comes off with them.
 
 ## How a purchase works
 
@@ -39,6 +39,6 @@ features/purchase/
 ├── actions.ts     # buyOnline (Server Action, the signed-in climber only)
 ├── queries.ts     # getPurchasePage, isOnlinePurchaseEnabled, getMyGym
 ├── catalog.ts     # who can buy what, and the warnings before paying
-├── components/    # MyPlan, PurchaseOptions, PurchaseHistory
+├── components/    # PlanCard, PurchaseOptions, PurchaseHistory
 └── *.test.ts      # actions.db.test.ts needs Postgres (npm run test:db)
 ```
