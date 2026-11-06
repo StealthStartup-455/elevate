@@ -1,122 +1,136 @@
 # Elevate
 
-Management software for climbing gyms: a front desk app for staff and a dashboard for members.
+Elevate is a climbing gym management app. Staff can manage check-ins,
+customer records, memberships and waivers. Climbers can view their
+membership and complete tasks from their own dashboard.
 
-Built with Next.js, Supabase (database and authentication) and Prisma.
+## Access the MVP
 
-## Product page
+1. Open https://elevate-staging-psi.vercel.app in your browser.
+2. Choose a demo account from the table below.
+3. Enter its username in the **Email** field.
+4. Enter its password, then select **Log in**.
 
-The product page is live at: https://elevate-gym-crm.vercel.app/
+No download or installation is required.
 
-## Getting started
+| Account | Username | Password |
+| --- | --- | --- |
+| Front desk staff | desk | desk |
+| Climber with an active membership and signed waiver | demo-valid-active | demo-valid-active |
+| New climber without a waiver or membership | demo-missing-none | demo-missing-none |
 
-### Requirements
+For additional accounts, open the **ⓘ beside “Log in.”**
 
-- Node.js 24 or later (includes npm 11)
-- npm
-- Docker Desktop, running before you start the database
+## Use the staff app
 
-### Quick start: one command
+Log in with **desk / desk**.
 
-With Docker running:
+### Check in a climber
 
-```bash
-git clone https://github.com/StealthStartup-455/elevate.git
-cd elevate
-npm install
-npm run local
-```
+1. Open **Check-in**.
+2. Use **Find climber** to search for a customer.
+3. Select their name to open their information.
+4. Review their membership and waiver status.
+5. If they meet the requirements, select **Check in**.
 
-`npm run local` does the setup below in the right order and then starts the app: it makes `.env` if it's missing, starts local Supabase and puts its publishable key in `.env`, applies migrations, regenerates the Prisma client, seeds when migrations were just applied, and runs `npm run dev`. Run it again any time, especially after switching branches or pulling: it only installs, migrates and seeds what changed. `npm run local -- --seed` also reloads the sample data; `--help` lists the options.
+If a waiver or pass is missing, the app shows what needs to be
+resolved before check-in.
 
-The steps below are what it does, if you'd rather run them yourself.
+### Make a demo sale
 
-### Setup
+1. Open **POS**.
+2. Select a customer.
+3. Add a pass, membership or rental to the sale.
+4. Select **Checkout**.
+5. Choose a payment method and select **Tender**.
+6. Find the completed sale under **Today's sales**.
 
-```bash
-git clone https://github.com/StealthStartup-455/elevate.git
-cd elevate
-npm install
-cp .env.example .env
-npm run db:start
-```
+Payments are simulated. No real money is charged.
 
-The first `db:start` downloads Docker images and can take several minutes. When it finishes, it prints the local Supabase details. Copy the **publishable key** (called the **anon key** in older CLI versions) into `.env` as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+### Find customer information
 
-For real Supabase logins, also copy the **secret key** into `.env` as `SUPABASE_SECRET_KEY` and set `SEED_LOGIN_PASSWORD` to anything 6+ characters. The seed then creates two logins with that password: `desk@elevate.test` (front desk) and `climber@elevate.test` (a member). These live only in your local Supabase. Leave both unset and the seed skips them; the demo login still works under `npm run dev`. The **(i)** next to "Log in" on the login screen shows a testing guide and every test login by kind of user (the front desk, the demo climbers by waiver and membership, named climbers, and these two real logins) with the username and password to type.
+1. Open **Customers**.
+2. Search for a customer and select their record.
+3. Review their profile, membership and waiver information.
 
-Then start the app:
+## Use the climber app
 
-```bash
-npm run db:migrate
-npm run db:seed
-npm run dev
-```
+Log in with **demo-valid-active** as both the username and password.
 
-Open http://localhost:3000.
+1. Open **Home** to explore the dashboard.
+2. Open **Membership** to review the account's plan and passes.
+3. Return to **Home** to review the waiver status.
 
-## Scripts
+### Try the new-climber experience
 
-| Command                 | Description                                                                                                                                                                                        |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run local`         | Set up whatever changed (packages, local Supabase, migrations, sample data), then start the development server                                                                                     |
-| `npm run dev`           | Start the development server                                                                                                                                                                       |
-| `npm run lint`          | Check code style                                                                                                                                                                                   |
-| `npm run build`         | Create a production build (also run by CI)                                                                                                                                                         |
-| `npm test`              | Unit tests (Vitest)                                                                                                                                                                                |
-| `npm run test:db`       | Database tests; needs the local database running                                                                                                                                                   |
-| `npm run test:e2e`      | End to end tests (Playwright): the demo flow, and automated accessibility checks (axe, WCAG 2.1 AA) on every main screen in light and dark mode; needs `npm run build` and `npm run db:seed` first |
-| `npm run db:start`      | Start local Supabase                                                                                                                                                                               |
-| `npm run db:stop`       | Stop local Supabase                                                                                                                                                                                |
-| `npm run db:migrate`    | Create and apply a migration after editing `schema.prisma`                                                                                                                                         |
-| `npm run db:seed`       | Load sample data from `prisma/seed.ts`                                                                                                                                                             |
-| `npm run db:studio`     | Browse the database in the browser                                                                                                                                                                 |
-| `npm run staging:setup` | Set up or refresh a hosted demo on Supabase and Vercel (see `DEPLOYMENT.md`)                                                                                                                       |
+Log out, then log in with **demo-missing-none** as both the
+username and password.
 
-Before the first `npm run test:e2e`, install the test browser once: `npx playwright install chromium`. CI runs all three test suites on every pull request.
+1. From **Home**, open the waiver and follow the form instructions.
+2. Open **Membership** to explore the available purchase options.
+3. Choose a membership and follow the demo checkout instructions.
 
-How the database works, its tables and how to change them: [`prisma/DATABASE.md`](prisma/DATABASE.md).
+Use fictional details when completing forms.
 
-How the hosted staging demo is deployed, migrated, reseeded and rolled back: [`DEPLOYMENT.md`](DEPLOYMENT.md).
+## Try both views together
 
-How the app looks and behaves (colors, type, spacing, hover rules, components): [`STYLE_GUIDE.md`](STYLE_GUIDE.md). With `npm run dev` running, open http://localhost:3000/style-guide to see it live.
+To explore the staff and climber experiences at the same time:
 
-## License
+1. Open a normal browser window and log in as **desk**.
+2. Open a private/incognito window and log in as a climber.
+3. Keep both windows open while trying the workflows.
 
-All rights reserved; see [`LICENSE`](LICENSE). The repository is public so the team and course staff can review it, but that grants no right to copy or reuse the code. Contact the team before reusing anything.
+Separate browser sessions let each account stay signed in.
 
-## Project structure
+## About this MVP
 
-```
-prisma/               Database schema, migrations and seed data
-supabase/             Local Supabase configuration
-src/
-  app/                Pages and routes
-    login/, join/     Public pages
-    desk/             Staff front desk (login required)
-    me/               Member dashboard (login required)
-    style-guide/      Live style guide
-  features/           Business logic, one folder per feature
-    auth/             Logins, roles and permissions
-    check-ins/        Scanning, check-in and green/red status
-    climbers/         Profiles, memberships and incidents
-    pos/              Desk POS: selling passes, memberships, rentals and chalk
-    waivers/          CSV import, matching and duplicate checks
-    events/           Calendar, wall resets, bookings and announcements
-    analytics/        Gym busyness and session stats
-  components/ui/      Shared UI components and the theme (theme/tokens.ts holds every design value)
-  lib/                Database and Supabase clients, shared helpers
-  proxy.ts            Redirects logged-out users away from /desk and /me
-```
+The hosted app is a shared demo with fictional sample data.
+Other testers may change the records, and demo data may be reset.
+It is intended for evaluation, not live gym operations.
 
-Each feature folder has a README describing what it covers and who owns it.
+If you encounter a problem, share the page you were using,
+the steps you took, and any error message with the project team.
 
-## Conventions
+## Project information
 
-- Pages in `src/app/` stay thin. They call into `src/features/` and never query the database directly.
-- Feature folders follow the same layout: `actions.ts`, `queries.ts`, `components/` and `*.test.ts`.
-- Every database table includes a `gymId`.
-- Branch from `dev` and open pull requests into `dev`. `release` and `main` only receive releases and hotfixes.
-- All changes go through a pull request with one approval and passing CI.
+Product website: https://elevate-gym-crm.vercel.app/
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+The instructions below are for developers who want to install
+and run Elevate locally.
+
+## Developer workflow
+
+All changes start with a GitHub issue and go through a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution rules.
+
+### Start a change
+
+1. Choose or create a GitHub issue.
+2. Check open pull requests for related work.
+3. Fetch the latest code and create a branch from `origin/dev`:
+
+   git fetch origin
+   git switch -c feature/123-short-description origin/dev
+
+Replace `123` with your issue number. Use the branch type that fits
+your change: `feature`, `fix`, `docs`, `refactor`, `chore` or `hotfix`.
+
+### Develop and check your work
+
+1. Run `npm run local` to set up and start the app.
+2. Make your changes.
+3. Run `npm run lint`, `npm test` and `npm run build`.
+4. For UI changes, follow [STYLE_GUIDE.md](STYLE_GUIDE.md)
+   and check the screen in light and dark mode.
+
+### Submit your change
+
+1. Commit your changes with a short, descriptive message.
+2. Push your branch.
+3. Open a pull request targeting `dev`.
+4. Complete the PR template and link the issue with `Closes #123`.
+5. Wait for passing checks and a human review before merging.
+
+Never commit or push directly to `dev`, `release` or `main`.
+AI agents must also follow [AGENTS.md](AGENTS.md), including the
+Exchange Floor requirements.
