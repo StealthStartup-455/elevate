@@ -49,6 +49,14 @@ export function useClimberPanel(): Panel | null {
   return useContext(PanelContext);
 }
 
+// The Details tab's edit form is open in the panel (docked or over the page),
+// so Esc or a click outside would throw away what staff typed. Read from the
+// page when the key is pressed: a flag passed up through state lags a quick
+// Cancel then Esc by a render or two.
+function editingDetails(): boolean {
+  return !!document.querySelector('[aria-labelledby="climber-panel-title"] form');
+}
+
 // This page's URL with ?climber set to `id`, or without it; date and page stay.
 function urlWith(id: string | null): string {
   const params = new URLSearchParams(window.location.search);
@@ -130,9 +138,18 @@ export default function ClimberPanelProvider({ children }: { children: ReactNode
     }
   }, []);
 
+  // Reads the open climber again. Stable, so the page's refreshes can call it.
   const reload = useCallback(async () => {
-    if (openId) await load(openId);
-  }, [openId, load]);
+    const id = wanted.current;
+    if (id) await load(id);
+  }, [load]);
+
+  // Coming back to this window (another desk or tab may have checked them in).
+  useEffect(() => {
+    const onFocus = () => void reload();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reload]);
 
   const showingId = openId ?? loaded?.id ?? null;
   const state: ProfileState =
@@ -147,7 +164,11 @@ export default function ClimberPanelProvider({ children }: { children: ReactNode
         <Drawer
           anchor="right"
           open={!!openId}
-          onClose={close}
+          onClose={(_event, reason) => {
+            // Mid-edit, only ✕ (or Save and Cancel) leaves the form.
+            if ((reason === "escapeKeyDown" || reason === "backdropClick") && editingDetails()) return;
+            close();
+          }}
           slotProps={{
             paper: {
               className: "w-full sm:w-105",
@@ -207,11 +228,12 @@ export function ClimberPanelArea({ children }: { children: ReactNode }) {
   }, [open, openId]);
 
   // Esc closes it, unless something on top (a menu, a dialog, a search
-  // list) used the key first.
+  // list) used the key first, or the Details form is open: Esc there would
+  // throw away what staff typed.
   useEffect(() => {
     if (!open || !close) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) close();
+      if (e.key === "Escape" && !e.defaultPrevented && !editingDetails()) close();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -239,4 +261,25 @@ export function ClimberPanelArea({ children }: { children: ReactNode }) {
       ) : null}
     </div>
   );
+}
+
+/**
+ * Put inside something the server renders again on every refresh (the day's
+ * table). Each new render brings a new `stamp`, and the open panel reads its
+ * climber again: a check-in from the scan popup, Manual check in, another
+ * desk or the page's auto-refresh shows in the panel too, not only the table.
+ */
+export function ClimberPanelSync({ stamp }: { stamp: number }) {
+  const panel = useClimberPanel();
+  const reload = panel?.reload;
+  const first = useRef(true);
+  useEffect(() => {
+    // The first render is the page loading; the panel loads itself.
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    void reload?.();
+  }, [stamp, reload]);
+  return null;
 }

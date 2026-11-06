@@ -151,18 +151,28 @@ describe("getDeskDay", () => {
     expect(after.hourly.reduce((a, b) => a + b, 0)).toBe(5);
     expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 5, sampleCount: 4 });
 
-    // Saved visits really age out; refreshing doesn't move their timestamps.
-    await ensureDemoDay(demo, new Date(now.getTime() + 121 * 60_000));
-    expect(await db.checkIn.count({ where: { gymId } })).toBe(5);
-    vi.setSystemTime(new Date(now.getTime() + 121 * 60_000));
-    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 0, sampleCount: 0 });
+    // Saved visits age out and their timestamps never move, but the window is
+    // topped up: two hours on, the sample climber is back with a new visit,
+    // so the header doesn't drop to 0 partway through a demo.
+    const firstVisits = await db.checkIn.findMany({ where: { gymId }, orderBy: { id: "asc" } });
+    const later = new Date(now.getTime() + 121 * 60_000);
+    vi.setSystemTime(later);
+    await Promise.all([ensureDemoDay(demo, later), ensureDemoDay(demo, later)]);
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(6);
+    for (const v of firstVisits) {
+      expect((await db.checkIn.findUniqueOrThrow({ where: { id: v.id } })).checkedInAt).toEqual(v.checkedInAt);
+    }
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 1, sampleCount: 1 });
+    // While the window is full, refreshing adds nobody.
+    await ensureDemoDay(demo, new Date(later.getTime() + 60_000));
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(6);
 
     // The next local day gets its own starting attendance, preserving history.
     const tomorrow = new Date(now.getTime() + DAY_MS);
     vi.setSystemTime(tomorrow);
     await ensureDemoDay(demo, tomorrow);
     expect((await getDeskDay({}, tomorrow)).total).toBe(4);
-    expect((await getDeskDay({ date: before.day }, tomorrow)).total).toBe(5);
+    expect((await getDeskDay({ date: before.day }, tomorrow)).total).toBe(6);
     expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 4, sampleCount: 4 });
   });
 

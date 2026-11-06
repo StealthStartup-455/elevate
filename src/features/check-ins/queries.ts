@@ -4,6 +4,7 @@ import { isDemoEmployeeCheckIn } from "./demo-examples";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimberStatuses } from "@/features/climbers/queries";
 import type { WaiverSummary } from "@/features/climbers/status";
+import type { WaiverStatus } from "@/features/climbers/types";
 import type { CheckInMethod } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
@@ -37,6 +38,8 @@ export type DeskRow = {
   badge: Badge;
   /** Their waiver now. */
   waiver: Label;
+  /** Its status, for the pill's icon (not worked out from the label's words). */
+  waiverStatus: WaiverStatus;
   message: Label;
 };
 
@@ -161,6 +164,7 @@ export async function getDeskDay(
       method: c.method,
       badge,
       waiver: waiverLabel(waiver, today),
+      waiverStatus: waiver.status,
       message: rowMessage({
         badge,
         punchesLeft: status?.punchesLeft ?? 0,

@@ -3,6 +3,10 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -17,6 +21,7 @@ import { formatDate, memberCode, membershipDateLine, membershipPlanName } from "
 import type { Climber } from "@/features/climbers/types";
 import type { DeskClimberPanel } from "../actions";
 import { badgeFor } from "../day";
+import { useDeskDialogOpen } from "../desk-dialogs";
 import { deskNextStep } from "../scan-messages";
 import BadgePill from "./BadgePill";
 
@@ -111,8 +116,9 @@ export default function ClimberProfile({
         <PassesAndDetails climber={c} onChanged={onChanged} />
         <Attributes panel={panel} />
       </div>
-      {/* Staff on an employee pass don't buy passes. */}
-      {panel.employee ? null : (
+      {/* Staff on an employee pass don't buy passes, and someone with no pass
+          already has Sell pass as the fix above. */}
+      {panel.employee || badgeFor(c) === "NO_PASS" ? null : (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
           <SellPass climberId={climberId} posEnabled={panel.posEnabled} variant="outlined" />
         </div>
@@ -173,6 +179,9 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  // A desk dialog like the POS ones: a QR scan waits until it closes.
+  useDeskDialogOpen(confirming);
   const c = panel.climber;
 
   // The same rules as checkInClimber: deskNextStep is null when they can check
@@ -199,98 +208,126 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
   }
 
   const checkIn = () => run(() => checkInClimber(c.id), "Couldn't check in. Try again.");
-  // The desk's waiver step, the same as the scan popup and the climber page.
-  const startWaiver = () => run(() => signWaiver(c.id), "Couldn't sign the waiver. Try again.");
+  // The desk's quick waiver step (signWaiver), the same one the scan popup and
+  // the customer page use. It saves a signed waiver straight away with no
+  // signature form, so staff confirm first.
+  const markWaiverSigned = () => {
+    setConfirming(false);
+    run(() => signWaiver(c.id), "Couldn't save the waiver. Try again.");
+  };
 
-  const errorAlert = error ? <Alert severity="error">{error}</Alert> : null;
+  // Checked in today comes first, whatever else is true: a problem that came
+  // up since (an expired waiver) still shows below with its fix.
+  const checkedIn = panel.checkedInAt ? (
+    <Alert severity="success">Checked in at {panel.checkedInAt}</Alert>
+  ) : null;
 
-  if (panel.checkedInAt) {
-    return <Alert severity="success">Checked in at {panel.checkedInAt}</Alert>;
-  }
-
-  if (!blocked) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-          <Typography variant="body" sx={{ fontWeight: 600 }}>
-            Ready to check in
-          </Typography>
-          <Button variant="contained" onClick={checkIn} disabled={pending}>
-            Check in
+  let body: ReactNode = null;
+  if (blocked) {
+    const fixes: { key: string; button: (contained: boolean) => ReactNode }[] = [];
+    if (needsWaiver) {
+      fixes.push({
+        key: "waiver",
+        button: (contained) => (
+          <Button
+            variant={contained ? "contained" : "outlined"}
+            onClick={() => setConfirming(true)}
+            disabled={pending}
+          >
+            Mark waiver signed
           </Button>
+        ),
+      });
+    }
+    if (needsPass) {
+      fixes.push({
+        key: "pass",
+        button: (contained) => (
+          <SellPass climberId={c.id} posEnabled={panel.posEnabled} variant={contained ? "contained" : "outlined"} />
+        ),
+      });
+    }
+    body = (
+      <>
+        <Alert severity="warning">
+          <Typography variant="body" sx={{ fontWeight: 600 }}>
+            Can&apos;t check in yet
+          </Typography>
+          {reasons(c, needsWaiver, needsPass).map((line) => (
+            <Typography key={line} variant="body">
+              {line}
+            </Typography>
+          ))}
+        </Alert>
+        {fixes.length === 1 ? (
+          <div>{fixes[0].button(true)}</div>
+        ) : (
+          // Two problems: in order, and only the first is the filled button.
+          <ol className="flex flex-col gap-2">
+            {fixes.map((fix, i) => (
+              <li key={fix.key} className="flex items-center gap-2">
+                <Typography variant="secondary" component="span" sx={{ fontWeight: 600 }}>
+                  {i + 1}
+                </Typography>
+                {fix.button(i === 0)}
+              </li>
+            ))}
+          </ol>
+        )}
+        <div>
+          <DisabledReason
+            reason={
+              needsWaiver && needsPass
+                ? "They need a valid waiver and a pass first."
+                : needsWaiver
+                  ? "They need a valid waiver first."
+                  : "They need a membership, day pass or punch card first."
+            }
+          >
+            <Button variant="outlined" disabled>
+              Check in
+            </Button>
+          </DisabledReason>
         </div>
-        {errorAlert}
+      </>
+    );
+  } else if (!panel.checkedInRecently) {
+    // checkInClimber refuses a second check-in within ACTIVE_WINDOW_MINUTES;
+    // after that, someone who came back later in the day can check in again.
+    body = (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+        <Typography variant="body" sx={{ fontWeight: 600 }}>
+          {panel.checkedInAt ? "Ready to check in again" : "Ready to check in"}
+        </Typography>
+        <Button variant="contained" onClick={checkIn} disabled={pending}>
+          Check in
+        </Button>
       </div>
     );
   }
 
-  const fixes: { key: string; button: (contained: boolean) => ReactNode }[] = [];
-  if (needsWaiver) {
-    fixes.push({
-      key: "waiver",
-      button: (contained) => (
-        <Button variant={contained ? "contained" : "outlined"} onClick={startWaiver} disabled={pending}>
-          Start waiver
-        </Button>
-      ),
-    });
-  }
-  if (needsPass) {
-    fixes.push({
-      key: "pass",
-      button: (contained) => (
-        <SellPass
-          climberId={c.id}
-          posEnabled={panel.posEnabled}
-          variant={contained ? "contained" : "outlined"}
-        />
-      ),
-    });
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <Alert severity="warning">
-        <Typography variant="body" sx={{ fontWeight: 600 }}>
-          Can&apos;t check in yet
-        </Typography>
-        {reasons(c, needsWaiver, needsPass).map((line) => (
-          <Typography key={line} variant="body">
-            {line}
+      {checkedIn}
+      {body}
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      <Dialog open={confirming} onClose={() => setConfirming(false)} aria-labelledby="mark-waiver-title">
+        <DialogTitle id="mark-waiver-title">Mark waiver signed?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body">
+            This saves a signed waiver for {c.firstName} {c.lastName} now, without a signature form. Only do this
+            when they&apos;ve already signed the waiver another way, such as on paper.
           </Typography>
-        ))}
-      </Alert>
-      {fixes.length === 1 ? (
-        <div>{fixes[0].button(true)}</div>
-      ) : (
-        // Two problems: in order, and only the first is the filled button.
-        <ol className="flex flex-col gap-2">
-          {fixes.map((fix, i) => (
-            <li key={fix.key} className="flex items-center gap-2">
-              <Typography variant="secondary" component="span" sx={{ fontWeight: 600 }}>
-                {i + 1}
-              </Typography>
-              {fix.button(i === 0)}
-            </li>
-          ))}
-        </ol>
-      )}
-      <div>
-        <DisabledReason
-          reason={
-            needsWaiver && needsPass
-              ? "They need a valid waiver and a pass first."
-              : needsWaiver
-                ? "They need a valid waiver first."
-                : "They need a membership, day pass or punch card first."
-          }
-        >
-          <Button variant="outlined" disabled>
-            Check in
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setConfirming(false)}>
+            Cancel
           </Button>
-        </DisabledReason>
-      </div>
-      {errorAlert}
+          <Button variant="contained" onClick={markWaiverSigned}>
+            Mark signed
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
@@ -448,10 +485,10 @@ function Attributes({ panel }: { panel: DeskClimberPanel }) {
       <Typography variant="cardTitle">Attributes</Typography>
       <dl className="grid grid-cols-2 gap-3">
         <Attribute label="Waiver">
-          {/* Expired or missing is amber here; the words say it too. */}
+          {/* Expired or missing is red, like the table's Waiver column; the words say it too. */}
           <Box
             component="span"
-            sx={waiver.status === "valid" ? undefined : { color: "warning.main", fontWeight: 600 }}
+            sx={waiver.status === "valid" ? undefined : { color: "error.main", fontWeight: 600 }}
           >
             {waiverText}
           </Box>

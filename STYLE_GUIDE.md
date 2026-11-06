@@ -285,6 +285,8 @@ Links inside MUI need Next's router: `<Link component={NextLink} href="...">` (`
 
 **Pass badges** (`BadgePill`, the Chip's `badge` variant in `theme.ts`) say what let a climber in: Member (solid navy), Punch card (grey), Day pass (teal tint). They're uppercase like a label and have no icon, because they're a kind of pass, not a status. No pass is a problem, so it's a `StatusPill` (✕).
 
+The Check-in demo includes an Employee pass badge using a solid gold fill and contrasting text from the existing warning palette, distinct from navy membership, teal day passes and grey punch cards. The developer requested this category-color exception; warning statuses keep their pale fill and icon. This is a fictional display fixture, not a new staff permission or a new token.
+
 ### Cards, tables and KPI tiles
 
 ```tsx
@@ -373,5 +375,3 @@ The rules are deliberately hard to bypass. To change them:
 Tailwind's own palette, type scale, radii and shadows are also removed in `globals.css`, so those classes render nothing even if lint is skipped.
 
 Lint doesn't yet check MUI variant names or `sx` values. Reviewers check those.
-
-The Check-in demo includes an Employee pass badge using a solid gold fill and contrasting text from the existing warning palette, distinct from navy membership, teal day passes and grey punch cards. The developer requested this category-color exception; warning statuses keep their pale fill and icon. This is a fictional display fixture, not a new staff permission or a new token.

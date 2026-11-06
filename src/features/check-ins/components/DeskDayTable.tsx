@@ -16,6 +16,7 @@ import NextLink from "next/link";
 import { useState } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
+import type { WaiverStatus } from "@/features/climbers/types";
 import type { Badge, Label, Tone } from "../day";
 import BadgePill from "./BadgePill";
 import { useClimberPanel } from "./ClimberPanel";
@@ -29,6 +30,7 @@ export type DeskTableRow = {
   time: string;
   badge: Badge;
   waiver: Label;
+  waiverStatus: WaiverStatus;
   message: Label;
 };
 
@@ -174,7 +176,7 @@ export default function DeskDayTable({
                   <StatusPill
                     status={PILL[row.waiver.tone]}
                     label={row.waiver.text}
-                    showIcon={row.waiver.tone !== "normal" && row.waiver.text !== "Expired"}
+                    showIcon={row.waiver.tone !== "normal" && row.waiverStatus !== "expired"}
                   />
                 </TableCell>
                 <TableCell>

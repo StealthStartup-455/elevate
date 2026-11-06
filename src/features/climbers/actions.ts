@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSessionClimberId } from "@/features/auth/queries";
 import { setSession } from "@/features/auth/session";
+import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
@@ -259,7 +260,7 @@ export async function checkInClimber(
     where: {
       gymId: staff.gymId,
       climberId,
-      checkedInAt: { gt: new Date(Date.now() - 120 * 60 * 1000) },
+      checkedInAt: { gt: new Date(Date.now() - ACTIVE_WINDOW_MINUTES * 60_000) },
     },
     select: { id: true },
   });

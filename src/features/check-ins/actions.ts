@@ -3,6 +3,7 @@
 import { getSessionClimberId } from "@/features/auth/queries";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { formatTime } from "@/features/analytics/components/format";
+import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getClimber, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
 import { isPosEnabled } from "@/features/pos/queries";
@@ -135,8 +136,13 @@ export type DeskClimberPanel = {
   /** Whole years, from their date of birth. */
   age: number;
   waiver: StaffWaiverPanel;
-  /** "12:21 p.m." on the gym's clock when they checked in today; null if they haven't. */
+  /** "12:21 p.m." on the gym's clock when they last checked in today; null if they haven't. */
   checkedInAt: string | null;
+  /**
+   * That check-in was in the last ACTIVE_WINDOW_MINUTES, so checkInClimber
+   * would refuse another one. Later the same day they can check in again.
+   */
+  checkedInRecently: boolean;
   /** The gym sells passes in Elevate, so Sell pass has somewhere to go. */
   posEnabled: boolean;
   /** Came in on the demo's employee pass today: shown like the table, and nothing to sell. */
@@ -168,6 +174,7 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
     age: ageOn(climber.dateOfBirth, now),
     waiver,
     checkedInAt: latest ? formatTime(latest.timestamp, gym.timeZone) : null,
+    checkedInRecently: !!latest && latest.timestamp.getTime() > now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000,
     posEnabled,
     employee: !!latest && isDemoEmployeeCheckIn(latest.id),
   };
