@@ -2,7 +2,7 @@
 
 - **Developer:** @agamkamran02
 - **AI tool / model:** Claude Code (claude-sonnet-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#156 / PR number added once the PR is open
+- **Issue / PR:** StealthStartup-455/elevate#156 / #185
 - **Branch:** `feature/156-demo-device-frames`
 - **What the agent did:**
   - `/demo-phone/<app path>`: the app in an iPhone 17 Pro frame (screen 402 x 874: status bar and home bar drawn outside a 402 x 796 app area, Dynamic Island, bezel). Fixed at 100%, centered, and it keeps its size when the window is resized (a small window scrolls).
