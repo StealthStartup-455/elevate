@@ -40,6 +40,184 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.has-holds {
+  position: relative;
+  isolation: isolate;
+}
+
+.has-holds::before,
+.has-holds::after,
+.hero-hold {
+  position: absolute;
+  z-index: -1;
+  width: var(--hold-size, clamp(3.5rem, 7vw, 6.5rem));
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.has-holds::before,
+.has-holds::after {
+  content: "";
+}
+
+.hero-holds {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-hold-one {
+  top: 0.25rem;
+  right: 4%;
+  width: 4.5rem;
+  background-image: url("assets/holds/hold-1.png");
+  transform: rotate(16deg);
+}
+
+.hero-hold-two {
+  top: 2%;
+  right: 25%;
+  width: 4rem;
+  background-image: url("assets/holds/hold-9.png");
+  transform: rotate(-28deg);
+}
+
+.hero-hold-three {
+  bottom: 0.25rem;
+  left: 3%;
+  width: 4.5rem;
+  background-image: url("assets/holds/hold-5.png");
+  transform: rotate(-18deg);
+}
+
+.hero-hold-four {
+  right: 4%;
+  bottom: 1rem;
+  width: 4.5rem;
+  background-image: url("assets/holds/hold-2.png");
+  transform: rotate(32deg);
+}
+
+.hero.has-holds::before {
+  top: 1rem;
+  left: 45%;
+  width: 5rem;
+  background-image: url("assets/holds/hold-7.png");
+  transform: rotate(-24deg);
+}
+
+.hero.has-holds::after {
+  bottom: 0.75rem;
+  left: 32%;
+  background-image: url("assets/holds/hold-6.png");
+  transform: rotate(18deg);
+}
+
+#product.has-holds::before {
+  top: 1.25rem;
+  right: 3%;
+  background-image: url("assets/holds/hold-9.png");
+  transform: rotate(28deg);
+}
+
+#product.has-holds::after {
+  bottom: 0.25rem;
+  left: 3%;
+  background-image: url("assets/holds/hold-5.png");
+  transform: rotate(-20deg);
+}
+
+.product-band.has-holds::before {
+  right: max(1.5rem, 5vw);
+  bottom: 0.75rem;
+  background-image: url("assets/holds/hold-1.png");
+  transform: rotate(-22deg);
+}
+
+.product-band.has-holds::after {
+  top: 0.25rem;
+  left: 24%;
+  width: var(--hold-size, clamp(3rem, 5vw, 5rem));
+  background-image: url("assets/holds/hold-8.png");
+  transform: rotate(20deg);
+}
+
+.product-band-climber.has-holds::before {
+  top: 1.5rem;
+  bottom: auto;
+  background-image: url("assets/holds/hold-7.png");
+  transform: rotate(20deg);
+}
+
+.product-band-climber.has-holds::after {
+  top: auto;
+  bottom: 0.25rem;
+  left: max(1.5rem, 6vw);
+  width: var(--hold-size, clamp(3.5rem, 7vw, 6.5rem));
+  background-image: url("assets/holds/hold-6.png");
+  transform: rotate(-30deg);
+}
+
+.feature-strip.has-holds::before {
+  top: 1rem;
+  left: 48%;
+  background-image: url("assets/holds/hold-2.png");
+  transform: rotate(-16deg);
+}
+
+.feature-strip.has-holds::after {
+  right: 4%;
+  bottom: 1rem;
+  background-image: url("assets/holds/hold-8.png");
+  transform: rotate(12deg);
+}
+
+.pricing-section.has-holds::before {
+  bottom: 0.75rem;
+  left: 43%;
+  background-image: url("assets/holds/hold-9.png");
+  transform: rotate(30deg);
+}
+
+.pricing-section.has-holds::after {
+  content: none;
+}
+
+.faq-section.has-holds::before {
+  top: 0.75rem;
+  right: max(1.5rem, 5vw);
+  background-image: url("assets/holds/hold-5.png");
+  transform: rotate(-18deg);
+}
+
+.faq-section.has-holds::after {
+  bottom: 1rem;
+  left: max(1.5rem, 5vw);
+  background-image: url("assets/holds/hold-6.png");
+  transform: rotate(24deg);
+}
+
+.closing-cta.has-holds::before {
+  right: max(1.5rem, 8vw);
+  bottom: 0.5rem;
+  background-image: url("assets/holds/hold-1.png");
+  opacity: 0.35;
+  transform: rotate(-35deg);
+}
+
+.closing-cta.has-holds::after {
+  top: 0.25rem;
+  right: 33%;
+  background-image: url("assets/holds/hold-8.png");
+  opacity: 0.35;
+  transform: rotate(22deg);
+}
+
 a {
   color: inherit;
 }
@@ -997,6 +1175,12 @@ h2 span {
 }
 
 @media (max-width: 960px) {
+  .hero.has-holds::before,
+  .hero.has-holds::after,
+  .hero-holds {
+    display: none;
+  }
+
   .site-header,
   .hero,
   .proof-bar,
@@ -1068,6 +1252,42 @@ h2 span {
 }
 
 @media (max-width: 680px) {
+  .has-holds {
+    --hold-size: 2.5rem;
+  }
+
+  .product-band-climber.has-holds::before,
+  .faq-section.has-holds::before {
+    top: 0.5rem;
+  }
+
+  .hero-holds {
+    display: block;
+  }
+
+  .hero-hold-one {
+    top: 0;
+    right: 2%;
+    width: 2.75rem;
+  }
+
+  .hero-hold-two {
+    display: none;
+  }
+
+  .hero-hold-three {
+    bottom: 10rem;
+    left: 8%;
+    width: 3.5rem;
+  }
+
+  .hero-hold-four {
+    right: auto;
+    bottom: 4.5rem;
+    left: 28%;
+    width: 3rem;
+  }
+
   html {
     scroll-padding-top: 1rem;
   }
@@ -1189,7 +1409,11 @@ h2 span {
   }
 
   .desktop-showcase .desktop-reel {
-    aspect-ratio: 1.28;
+    aspect-ratio: 3072 / 2241;
+  }
+
+  .desktop-showcase .reel-screen {
+    object-fit: contain;
   }
 
   .phone-showcase {
