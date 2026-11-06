@@ -6,7 +6,7 @@ Built with Next.js, Supabase (database and authentication) and Prisma.
 
 ## Product page
 
-The product page is live at: https://stealthstartup-455.github.io/elevate/.
+The product page is live at: https://elevate-gym-crm.vercel.app/
 
 ## Getting started
 
