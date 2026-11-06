@@ -2,7 +2,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import ClimberCard from "@/components/climber/ClimberCard";
 import { CheckIcon } from "@/components/climber/icons";
-import { formatDate } from "@/features/climbers/format";
+import { formatDate, membershipDateLine } from "@/features/climbers/format";
 import type { Membership } from "@/features/climbers/queries";
 import type { MembershipStatus } from "@/features/climbers/types";
 import type { MyPass } from "../queries";
@@ -22,14 +22,13 @@ type Props = {
   canPurchase: boolean;
 };
 
-// The membership's own line: when it ends or renews. Paused has no date while it's paused
-// (#124), and a one-off plan runs until a date rather than renewing (#132).
+// The membership's own line, from the shared membershipDateLine so it reads the same as the
+// desk: "Renews" for a recurring plan, "Runs until" for a one-off one (#132), "Ended" once it
+// has ended. Paused has no date while it's paused (#124), so the line just says so.
 function dateLine({ membership, current }: Props): string {
   if (membership.status === "paused") return "Paused";
-  if (membership.status === "expired" && membership.renewsOn) return `Ended ${formatDate(membership.renewsOn, true)}`;
-  if (current?.endsOn) return `Runs until ${formatDate(current.endsOn, true)}`;
-  if (membership.renewsOn) return `Runs until ${formatDate(membership.renewsOn, true)}`;
-  return "";
+  const endsOn = membership.status === "expired" ? membership.renewsOn : (current?.endsOn ?? membership.renewsOn);
+  return membershipDateLine(membership.status, endsOn, membership.recurring) ?? "";
 }
 
 // The Membership tab's teal card: the plan, whether it's active and until when, a plan bought
