@@ -104,7 +104,7 @@ test("a new climber: sign the real waiver form from the panel, then only the pas
   await side.getByRole("link", { name: "Sign waiver" }).click();
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver$/);
   await signWaiverForm(page);
-  await expect(page.getByText("Waiver signed")).toBeVisible();
+  await expect(page.getByText("Waiver signed", { exact: true })).toBeVisible();
   await page.goto("/desk");
   await find(page, `Panel Test${unique}`);
   await expect(side.getByRole("link", { name: "Sign waiver" })).toBeHidden();

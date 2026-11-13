@@ -8,7 +8,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useBackdropClose } from "@/components/ui/useBackdropClose";
@@ -257,7 +256,16 @@ export default function ScanWatcher() {
       <DialogActions>
         <Button onClick={close}>Close</Button>
         {climber.waiverStatus !== "valid" ? (
-          <Button variant="outlined" disabled={pending} component={Link} href={`/desk/customers/${climber.id}/waiver`}>
+          <Button
+            variant="outlined"
+            disabled={pending}
+            onClick={() => {
+              // The waiver form is its own page: close this popup so it isn't left on top of it.
+              const id = climber.id;
+              close();
+              router.push(`/desk/customers/${id}/waiver`);
+            }}
+          >
             Sign waiver
           </Button>
         ) : null}

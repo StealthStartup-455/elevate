@@ -25,7 +25,8 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
 
   await page.getByRole("button", { name: /^Day pass/ }).click();
   await page.getByRole("button", { name: /^Shoe rental/ }).click();
-  await page.getByRole("button", { name: "One more Shoe rental" }).click();
+  // The tile and the cart both have a plus; use the one on the tile.
+  await page.getByRole("region", { name: "Rentals and chalk" }).getByLabel("One more Shoe rental").click();
   // 25.00 + 2 × 6.00, before tax.
   await expect(page.getByLabel("Subtotal")).toHaveText("$37.00");
 
