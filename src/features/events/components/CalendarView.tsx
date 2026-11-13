@@ -286,14 +286,16 @@ function DayCell({
         flexDirection: "column",
         gap: 0.5,
         bgcolor: selected ? "primary.main" : "transparent",
-        color: selected ? "primary.contrastText" : past ? "text.disabled" : "text.primary",
+        // Past days are lighter in weight and secondary in color, not text.disabled: it is
+        // meant for disabled controls and fails the contrast check on a button that works.
+        color: selected ? "primary.contrastText" : past ? "text.secondary" : "text.primary",
         outline: day === today && !selected ? "2px solid" : "none",
         outlineColor: "primary.main",
         outlineOffset: -2,
         "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main", outlineOffset: 1 },
       }}
     >
-      <Typography variant="body" component="span" sx={{ fontWeight: day === today || selected ? 800 : 600, lineHeight: 1 }}>
+      <Typography variant="body" component="span" sx={{ fontWeight: day === today || selected ? 800 : past ? 400 : 600, lineHeight: 1 }}>
         {Number(day.slice(8))}
       </Typography>
       <span className="flex h-1.5 gap-0.5">

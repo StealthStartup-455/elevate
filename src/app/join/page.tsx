@@ -11,9 +11,11 @@ import ClimberForm from "@/features/climbers/components/ClimberForm";
 import { getClimber } from "@/features/climbers/queries";
 
 // Public landing page for a brand new customer (the QR code will point here).
+// flex-1 and justify-center keep the whole box in the middle of the screen (#219),
+// as on the login page.
 export default function JoinPage() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center p-4 sm:p-6">
       <Card variant="outlined" sx={{ width: "100%", borderRadius: 3 }}>
         <CardContent>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>

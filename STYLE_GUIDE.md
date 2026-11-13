@@ -287,6 +287,15 @@ Links inside MUI need Next's router: `<Link component={NextLink} href="...">` (`
 
 The Check-in demo includes an Employee pass badge using a solid gold fill and contrasting text from the existing warning palette, distinct from navy membership, teal day passes and grey punch cards. The developer requested this category-color exception; warning statuses keep their pale fill and icon. This is a fictional display fixture, not a new staff permission or a new token.
 
+### Dialogs
+
+Every dialog looks like **Manual check in** on the front desk: frosted glass. The page shows through a lightly blurred backdrop, and the dialog has a 12px corner, a 1px border and a translucent, blurred surface. This is set once on `MuiDialog` in `theme.ts`, so a plain `<Dialog>` already looks right.
+
+- Never restyle a dialog's paper or backdrop on a screen (`slotProps`, `PaperProps`, or `sx` for color, radius, border or blur). Change `theme.ts` instead.
+- A click outside closes the dialog, as Escape does. Use `useBackdropClose` (`src/components/ui/useBackdropClose.ts`), which ignores the first half second so a double-click on the opening button doesn't close it at once.
+- One `variant="contained"` button per dialog (the confirm), `color="error"` for a destructive one. Cancel or Close is the plain button beside it.
+- Side sheets and drawers (the climber panel, the calendar day sheet) are not dialogs and keep their own look.
+
 ### Cards, tables and KPI tiles
 
 ```tsx

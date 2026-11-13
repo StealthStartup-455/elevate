@@ -104,6 +104,7 @@ export default function PointOfSale({
         cart={cart}
         canAdd={selected !== null}
         onAdd={(product) => setCart((c) => addToCart(c, product, products))}
+        onQuantity={changeQuantity}
       />
       <CartPanel
         climberName={selected?.name ?? null}

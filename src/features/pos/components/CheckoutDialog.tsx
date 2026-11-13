@@ -11,11 +11,11 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import { useState, useTransition } from "react";
-import { checkInClimber } from "@/features/climbers/actions";
 import { recordSale, type SaleResult } from "../actions";
 import { formatMoney, formatRate } from "../cart";
 import { newKey } from "../key";
 import type { CartItem, PricedCart, Tender } from "../types";
+import { useBackdropClose } from "@/components/ui/useBackdropClose";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 const TENDER_LABEL: Record<Tender, string> = { CARD: "card", CASH: "cash", ONLINE: "online" };
@@ -35,7 +35,7 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
 
 // The checkout popup: the full sum with GST and PST, how they paid, and Tender, which
 // saves the sale once the card machine (or the till) has the money. Then a
-// summary of what was added, with Check in now and New sale.
+// summary of what was added, with Back to POS.
 export default function CheckoutDialog({
   open,
   climber,
@@ -50,7 +50,7 @@ export default function CheckoutDialog({
   items: CartItem[];
   cart: PricedCart;
   onClose: () => void;
-  /** After Tender or Check in now: reload the climber's passes. */
+  /** After Tender: reload the climber's passes. */
   onSaved: () => void;
   /** After a saved sale: clear the cart and start again. */
   onFinished: () => void;
@@ -61,7 +61,6 @@ export default function CheckoutDialog({
   const [key, setKey] = useState(newKey);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Extract<SaleResult, { ok: true }> | null>(null);
-  const [checkIn, setCheckIn] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -69,7 +68,6 @@ export default function CheckoutDialog({
     setKey(newKey());
     setError(null);
     setDone(null);
-    setCheckIn(null);
   }
 
   function close() {
@@ -102,27 +100,13 @@ export default function CheckoutDialog({
     });
   }
 
-  function checkInNow() {
-    startTransition(async () => {
-      const result = await checkInClimber(climber.id);
-      if (result.ok) onSaved();
-      setCheckIn(
-        result.ok
-          ? { ok: true, message: `${climber.name} is checked in.` }
-          : { ok: false, message: result.message ?? "Couldn't check in." },
-      );
-    });
-  }
+  // Outside clicks close it too, but not the second click of a double-click (#134, #218).
+  const onDialogClose = useBackdropClose(open, close);
 
   const total = formatMoney(cart.totalCents);
 
   return (
-    <Dialog open={open} onClose={(_event, reason) => {
-        // A click outside doesn't close it: the second click of a double-click
-        // on the button that opened it lands there (#134), and a sale shouldn't
-        // be dismissed by accident. Cancel and Escape close it.
-        if (reason !== "backdropClick") close();
-      }} fullWidth maxWidth="xs" aria-labelledby="checkout-title">
+    <Dialog open={open} onClose={onDialogClose} fullWidth maxWidth="xs" aria-labelledby="checkout-title">
       <DialogTitle id="checkout-title">{done ? "Sale saved" : "Checkout"}</DialogTitle>
 
       {done ? (
@@ -141,18 +125,10 @@ export default function CheckoutDialog({
                 ))}
               </ul>
             </div>
-            {checkIn ? (
-              <Alert severity={checkIn.ok ? "success" : "warning"}>{checkIn.message}</Alert>
-            ) : null}
           </DialogContent>
           <DialogActions>
-            {checkIn?.ok ? null : (
-              <Button variant="outlined" disabled={pending} onClick={checkInNow}>
-                Check in now
-              </Button>
-            )}
             <Button variant="contained" disabled={pending} onClick={close}>
-              New sale
+              Back to POS
             </Button>
           </DialogActions>
         </>
