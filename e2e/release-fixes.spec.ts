@@ -61,18 +61,20 @@ test("the desk reads a climber's waiver from their page, and opens POS for them 
 
   // A valid waiver is a panel: status, signed date, expiry and wording version.
   const panel = page.locator("div", { has: page.getByText("Waiver", { exact: true }) }).filter({
-    has: page.getByRole("link", { name: "Look at waiver" }),
+    has: page.getByRole("button", { name: "Look at waiver" }),
   });
   await expect(panel.first()).toContainText("Valid");
   await expect(panel.first()).toContainText("Signed");
   await expect(panel.first()).toContainText("Expires");
   await expect(panel.first()).toContainText("Version");
 
-  await page.getByRole("link", { name: "Look at waiver" }).click();
-  await expect(page).toHaveURL(/\/desk\/waivers\/[0-9a-f-]+/);
-  await expect(page.getByRole("heading", { name: "Signed waiver", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Signature" })).toBeVisible();
-  await page.getByRole("link", { name: /Demo Valid-Active/ }).click();
+  // It opens in a dialog, so staff stay on the climber's page (#214).
+  await page.getByRole("button", { name: "Look at waiver" }).click();
+  const dialog = page.getByRole("dialog", { name: "Signed waiver" });
+  await expect(dialog.getByRole("heading", { name: "Signature" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+/);
 
   // One click to the POS, with this climber already picked.
   await page.getByRole("link", { name: "Open in POS" }).click();
@@ -95,5 +97,5 @@ test("a climber without a waiver shows 'No waiver' and no Look at waiver button 
   await logIn(page, "desk", /\/desk/);
   await openAccount(page, "Demo Missing-None");
   await expect(page.getByText("No waiver", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Look at waiver" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Look at waiver" })).toHaveCount(0);
 });

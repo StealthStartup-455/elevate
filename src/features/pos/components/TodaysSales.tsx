@@ -24,6 +24,7 @@ import { formatMoney } from "../cart";
 import { TENDER_LABEL } from "../cashout";
 import type { SaleSummary } from "../types";
 import CashOutDialog from "./CashOutDialog";
+import { useBackdropClose } from "@/components/ui/useBackdropClose";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 
 // Today's sales under the POS, newest first, with Void. Totals count paid
@@ -49,6 +50,9 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
     setReason("");
     setError(null);
   }
+
+  // Outside clicks close it too, but not the second click of a double-click (#134, #218).
+  const onVoidClose = useBackdropClose(voiding !== null, close);
 
   function confirmVoid(sale: SaleSummary) {
     setError(null);
@@ -138,12 +142,7 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
 
       <CashOutDialog open={cashingOut} onClose={() => setCashingOut(false)} sales={sales} />
 
-      <Dialog open={voiding !== null} onClose={(_event, reason) => {
-        // A click outside doesn't close it: the second click of a double-click
-        // on the button that opened it lands there (#134), and a sale shouldn't
-        // be dismissed by accident. Cancel and Escape close it.
-        if (reason !== "backdropClick") close();
-      }} fullWidth maxWidth="xs" aria-labelledby="void-title">
+      <Dialog open={voiding !== null} onClose={onVoidClose} fullWidth maxWidth="xs" aria-labelledby="void-title">
         <DialogTitle id="void-title">Void sale</DialogTitle>
         {voiding ? (
           <>

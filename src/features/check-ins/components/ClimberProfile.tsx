@@ -3,10 +3,6 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -14,21 +10,21 @@ import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
-import { checkInClimber, signWaiver } from "@/features/climbers/actions";
+import { checkInClimber } from "@/features/climbers/actions";
+import DeskWaiverDialog from "@/features/waivers/components/DeskWaiverDialog";
 import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import { formatDate, memberCode, membershipDateLine, membershipPlanName } from "@/features/climbers/format";
 import type { Climber } from "@/features/climbers/types";
 import type { DeskClimberPanel } from "../actions";
 import { badgeFor } from "../day";
-import { useDeskDialogOpen } from "../desk-dialogs";
 import { deskNextStep } from "../scan-messages";
 import BadgePill from "./BadgePill";
 
 // What's inside the climber panel (#169), top to bottom: name, photo, who
 // they are, whether they can check in (and the fix if not), membership,
 // passes and details (edited right here, so staff never leave Check-in),
-// attributes, and Sell pass.
+// attributes, and the POS button.
 
 export type ProfileState =
   | { kind: "loading" }
@@ -117,7 +113,7 @@ export default function ClimberProfile({
         <Attributes panel={panel} />
       </div>
       {/* Staff on an employee pass don't buy passes, and someone with no pass
-          already has Sell pass as the fix above. */}
+          already has the POS button as the fix above. */}
       {panel.employee || badgeFor(c) === "NO_PASS" ? null : (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
           <SellPass climberId={climberId} posEnabled={panel.posEnabled} variant="outlined" />
@@ -179,9 +175,6 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  // A desk dialog like the POS ones: a QR scan waits until it closes.
-  useDeskDialogOpen(confirming);
   const c = panel.climber;
 
   // The same rules as checkInClimber: deskNextStep is null when they can check
@@ -208,13 +201,6 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
   }
 
   const checkIn = () => run(() => checkInClimber(c.id), "Couldn't check in. Try again.");
-  // The desk's quick waiver step (signWaiver), the same one the scan popup and
-  // the customer page use. It saves a signed waiver straight away with no
-  // signature form, so staff confirm first.
-  const markWaiverSigned = () => {
-    setConfirming(false);
-    run(() => signWaiver(c.id), "Couldn't save the waiver. Try again.");
-  };
 
   // Checked in today comes first, whatever else is true: a problem that came
   // up since (an expired waiver) still shows below with its fix.
@@ -229,13 +215,9 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
       fixes.push({
         key: "waiver",
         button: (contained) => (
-          <Button
-            variant={contained ? "contained" : "outlined"}
-            onClick={() => setConfirming(true)}
-            disabled={pending}
-          >
-            Mark waiver signed
-          </Button>
+          <LinkButton href={`/desk/customers/${c.id}/waiver`} variant={contained ? "contained" : "outlined"}>
+            Sign waiver
+          </LinkButton>
         ),
       });
     }
@@ -311,23 +293,6 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
       {checkedIn}
       {body}
       {error ? <Alert severity="error">{error}</Alert> : null}
-      <Dialog open={confirming} onClose={() => setConfirming(false)} aria-labelledby="mark-waiver-title">
-        <DialogTitle id="mark-waiver-title">Mark waiver signed?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body">
-            This saves a signed waiver for {c.firstName} {c.lastName} now, without a signature form. Only do this
-            when they&apos;ve already signed the waiver another way, such as on paper.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={() => setConfirming(false)}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={markWaiverSigned}>
-            Mark signed
-          </Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 }
@@ -345,14 +310,14 @@ function SellPass({
     return (
       <DisabledReason reason="This gym doesn't sell passes in Elevate.">
         <Button variant={variant} disabled>
-          Sell pass
+          POS
         </Button>
       </DisabledReason>
     );
   }
   return (
     <LinkButton href={posHref(climberId)} variant={variant}>
-      Sell pass
+      POS
     </LinkButton>
   );
 }
@@ -493,6 +458,11 @@ function Attributes({ panel }: { panel: DeskClimberPanel }) {
             {waiverText}
           </Box>
         </Attribute>
+        {waiver.waiverId ? (
+          <Attribute label="Signed waiver">
+            <DeskWaiverDialog waiverId={waiver.waiverId} />
+          </Attribute>
+        ) : null}
         <Attribute label="Belay status">Not recorded</Attribute>
         <Attribute label="Phone">{c.phone || "Not given"}</Attribute>
       </dl>

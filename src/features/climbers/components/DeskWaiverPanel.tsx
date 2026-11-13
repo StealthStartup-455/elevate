@@ -3,7 +3,7 @@ import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import type { StaffWaiverPanel } from "@/features/waivers/queries";
 import { formatDate } from "../format";
 import type { WaiverStatus } from "../types";
-import LinkButton from "./LinkButton";
+import DeskWaiverDialog from "@/features/waivers/components/DeskWaiverDialog";
 
 const PILL: Record<WaiverStatus, { status: Status; label: string }> = {
   valid: { status: "ok", label: "Valid" },
@@ -51,9 +51,7 @@ export default function DeskWaiverPanel({ waiver }: { waiver: StaffWaiverPanel }
       )}
       {waiver.waiverId ? (
         <div>
-          <LinkButton href={`/desk/waivers/${waiver.waiverId}`} variant="outlined" size="small">
-            Look at waiver
-          </LinkButton>
+          <DeskWaiverDialog waiverId={waiver.waiverId} />
         </div>
       ) : null}
     </div>

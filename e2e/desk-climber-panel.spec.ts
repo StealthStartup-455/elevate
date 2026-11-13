@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signWaiverForm } from "./sign-waiver";
 
 // The climber panel on the Check-in page (#169). At Playwright's default width
 // (1280px) it opens beside the table, as an <aside>. Needs the demo login and
@@ -60,7 +61,7 @@ test("Find climber opens the panel and keeps the page in the URL", async ({ page
   await expect(page).toHaveURL(/\/desk\?page=1&climber=[0-9a-f-]+$/);
 });
 
-test("an expired waiver: the problem, its fix behind a confirm step, and Check in disabled", async ({ page }) => {
+test("an expired waiver: the problem, a link to the real waiver form, and Check in disabled", async ({ page }) => {
   await logIn(page);
   await find(page, "Zack Zhao");
   const side = panel(page);
@@ -68,25 +69,22 @@ test("an expired waiver: the problem, its fix behind a confirm step, and Check i
   await expect(side.getByText("Waiver expired.")).toBeVisible();
   await expect(side.getByRole("button", { name: "Check in" })).toBeDisabled();
 
-  // Marking the waiver signed asks first; Cancel changes nothing.
-  await side.getByRole("button", { name: "Mark waiver signed" }).click();
-  const dialog = page.getByRole("dialog", { name: "Mark waiver signed?" });
-  await expect(dialog).toContainText("Zack Zhao");
-  await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(side.getByText("Can't check in yet")).toBeVisible();
+  // The fix opens the real waiver form for them; it never marks one signed in a click (#131).
+  await side.getByRole("link", { name: "Sign waiver" }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver$/);
+  await expect(page.getByRole("checkbox", { name: /^I (?!agree)/ }).first()).toBeVisible();
 });
 
-test("no pass: Sell pass opens the POS with them picked, shown once", async ({ page }) => {
+test("no pass: POS opens the POS with them picked, shown once", async ({ page }) => {
   await logIn(page);
   await find(page, "Maya Patel");
-  const sell = panel(page).getByRole("link", { name: "Sell pass" });
+  const sell = panel(page).getByRole("link", { name: "POS", exact: true });
   await expect(sell).toHaveCount(1);
   await sell.click();
   await expect(page).toHaveURL(/\/desk\/pos\?climber=[0-9a-f-]+$/);
 });
 
-test("a new climber: mark the waiver signed after confirming, then only the pass is left", async ({ page }) => {
+test("a new climber: sign the real waiver form from the panel, then only the pass is left", async ({ page }) => {
   await logIn(page);
   const unique = Date.now().toString().slice(-6);
   await page.goto("/desk/customers/new");
@@ -103,11 +101,15 @@ test("a new climber: mark the waiver signed after confirming, then only the pass
   const side = panel(page);
   // Two problems: numbered, the waiver first.
   await expect(side.getByRole("listitem")).toHaveCount(2);
-  await side.getByRole("button", { name: "Mark waiver signed" }).click();
-  await page.getByRole("dialog", { name: "Mark waiver signed?" }).getByRole("button", { name: "Mark signed" }).click();
-  await expect(side.getByRole("button", { name: "Mark waiver signed" })).toBeHidden();
+  await side.getByRole("link", { name: "Sign waiver" }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver$/);
+  await signWaiverForm(page);
+  await expect(page.getByText("Waiver signed")).toBeVisible();
+  await page.goto("/desk");
+  await find(page, `Panel Test${unique}`);
+  await expect(side.getByRole("link", { name: "Sign waiver" })).toBeHidden();
   await expect(side.getByText(/no day pass or punch card/)).toBeVisible();
-  await expect(side.getByRole("link", { name: "Sell pass" })).toBeVisible();
+  await expect(side.getByRole("link", { name: "POS", exact: true })).toBeVisible();
 });
 
 test("Check in from the panel shows the check-in and adds them to the table", async ({ page }) => {

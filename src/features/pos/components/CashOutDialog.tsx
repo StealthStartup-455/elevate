@@ -16,6 +16,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
 import StatusPill from "@/components/ui/StatusPill";
+import { useBackdropClose } from "@/components/ui/useBackdropClose";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { formatMoney } from "../cart";
 import { TENDER_LABEL, cashOutSummary, parseDollars } from "../cashout";
@@ -52,13 +53,13 @@ export default function CashOutDialog({
     onClose();
   }
 
+  // Outside clicks close it too, but not the second click of a double-click (#134, #218).
+  const onDialogClose = useBackdropClose(open, close);
+
   return (
     <Dialog
       open={open}
-      onClose={(_event, reason) => {
-        // Not on a click outside, like Void (#134): a typed count shouldn't be lost by accident.
-        if (reason !== "backdropClick") close();
-      }}
+      onClose={onDialogClose}
       fullWidth
       maxWidth="sm"
       aria-labelledby="cash-out-title"
