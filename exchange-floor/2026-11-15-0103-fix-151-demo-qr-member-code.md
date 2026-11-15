@@ -2,7 +2,7 @@
 
 - **Developer:** @SethMess
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#151 / Pending
+- **Issue / PR:** StealthStartup-455/elevate#151 / #226
 - **Branch:** `fix/151-demo-qr-member-code`
 - **What the agent did:**
   - `DemoQrCode` in demo mode now encodes the climber's member code (`ELV-…`, the `value` it is given) instead of the class-demo song link from #146. Removed `DEMO_QR_LINK`.
