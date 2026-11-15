@@ -10,7 +10,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { useBackdropClose } from "@/components/ui/useBackdropClose";
 import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate, membershipDateLine } from "@/features/climbers/format";
@@ -124,9 +123,6 @@ export default function ScanWatcher() {
     if (id && !done) finishDeskScan(id, "closed").catch(() => {});
   }
 
-  // A click outside closes it too, but not right after it opens (#218).
-  const onDialogClose = useBackdropClose(climber !== null, close);
-
   function checkIn(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
@@ -170,7 +166,10 @@ export default function ScanWatcher() {
   return (
     <Dialog
       open
-      onClose={onDialogClose}
+      // A stray click outside shouldn't dismiss an arrival; Close and Escape do.
+      onClose={(_event, reason) => {
+        if (reason !== "backdropClick") close();
+      }}
       fullWidth
       maxWidth="xs"
     >

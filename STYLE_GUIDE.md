@@ -292,7 +292,7 @@ The Check-in demo includes an Employee pass badge using a solid gold fill and co
 Every dialog looks like **Manual check in** on the front desk: frosted glass. The page shows through a lightly blurred backdrop, and the dialog has a 12px corner, a 1px border and a translucent, blurred surface. This is set once on `MuiDialog` in `theme.ts`, so a plain `<Dialog>` already looks right.
 
 - Never restyle a dialog's paper or backdrop on a screen (`slotProps`, `PaperProps`, or `sx` for color, radius, border or blur). Change `theme.ts` instead.
-- A click outside closes the dialog, as Escape does. Use `useBackdropClose` (`src/components/ui/useBackdropClose.ts`), which ignores the first half second so a double-click on the opening button doesn't close it at once.
+- A click outside closes the dialog, as Escape does. Use `useBackdropClose` (`src/components/ui/useBackdropClose.ts`), which ignores the first half second so a double-click on the opening button doesn't close it at once. Two dialogs are exempt and ignore outside clicks (Escape and buttons still close them): the front desk scan popup, so an arrival isn't lost, and Cash out, so a typed count isn't lost.
 - One `variant="contained"` button per dialog (the confirm), `color="error"` for a destructive one. Cancel or Close is the plain button beside it.
 - Side sheets and drawers (the climber panel, the calendar day sheet) are not dialogs and keep their own look.
 

@@ -96,7 +96,7 @@ export default function ProductPanel({
             >
               −
             </Button>
-            <Typography variant="body" component="span" aria-label={`Quantity of ${p.name}`}>
+            <Typography variant="body" component="span">
               {quantity}
             </Typography>
             <Button
