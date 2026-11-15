@@ -2,7 +2,7 @@
 
 - **Developer:** @SethMess
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#130 / Pending
+- **Issue / PR:** StealthStartup-455/elevate#130 / #227
 - **Branch:** `fix/130-error-page-code`
 - **What the agent did:**
   - The part of #130 left after #140: the error page said "let us know the error code below" with no code under it.
