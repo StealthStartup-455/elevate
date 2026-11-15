@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import QRCode from "qrcode";
 import { openTab } from "./climber";
 
 // Fixes found while testing the release candidate (#149): switching logins,
@@ -41,14 +42,23 @@ test("the climber dashboard says who is signed in (#144)", async ({ page }) => {
   await expect(page.getByText("Signed in as Demo Valid-Active")).toHaveCount(0);
 });
 
-test("the demo QR code on the Check in tab is a real, full-size QR code (#146)", async ({ page }) => {
+test("the demo QR code on the Check in tab is a real QR code holding the member code (#146, #151)", async ({
+  page,
+}) => {
   await logIn(page, "demo-valid-active", /\/me/);
   await openTab(page, "Check in");
   const code = page.getByRole("img", { name: /Demo check-in code for ELV-/ });
   await expect(code).toBeVisible();
-  // The placeholder is 25 modules (viewBox 29); a code for a link is bigger.
-  const viewBox = await code.getAttribute("viewBox");
-  expect(Number(viewBox?.split(" ")[2])).toBeGreaterThan(29);
+
+  // It draws exactly the QR code for the member code shown on the label, not a
+  // link (the class-demo song, #151) and not the 25-module placeholder.
+  const memberCode = (await code.getAttribute("aria-label"))!.replace("Demo check-in code for ", "");
+  expect(memberCode).toMatch(/^ELV-[0-9A-Z]{6}$/);
+  const { modules } = QRCode.create(memberCode, { errorCorrectionLevel: "M" });
+  expect(await code.getAttribute("viewBox")).toBe(`-2 -2 ${modules.size + 4} ${modules.size + 4}`);
+  const dark = Array.from(modules.data).filter(Boolean).length;
+  await expect(code.locator("rect")).toHaveCount(dark);
+
   // Check in still goes through the button, not the code.
   await expect(page.getByRole("button", { name: "Simulate scan" })).toBeVisible();
 });
