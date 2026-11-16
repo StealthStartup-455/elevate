@@ -2,11 +2,13 @@
 
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import { errorPageHelp } from "@/lib/error-page";
 
 // Shown instead of a page when something on it fails. The error code is the
 // digest in the server log (instrumentation.ts), so staff can report it and we
-// can find the exact error. The message itself is never shown: in production
-// it is generic for server errors anyway.
+// can find the exact error; errors in the browser have none, and the wording
+// changes to match (errorPageHelp, #130). The message itself is never shown:
+// in production it is generic for server errors anyway.
 export default function ErrorPage({
   error,
   retry,
@@ -20,8 +22,7 @@ export default function ErrorPage({
         Something went wrong
       </Typography>
       <Typography variant="body">
-        This page couldn&apos;t load. Try again, and if it keeps happening, let us know the error
-        code below.
+        This page couldn&apos;t load. {errorPageHelp(error.digest)}
       </Typography>
       {error.digest ? (
         <Typography variant="secondary">Error code: {error.digest}</Typography>
