@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { pressScan } from "./climber";
+import { signWaiverForm } from "./sign-waiver";
 
 // A scan with a problem (#90): the phone says the desk will help, and the
 // desk popup offers each fix in turn until the climber can check in.
@@ -43,9 +44,18 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
   await expect(popup).toContainText(`Jesse Scan${unique}`, { timeout: 20_000 });
   await expect(popup).toContainText("Next: sign the waiver with them, then give a day pass.");
 
+  // Sign waiver closes the popup and opens the real waiver form for them (#210).
   await popup.getByRole("button", { name: "Sign waiver" }).click();
-  await expect(popup).toContainText("Next: give a day pass, or sell a membership.");
-  await popup.getByRole("button", { name: "Give free day pass" }).click();
-  await popup.getByRole("button", { name: "Check in" }).click();
-  await expect(popup).toContainText("is checked in");
+  await expect(desk).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver$/);
+  await signWaiverForm(desk);
+  await expect(desk.getByText("Waiver signed", { exact: true })).toBeVisible();
+
+  // They scan again (the first sent-to-desk message is still open), and now only the pass is left.
+  await phone.goto("/me/check-in");
+  await pressScan(phone);
+  const next = desk.getByRole("dialog");
+  await expect(next).toContainText("Next: give a day pass, or sell a membership.", { timeout: 20_000 });
+  await next.getByRole("button", { name: "Give free day pass" }).click();
+  await next.getByRole("button", { name: "Check in" }).click();
+  await expect(next).toContainText("is checked in");
 });

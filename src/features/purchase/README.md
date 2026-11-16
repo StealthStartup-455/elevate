@@ -16,7 +16,7 @@ Buying on the climber's **Membership** tab (`/me/membership`, elevate-docs#58; i
 
 Home (`/me`) shows a **Before you climb** card for a climber with nothing that covers today, with **Buy a membership** or **Renew membership**; it opens this tab.
 
-Nothing desk-only shows here: no climber search, Card/Cash, Tender, Void or Check in now.
+Nothing desk-only shows here: no climber search, Card/Cash, Tender or Void.
 
 ## It is a mock, and only open in demo mode
 

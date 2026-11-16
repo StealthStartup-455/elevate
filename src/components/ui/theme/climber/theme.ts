@@ -311,7 +311,28 @@ const components: ThemeOptions["components"] = {
   },
   MuiAccordionSummary: { styleOverrides: { root: { minHeight: climberControl.lg, padding: `0 ${climberSpace.cardPadding}px` } } },
   MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
-  MuiDialog: { styleOverrides: { paper: { borderRadius: climberRadius.xl } } },
+  // The same frosted glass as every dialog (see the base theme), with the climber app's corner.
+  MuiDialog: {
+    defaultProps: {
+      slotProps: {
+        backdrop: {
+          sx: {
+            backgroundColor: "color-mix(in srgb, var(--mui-palette-text-primary) 25%, transparent)",
+            backdropFilter: "blur(3px)",
+          },
+        },
+      },
+    },
+    styleOverrides: {
+      paper: ({ theme }) => ({
+        borderRadius: climberRadius.xl,
+        border: `1px solid ${theme.vars.palette.divider}`,
+        backgroundImage: "none",
+        backgroundColor: "color-mix(in srgb, var(--mui-palette-background-paper) 78%, transparent)",
+        backdropFilter: "blur(16px) saturate(1.2)",
+      }),
+    },
+  },
   MuiDialogTitle: { styleOverrides: { root: { ...textStyle(climberText.cardTitle), padding: "20px 20px 8px" } } },
   MuiDialogContent: { styleOverrides: { root: { padding: "8px 20px" } } },
   MuiDialogActions: { styleOverrides: { root: { padding: 20, gap: 8 } } },

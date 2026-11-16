@@ -10,7 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkInClimber, giveDayPass, signWaiver } from "@/features/climbers/actions";
+import { checkInClimber, giveDayPass } from "@/features/climbers/actions";
 import WaiverBadge from "@/features/climbers/components/WaiverBadge";
 import { formatDate, membershipDateLine } from "@/features/climbers/format";
 import type { MembershipStatus } from "@/features/climbers/types";
@@ -141,25 +141,6 @@ export default function ScanWatcher() {
     });
   }
 
-  // STOPGAP like the climber page's waiver step, until #35/#36: staff sign
-  // for the climber right here, so the scan doesn't dead-end (#90, #131).
-  function waiver(c: ScannedClimber) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        const result = await signWaiver(c.id);
-        if (result.ok) {
-          setClimber({ ...c, waiverStatus: "valid", waiverExpiresOn: undefined });
-          router.refresh();
-        } else {
-          setError(result.message ?? "Couldn't sign the waiver. Try again.");
-        }
-      } catch {
-        setError(OFFLINE);
-      }
-    });
-  }
-
   function dayPass(c: ScannedClimber) {
     setError(null);
     startTransition(async () => {
@@ -274,7 +255,16 @@ export default function ScanWatcher() {
       <DialogActions>
         <Button onClick={close}>Close</Button>
         {climber.waiverStatus !== "valid" ? (
-          <Button variant="outlined" disabled={pending} onClick={() => waiver(climber)}>
+          <Button
+            variant="outlined"
+            disabled={pending}
+            onClick={() => {
+              // The waiver form is its own page: close this popup so it isn't left on top of it.
+              const id = climber.id;
+              close();
+              router.push(`/desk/customers/${id}/waiver`);
+            }}
+          >
             Sign waiver
           </Button>
         ) : null}

@@ -23,7 +23,7 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 3. Staff deal with it: **Check in** (when it succeeds) or **Close** calls `finishDeskScan`, which sets `takenAt` on that scan and on any repeat taps by the same climber. Other desks see it's gone (`isDeskScanWaiting`) and close their popup.
 4. A scan nobody deals with expires after `SCAN_TTL_MS` (5 minutes).
 
-The popup waits while another desk dialog is open (manual check in, POS checkout, void, revoke: `useDeskDialogOpen`, #92). A click outside the popup doesn't dismiss it; Close and Escape do.
+The popup waits while another desk dialog is open (manual check in, POS checkout, void, revoke: `useDeskDialogOpen`, #92). A click outside the popup doesn't dismiss it (#134, kept in #218); Close and Escape do. Cash out ignores outside clicks too, so a typed count isn't lost.
 
 ## The desk's day of check-ins (#168)
 

@@ -25,7 +25,8 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
 
   await page.getByRole("button", { name: /^Day pass/ }).click();
   await page.getByRole("button", { name: /^Shoe rental/ }).click();
-  await page.getByRole("button", { name: "One more Shoe rental" }).click();
+  // The tile and the cart both have a plus; use the one on the tile.
+  await page.getByRole("region", { name: "Rentals and chalk" }).getByLabel("One more Shoe rental").click();
   // 25.00 + 2 × 6.00, before tax.
   await expect(page.getByLabel("Subtotal")).toHaveText("$37.00");
 
@@ -44,10 +45,9 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
   const done = page.getByRole("dialog", { name: "Sale saved" });
   await expect(done).toContainText("$39.69 paid by cash for Nevin Gill");
   await expect(done).toContainText("Day pass: today");
-  await done.getByRole("button", { name: "Check in now" }).click();
-  // A rerun on the same database finds them already checked in.
-  await expect(done).toContainText(/checked in/i);
-  await done.getByRole("button", { name: "New sale" }).click();
+  // Check-in isn't offered after a sale (#215).
+  await expect(done.getByRole("button", { name: "Check in now" })).toHaveCount(0);
+  await done.getByRole("button", { name: "Back to POS" }).click();
 
   const sales = page.getByRole("table", { name: "Today's sales" });
   const row = sales.getByRole("row").filter({ hasText: "Nevin Gill" }).first();

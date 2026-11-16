@@ -41,7 +41,7 @@ test.describe("staff actions refuse logged-out callers", () => {
     "Needs the local build's action ids",
   );
 
-  for (const name of ["checkInClimber", "signWaiver"]) {
+  for (const name of ["checkInClimber"]) {
     test(`${name} through /join`, async ({ browser, playwright, baseURL }) => {
       const climberId = await newClimberId(browser);
       const anonymous = await playwright.request.newContext({ baseURL });

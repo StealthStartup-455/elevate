@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signWaiverForm } from "./sign-waiver";
 
 // Staff add a climber at the desk and land on that climber's page with the
 // waiver step, the same next step /join gives a climber (#88).
@@ -25,6 +26,11 @@ test("the desk adds a climber and lands on their page with the waiver step", asy
   await expect(page.getByRole("heading", { name: `Casey Desk${unique}` })).toBeVisible();
   await expect(page.getByRole("link", { name: "Later" })).toBeVisible();
 
-  await page.getByRole("button", { name: /sign a waiver/i }).click();
+  // Signing opens the real waiver form, then the climber's page shows it as valid.
+  await page.getByRole("link", { name: /sign a waiver/i }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver$/);
+  await signWaiverForm(page);
+  await expect(page.getByText("Waiver signed", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: /Back to Casey/ }).click();
   await expect(page.getByText("Valid", { exact: true })).toBeVisible({ timeout: 5_000 });
 });

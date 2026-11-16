@@ -397,7 +397,29 @@ const components: ThemeOptions["components"] = {
       root: { minHeight: controlHeight.md, fontSize: px(13), [touch]: { minHeight: controlHeight.lg } },
     },
   },
-  MuiDialog: { styleOverrides: { paper: { borderRadius: radius.lg } } },
+  // Every dialog looks like Manual check in on the front desk: frosted glass, so the page shows
+  // through a blurred backdrop, with a 12px corner (twice the card radius) and a 1px border.
+  MuiDialog: {
+    defaultProps: {
+      slotProps: {
+        backdrop: {
+          sx: {
+            backgroundColor: "color-mix(in srgb, var(--mui-palette-text-primary) 25%, transparent)",
+            backdropFilter: "blur(3px)",
+          },
+        },
+      },
+    },
+    styleOverrides: {
+      paper: ({ theme }) => ({
+        borderRadius: radius.lg * 2,
+        border: `1px solid ${theme.vars.palette.divider}`,
+        backgroundImage: "none",
+        backgroundColor: "color-mix(in srgb, var(--mui-palette-background-paper) 78%, transparent)",
+        backdropFilter: "blur(16px) saturate(1.2)",
+      }),
+    },
+  },
   MuiDivider: { styleOverrides: { root: ({ theme }) => ({ borderColor: theme.vars.palette.divider }) } },
 
   MuiTooltip: {
