@@ -1,13 +1,12 @@
-// The climber's code on /me. In demo mode it is a real QR code that opens a
-// song, for the class demo (#146); anywhere else it is a QR-looking
-// placeholder with the three corner squares that does NOT scan, until the
-// check-in ticket picks a real code format. Nothing in the scan flow reads
-// either one: check-in goes through the "Simulate scan" button.
+// The climber's code on /me. In demo mode it is a real QR code that holds the
+// climber's member code ("ELV-B07C44"), so a phone camera or desk scanner
+// reads that and nothing else (#151 replaced the class-demo song link from
+// #146). Anywhere else it is a QR-looking placeholder with the three corner
+// squares that does NOT scan, until the check-in ticket picks a real code
+// format (#223). Nothing in the scan flow reads either one yet: check-in goes
+// through the "Simulate scan" button.
 import QRCode from "qrcode";
 import { isDemoMode } from "@/features/auth/demo-mode";
-
-/** What the demo code opens when a phone camera scans it. */
-export const DEMO_QR_LINK = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
 const SIZE = 25;
 
@@ -79,7 +78,7 @@ function CodeSvg({
 }
 
 function ScannableCode({ value, size }: { value: string; size: number }) {
-  const { modules: bits } = QRCode.create(DEMO_QR_LINK, { errorCorrectionLevel: "M" });
+  const { modules: bits } = QRCode.create(value, { errorCorrectionLevel: "M" });
   const modules: { x: number; y: number }[] = [];
   for (let y = 0; y < bits.size; y++) {
     for (let x = 0; x < bits.size; x++) {
