@@ -5,7 +5,7 @@ import AppVersion from "@/components/ui/AppVersion";
 import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
 import LogoutButton from "@/features/auth/components/LogoutButton";
-import ScanWatcher from "@/features/check-ins/components/ScanWatcher";
+import DeskArrivals from "@/features/check-ins/components/DeskArrivals";
 import { requireStaff } from "@/features/auth/staff";
 import { isPosEnabled } from "@/features/pos/queries";
 
@@ -27,11 +27,13 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             <NavLink href="/desk/customers">Customers</NavLink>
             <NavLink href="/desk/events">Events</NavLink>
             <NavLink href="/desk/waivers">Waivers</NavLink>
-            <LogoutButton />
+            {/* On every desk page, so a scan shows wherever staff are (#127, #225). */}
+            <div className="ml-auto flex items-center gap-2">
+              <DeskArrivals />
+              <LogoutButton />
+            </div>
           </nav>
           <main className="p-4 sm:p-6">{children}</main>
-          {/* On every desk page, so a scan shows wherever staff are (#127). */}
-          <ScanWatcher />
           <AppVersion />
         </div>
       </StaffOnly>

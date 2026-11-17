@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { pressScan } from "./climber";
+import { arrivalToast, clearArrival, expectNotWaiting } from "./desk-arrivals";
 
 // A scan reaches the desk wherever staff are, and isn't lost until staff deal
 // with it (#127): on another desk page, after a reload, and on every open desk.
@@ -37,30 +38,35 @@ test("a scan shows while the desk is on the POS page", async ({ browser }) => {
 
   await desk.goto("/desk/pos");
   await scan(phone);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Missing-Expired", { timeout: 20_000 });
+  const toast = arrivalToast(desk, "Demo Missing-Expired");
+  await expect(toast).toContainText("No waiver signed", { timeout: 20_000 });
+  // A toast, not a dialog: staff stay on the POS.
   await expect(desk).toHaveURL(/\/desk\/pos/);
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  await expect(desk.locator(".MuiDialog-root")).toHaveCount(0);
+  await toast.getByRole("button", { name: /^Dismiss/ }).click();
+  await expect(toast).toHaveCount(0);
+  // Dismissing only hides the toast: the arrival is still waiting.
+  await clearArrival(desk, "Demo Missing-Expired");
 });
 
-test("a desk reload doesn't lose the scan it was showing", async ({ browser }) => {
+test("a desk reload doesn't lose a waiting scan", async ({ browser }) => {
   const desk = await newPage(browser);
   const phone = await newPage(browser, true);
   await logIn(desk, "desk", /\/desk/);
   await logIn(phone, "demo-expired-expired", /\/me/);
 
   await scan(phone);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Expired-Expired", { timeout: 20_000 });
+  const toast = arrivalToast(desk, "Demo Expired-Expired");
+  await expect(toast).toBeVisible({ timeout: 20_000 });
   await desk.reload();
-  await expect(popup).toContainText("Demo Expired-Expired", { timeout: 20_000 });
+  // Already announced in this tab, so no second toast, but still in Arrivals.
+  await expect(desk.getByRole("button", { name: /^Arrivals/ })).toBeVisible({ timeout: 20_000 });
 
-  // Close deals with it: it doesn't come back after another reload.
-  await popup.getByRole("button", { name: "Close" }).click();
+  // Clear deals with it: it doesn't come back after another reload.
+  await clearArrival(desk, "Demo Expired-Expired");
   await desk.reload();
   await desk.waitForTimeout(6_000); // two polls
-  await expect(popup).toHaveCount(0);
+  await expectNotWaiting(desk, "Demo Expired-Expired");
 });
 
 test("every open desk shows the scan, and dealing with it on one clears the others", async ({
@@ -74,12 +80,29 @@ test("every open desk shows the scan, and dealing with it on one clears the othe
   await logIn(phone, "demo-missing-paused", /\/me/);
 
   await scan(phone);
-  const popupA = deskA.getByRole("dialog");
-  const popupB = deskB.getByRole("dialog");
-  await expect(popupA).toContainText("Demo Missing-Paused", { timeout: 20_000 });
-  await expect(popupB).toContainText("Demo Missing-Paused", { timeout: 20_000 });
+  const toastA = arrivalToast(deskA, "Demo Missing-Paused");
+  const toastB = arrivalToast(deskB, "Demo Missing-Paused");
+  await expect(toastA).toBeVisible({ timeout: 20_000 });
+  await expect(toastB).toBeVisible({ timeout: 20_000 });
 
-  await popupA.getByRole("button", { name: "Close" }).click();
-  await expect(popupA).toHaveCount(0);
-  await expect(popupB).toHaveCount(0, { timeout: 10_000 });
+  await clearArrival(deskA, "Demo Missing-Paused");
+  await expect(toastB).toHaveCount(0, { timeout: 10_000 });
+  await expectNotWaiting(deskB, "Demo Missing-Paused");
+});
+
+test("two quick scans are two toasts, and neither replaces the other", async ({ browser }) => {
+  test.slow(); // two phones log in and scan
+  const desk = await newPage(browser);
+  const phoneA = await newPage(browser, true);
+  const phoneB = await newPage(browser, true);
+  await logIn(desk, "desk", /\/desk/);
+  await logIn(phoneA, "demo-valid-active", /\/me/);
+  await logIn(phoneB, "demo-missing-none", /\/me/);
+
+  await scan(phoneA);
+  await scan(phoneB);
+  await expect(arrivalToast(desk, "Demo Valid-Active")).toContainText("Ready to check in", { timeout: 20_000 });
+  await expect(arrivalToast(desk, "Demo Missing-None")).toContainText("Can't check in yet", { timeout: 20_000 });
+  await clearArrival(desk, "Demo Valid-Active");
+  await clearArrival(desk, "Demo Missing-None");
 });

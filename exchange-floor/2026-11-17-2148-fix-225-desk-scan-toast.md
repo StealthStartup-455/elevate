@@ -1,0 +1,25 @@
+# 2026-11-17 21:48 UTC: Desk walk-in scan popup becomes a non-blocking toast (#225)
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code
+- **Issue / PR:** StealthStartup-455/elevate#225 / PR number added when opened
+- **Branch:** `fix/225-desk-scan-toast`
+- **What the agent did:**
+  - Replaced the blocking scan popup (`ScanWatcher`, deleted) with `DeskArrivals` in the desk nav: top-right toasts (initials, name, `StatusPill` ✓ Ready to check in / ✕ Can't check in yet, reasons, next step, Open check-in), 10 s auto-dismiss with ✕, and an **Arrivals (N)** list with Open and Clear.
+  - Ding (ready) or buzz (blocked) once per arrival via Web Audio (`scan-sound.ts`); announced scan ids kept in `sessionStorage` so polling and reloads never replay a sound.
+  - `nextDeskScan` / `isDeskScanWaiting` replaced by `waitingDeskScans` (all waiting scans, cap 20). `scan-store.ts` adds `waitingScans` and `finishScansForClimber`; `checkInClimber` now finishes the climber's waiting scans (logs `scan_taken`, outcome `checked_in`).
+  - Rewrote the e2e scan tests for toasts (`e2e/desk-arrivals.ts` helpers), and added unit and DB tests.
+- **Files touched:** `src/features/check-ins/{components/DeskArrivals.tsx,scan-toast.ts,scan-sound.ts,actions.ts,scan-store.ts,README.md}`, `src/features/climbers/actions.ts`, `src/app/desk/layout.tsx`, `e2e/{smoke,scan-delivery,scan-next-step,offline,release}.spec.ts`, `e2e/desk-arrivals.ts`.
+- **Decisions and why:**
+  - Dismissing a toast only hides it; the scan waits in the database (#127) until a check-in or Clear, so no arrival is lost.
+  - Toasts sit under the nav (`top-16`) so Arrivals and Log out stay clickable, and hide while the Arrivals list is open (they covered it).
+  - The 10 s timer pauses on pointer *move* and focus, not mouseenter: a toast appearing under a resting pointer otherwise never closed.
+  - Initials avatar for everyone: climbers have no photo field yet.
+  - The scan popup's free day pass button is gone; that stopgap (#62) stays in Manual check in.
+- **Gotchas:**
+  - MUI dialogs set `aria-hidden` on the rest of the page, so `getByRole("status")` can't find a toast while a dialog is open; tests use `locator('[role="status"]')` there.
+  - Manual check in loses focus after "is checked in", so Escape doesn't close it; tests press Done.
+  - `npm ci` fails on dev today (`package-lock.json` missing `yaml@2.9.1`); not changed here.
+  - `next build` may stop once with a Next.js security notice; running it again builds.
+- **Open follow-ups:** profile photos on climbers (the toast's avatar is ready for one); `useOtherDeskDialogOpen` in `desk-dialogs.ts` is now unused.
+- **Verification:** `npm run lint`: clean. `npx tsc --noEmit`: clean. `npm test`: 42 files, 398 passed, 2 todo. `scan-store.db.test.ts`: 12 passed. `npm run build`: passes. Playwright on a fresh local seed: 80 passed, 3 skipped, 1 failed (release check, Escape on Manual check in); fixed and re-run with scan-next-step: 2 passed. Checked the toast and Arrivals list in light and dark.

@@ -25,8 +25,8 @@ import { formatDate } from "@/features/climbers/format";
 
 // The front desk's Check-in page (#168): the day's check-ins from the
 // database, with busyness in the header. ?date=YYYY-MM-DD&page=N hold the
-// state; bad values show today and page 1 (getDeskDay). QR scans pop up from
-// the desk layout (ScanWatcher), on this page and every other.
+// state; bad values show today and page 1 (getDeskDay). QR scans show as toasts from
+// the desk layout (DeskArrivals), on this page and every other.
 //
 // The title and toolbar don't wait for data, so they show at once; the day's
 // navigation, busyness and table stream in as their data arrives.

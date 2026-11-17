@@ -8,6 +8,7 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
+import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { getClimber, searchClimbers } from "./queries";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
@@ -257,6 +258,16 @@ export async function checkInClimber(
     method: "FRONT_DESK",
     pass: usePunch ? "punch" : "membership_or_day",
   });
+  // However staff checked them in, their waiting scans are dealt with, so the
+  // arrival leaves Arrivals on every desk (#225). Logged like Close (scan_taken).
+  for (const scan of await finishScansForClimber(staff.gymId, climberId, now)) {
+    logEvent("scan_taken", {
+      gymId: staff.gymId,
+      climberId,
+      waitMs: now.getTime() - scan.scannedAt.getTime(),
+      outcome: "checked_in",
+    });
+  }
   revalidatePath("/desk");
   revalidatePath("/me", "layout");
   return { ok: true };
