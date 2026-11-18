@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { openTab, pressScan } from "./climber";
+import { arrivalToast, clearArrival } from "./desk-arrivals";
 
 // Losing the connection shows a message where it happened and lets staff or
 // the climber try again, instead of a blank page or an error page (#130).
@@ -41,34 +42,29 @@ test("a scan while the phone is offline says so, and works once back online", as
   await pressScan(phone);
   await expect(dialog).toContainText("Sent to the desk", { timeout: 20_000 });
 
-  // Deal with the scan so it doesn't pop up in later tests.
+  // Deal with the scan so it doesn't show in later tests.
   const desk = await newPage(browser);
   await logIn(desk, "desk", /\/desk/);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Valid-Expired", { timeout: 20_000 });
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  await expect(arrivalToast(desk, "Demo Valid-Expired")).toBeVisible({ timeout: 20_000 });
+  await clearArrival(desk, "Demo Valid-Expired");
 });
 
-test("a desk action while offline shows a message in the popup, and the popup stays", async ({
+test("a scan while the desk is offline shows once the desk is back online", async ({
   browser,
 }) => {
   const desk = await newPage(browser);
   const phone = await newPage(browser, true);
   await logIn(desk, "desk", /\/desk/);
-  // Valid waiver, no membership: the popup offers a free day pass.
   await logIn(phone, "demo-valid-none", /\/me/);
 
-  await pressScan(phone);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Valid-None", { timeout: 20_000 });
-
   await desk.context().setOffline(true);
-  await popup.getByRole("button", { name: "Give free day pass" }).click();
-  await expect(popup).toContainText("Couldn't reach the server");
-  await expect(popup).toContainText("Demo Valid-None");
+  await pressScan(phone);
+  await expect(phone.getByRole("dialog")).toContainText("Sent to the desk", { timeout: 20_000 });
+  await desk.waitForTimeout(6_000); // two failed polls
+  await expect(arrivalToast(desk, "Demo Valid-None")).toHaveCount(0);
 
+  // The scan waited in the database, so nothing is lost.
   await desk.context().setOffline(false);
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  await expect(arrivalToast(desk, "Demo Valid-None")).toContainText("No membership", { timeout: 20_000 });
+  await clearArrival(desk, "Demo Valid-None");
 });

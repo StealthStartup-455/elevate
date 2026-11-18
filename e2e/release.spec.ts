@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { openTab, pressScan } from "./climber";
+import { arrivalToast, expectNotWaiting } from "./desk-arrivals";
 import { signWaiverForm } from "./sign-waiver";
 
 // Release check (#43): the pilot journey from start to finish, in the order a
@@ -104,23 +105,29 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await expect(phone.getByRole("main").getByTestId("waiver-card").first()).toContainText("Waiver signed");
   });
 
-  const popup = desk.getByRole("dialog");
-
   await test.step("purchase: the desk gives a day pass to a climber with no membership", async () => {
     await pressScan(phone);
-    await expect(popup).toContainText(name, { timeout: 20_000 });
-    await expect(popup).toContainText("has no active membership");
-    // The no-charge day pass is the stopgap until the POS (#53, PR #119);
-    // then this step sells a day pass there.
-    await popup.getByRole("button", { name: "Give free day pass" }).click();
-    await expect(popup.getByRole("button", { name: "Check in" })).toBeEnabled();
+    // The arrival toast says what's missing (#225); it has no buttons that change anything.
+    const toast = arrivalToast(desk, name);
+    await expect(toast).toContainText("No membership, day pass or punch card", { timeout: 20_000 });
+    // The no-charge day pass is the stopgap until the POS (#53, PR #119); it
+    // lives in Manual check in now that the scan popup is a toast.
+    await desk.getByRole("button", { name: /manual check in/i }).click();
+    const dialog = desk.getByRole("dialog");
+    await dialog.getByLabel("Search name or phone").fill(name);
+    await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
+    await dialog.getByRole("button", { name: "Give free day pass" }).click();
+    await expect(dialog.getByRole("button", { name: "Manually check in" })).toBeEnabled();
   });
 
   await test.step("check in: the desk checks them in once", async () => {
-    await popup.getByRole("button", { name: "Check in" }).click();
-    await expect(popup).toContainText("is checked in");
-    await popup.getByRole("button", { name: "Close" }).click();
-    await expect(popup).toHaveCount(0);
+    const dialog = desk.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Manually check in" }).click();
+    await expect(dialog).toContainText("is checked in");
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    // Checking in clears their waiting scan on every desk (#225).
+    await expectNotWaiting(desk, name);
   });
 
   await test.step("busyness: the desk and the climber both count the new visit", async () => {

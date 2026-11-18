@@ -13,7 +13,7 @@ export type ScanStatus = {
 };
 
 // A day pass or a punch card lets them in without an active membership.
-function needsPass(s: ScanStatus): boolean {
+export function needsPass(s: ScanStatus): boolean {
   return s.membershipStatus !== "active" && !s.hasDayPass && !((s.punchesLeft ?? 0) > 0);
 }
 

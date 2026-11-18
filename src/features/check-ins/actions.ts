@@ -4,7 +4,7 @@ import { getSessionClimberId } from "@/features/auth/queries";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { formatTime } from "@/features/analytics/components/format";
 import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
-import { getClimber, getSavedCheckIns } from "@/features/climbers/queries";
+import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
 import { isPosEnabled } from "@/features/pos/queries";
 import { getStaffWaiverPanel, type StaffWaiverPanel } from "@/features/waivers/queries";
@@ -16,7 +16,7 @@ import { timed } from "@/lib/timing";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { startOfGymDay } from "./day";
 import { isDemoEmployeeCheckIn } from "./demo-examples";
-import { finishScan, isScanWaiting, oldestWaitingScan, saveScan } from "./scan-store";
+import { finishScan, saveScan, waitingScans } from "./scan-store";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,6 +30,11 @@ export type ScannedClimber = {
   membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
+  /**
+   * "7:02 p.m." when they were already checked in within ACTIVE_WINDOW_MINUTES,
+   * so another check-in would be refused (a repeat scan). Absent otherwise.
+   */
+  checkedInAt?: string;
 };
 
 async function getGymForClimberId(climberId: string): Promise<string | null> {
@@ -58,59 +63,82 @@ export async function recordScan(): Promise<{ ok: boolean }> {
 }
 
 // The desk's view of a waiting scan: which scan, and the climber behind it.
-export type DeskScan = { scanId: string; climber: ScannedClimber };
+export type DeskScan = { scanId: string; scannedAt: string; climber: ScannedClimber };
 
-// The oldest scan waiting at the staff member's gym, for the desk popup.
-// Polled by every open desk page. It doesn't take the scan: every desk gets
-// the same one until someone deals with it (finishDeskScan), so a desk on
-// another page, a reload or a second desk never loses an arrival (#127).
-// Staff only.
-export async function nextDeskScan(): Promise<DeskScan | null> {
+// Every scan waiting at the staff member's gym, oldest first, for the desk's
+// arrival toasts and Arrivals list (#225). Polled by every open desk page. It
+// doesn't take the scans: every desk gets the same ones until staff check the
+// climber in or clear the arrival (finishDeskScan), so a desk on another page,
+// a reload or a second desk never loses an arrival (#127). Staff only.
+export async function waitingDeskScans(): Promise<DeskScan[]> {
   // Polled every few seconds by every desk, so its total time matters (#84, #86).
-  return timed("perf_action", { name: "nextDeskScan" }, nextDeskScanNow);
+  return timed("perf_action", { name: "waitingDeskScans" }, waitingDeskScansNow);
 }
 
-async function nextDeskScanNow(): Promise<DeskScan | null> {
+async function waitingDeskScansNow(): Promise<DeskScan[]> {
   await requireStaff();
   const staff = await getStaffContext();
-  if (!staff) return null;
-  const scan = await oldestWaitingScan(staff.gymId);
-  if (!scan) return null;
-  const climber = await getClimber(scan.climberId);
-  if (!climber || climber.id !== scan.climberId) {
-    // Nobody can deal with a scan for a climber the desk can't load, so
-    // clear it rather than block the ones behind it.
-    logWarning("scan_climber_missing", { gymId: staff.gymId, climberId: scan.climberId });
-    await finishScan(staff.gymId, scan.id);
-    return null;
+  if (!staff) return [];
+  const scans = await waitingScans(staff.gymId);
+  if (scans.length === 0) return [];
+  const now = new Date();
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return [];
+  const [climbers, recent] = await Promise.all([
+    // Every waiting climber in one query, not one per scan: this runs every
+    // 2.5 seconds on every open desk.
+    getClimberStatuses(gym, scans.map((s) => s.climberId), now),
+    // Who is already in: checkInClimber refuses them for this long, so a
+    // repeat scan has nothing to do (#225).
+    db.checkIn.findMany({
+      where: {
+        gymId: staff.gymId,
+        climberId: { in: scans.map((s) => s.climberId) },
+        checkedInAt: { gt: new Date(now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000) },
+      },
+      orderBy: { checkedInAt: "desc" },
+      select: { climberId: true, checkedInAt: true },
+    }),
+  ]);
+  const latestCheckIn = new Map<string, Date>();
+  for (const c of recent) if (!latestCheckIn.has(c.climberId)) latestCheckIn.set(c.climberId, c.checkedInAt);
+  const result: DeskScan[] = [];
+  for (const scan of scans) {
+    const climber = climbers.get(scan.climberId);
+    if (!climber) {
+      // Nobody can deal with a scan for a climber the desk can't load, so
+      // clear it rather than leave it waiting.
+      logWarning("scan_climber_missing", { gymId: staff.gymId, climberId: scan.climberId });
+      await finishScan(staff.gymId, scan.id);
+      continue;
+    }
+    result.push({
+      scanId: scan.id,
+      scannedAt: scan.scannedAt.toISOString(),
+      climber: {
+        id: climber.id,
+        name: `${climber.firstName} ${climber.lastName}`,
+        waiverStatus: climber.waiverStatus,
+        waiverExpiresOn: climber.waiverExpiresOn,
+        membershipStatus: climber.membershipStatus,
+        membershipRenewsOn: climber.membershipRenewsOn,
+        membershipRecurring: climber.membershipRecurring,
+        hasDayPass: climber.hasDayPass,
+        punchesLeft: climber.punchesLeft,
+        checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym.timeZone),
+      },
+    });
   }
-  return {
-    scanId: scan.id,
-    climber: {
-      id: climber.id,
-      name: `${climber.firstName} ${climber.lastName}`,
-      waiverStatus: climber.waiverStatus,
-      waiverExpiresOn: climber.waiverExpiresOn,
-      membershipStatus: climber.membershipStatus,
-      membershipRenewsOn: climber.membershipRenewsOn,
-      membershipRecurring: climber.membershipRecurring,
-      hasDayPass: climber.hasDayPass,
-      punchesLeft: climber.punchesLeft,
-    },
-  };
+  return result;
 }
 
-// Whether the scan a desk is showing is still waiting. False once another
-// desk has dealt with it, so that desk's popup can close. Staff only.
-export async function isDeskScanWaiting(scanId: string): Promise<boolean> {
-  await requireStaff();
-  const staff = await getStaffContext();
-  if (!staff || !UUID.test(String(scanId))) return false;
-  return isScanWaiting(staff.gymId, scanId);
+function checkedInAtLabel(at: Date | undefined, timeZone: string): string | undefined {
+  return at ? formatTime(at, timeZone) : undefined;
 }
 
-// Staff dealt with a scan: checked the person in, or closed the popup. Clears
-// it (and any repeat taps by the same climber) from every desk. Staff only.
+// Staff dealt with a scan: checked the person in, or cleared the arrival from
+// the Arrivals list. Clears it (and any repeat taps by the same climber) from
+// every desk. Staff only.
 export async function finishDeskScan(
   scanId: string,
   outcome: "checked_in" | "closed",
