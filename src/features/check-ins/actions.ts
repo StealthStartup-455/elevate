@@ -4,7 +4,7 @@ import { getSessionClimberId } from "@/features/auth/queries";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { formatTime } from "@/features/analytics/components/format";
 import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
-import { getClimber, getSavedCheckIns } from "@/features/climbers/queries";
+import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
 import { isPosEnabled } from "@/features/pos/queries";
 import { getStaffWaiverPanel, type StaffWaiverPanel } from "@/features/waivers/queries";
@@ -82,9 +82,12 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
   const scans = await waitingScans(staff.gymId);
   if (scans.length === 0) return [];
   const now = new Date();
-  const [climbers, gym, recent] = await Promise.all([
-    Promise.all(scans.map((scan) => getClimber(scan.climberId))),
-    getGymById(staff.gymId),
+  const gym = await getGymById(staff.gymId);
+  if (!gym) return [];
+  const [climbers, recent] = await Promise.all([
+    // Every waiting climber in one query, not one per scan: this runs every
+    // 2.5 seconds on every open desk.
+    getClimberStatuses(gym, scans.map((s) => s.climberId), now),
     // Who is already in: checkInClimber refuses them for this long, so a
     // repeat scan has nothing to do (#225).
     db.checkIn.findMany({
@@ -100,9 +103,9 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
   const latestCheckIn = new Map<string, Date>();
   for (const c of recent) if (!latestCheckIn.has(c.climberId)) latestCheckIn.set(c.climberId, c.checkedInAt);
   const result: DeskScan[] = [];
-  for (const [i, scan] of scans.entries()) {
-    const climber = climbers[i];
-    if (!climber || climber.id !== scan.climberId) {
+  for (const scan of scans) {
+    const climber = climbers.get(scan.climberId);
+    if (!climber) {
       // Nobody can deal with a scan for a climber the desk can't load, so
       // clear it rather than leave it waiting.
       logWarning("scan_climber_missing", { gymId: staff.gymId, climberId: scan.climberId });
@@ -122,16 +125,15 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
         membershipRecurring: climber.membershipRecurring,
         hasDayPass: climber.hasDayPass,
         punchesLeft: climber.punchesLeft,
-        checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym?.timeZone),
+        checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym.timeZone),
       },
     });
   }
   return result;
 }
 
-function checkedInAtLabel(at: Date | undefined, timeZone: string | undefined): string | undefined {
-  if (!at) return undefined;
-  return timeZone ? formatTime(at, timeZone) : at.toISOString();
+function checkedInAtLabel(at: Date | undefined, timeZone: string): string | undefined {
+  return at ? formatTime(at, timeZone) : undefined;
 }
 
 // Staff dealt with a scan: checked the person in, or cleared the arrival from

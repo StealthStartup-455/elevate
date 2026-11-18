@@ -7,7 +7,7 @@ import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
-import { logEvent } from "@/lib/log";
+import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { getClimber, searchClimbers } from "./queries";
 import { toStoredPhone } from "./phone";
@@ -260,12 +260,23 @@ export async function checkInClimber(
   });
   // However staff checked them in, their waiting scans are dealt with, so the
   // arrival leaves Arrivals on every desk (#225). Logged like Close (scan_taken).
-  for (const scan of await finishScansForClimber(staff.gymId, climberId, now)) {
-    logEvent("scan_taken", {
+  // The check-in is saved: a failure here must not report it as failed (a
+  // retry would then say "Already checked in"). The scan just waits in
+  // Arrivals until it expires or someone clears it.
+  try {
+    for (const scan of await finishScansForClimber(staff.gymId, climberId, now)) {
+      logEvent("scan_taken", {
+        gymId: staff.gymId,
+        climberId,
+        waitMs: now.getTime() - scan.scannedAt.getTime(),
+        outcome: "checked_in",
+      });
+    }
+  } catch (error) {
+    logWarning("scan_finish_failed", {
       gymId: staff.gymId,
       climberId,
-      waitMs: now.getTime() - scan.scannedAt.getTime(),
-      outcome: "checked_in",
+      error: error instanceof Error ? error.message : String(error),
     });
   }
   revalidatePath("/desk");

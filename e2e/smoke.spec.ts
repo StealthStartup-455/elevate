@@ -60,6 +60,9 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
 
   // Second scan within two hours: the toast says they're already in, and the
   // scan clears itself once the toast goes, so nothing waits in Arrivals (#225).
+  // Toasts make way for the climber panel, so close it first (#228 review).
+  await panel.getByRole("button", { name: "Close" }).first().click();
+  await expect(desk).not.toHaveURL(/climber=/);
   await phone.keyboard.press("Escape");
   await phone.reload();
   await pressScan(phone);
@@ -67,7 +70,6 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   await expect(toast).not.toContainText("Ready to check in");
   await toast.getByRole("button", { name: /^Dismiss/ }).click();
   await expectNotWaiting(desk, "Demo Valid-Active");
-  await expect(panel).toContainText("Checked in at");
 });
 
 test("a scan made before the desk opens still shows when it opens", async ({ browser }) => {

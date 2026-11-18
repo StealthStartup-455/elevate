@@ -7,7 +7,7 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Popover from "@mui/material/Popover";
 import Typography from "@mui/material/Typography";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import StatusPill from "@/components/ui/StatusPill";
 import { finishDeskScan, waitingDeskScans, type DeskScan } from "../actions";
@@ -50,6 +50,11 @@ function saveSeen(seen: Set<string>) {
 
 export default function DeskArrivals() {
   const router = useRouter();
+  // The Check-in page's climber panel is open (?climber=<id>, #169). Docked on
+  // the right, it sits under the toasts, so they make way while it's open.
+  const pathname = usePathname();
+  const climberParam = useSearchParams().get("climber");
+  const panelOpen = pathname === "/desk" && !!climberParam;
   const [waiting, setWaiting] = useState<DeskScan[]>([]);
   const [toasts, setToasts] = useState<string[]>([]); // scan ids, oldest first
   const [listAnchor, setListAnchor] = useState<HTMLElement | null>(null);
@@ -60,6 +65,18 @@ export default function DeskArrivals() {
   const pending = waiting.filter((s) => !s.climber.checkedInAt);
   // Closes by itself once nobody is waiting (the button goes too).
   const listOpen = !!listAnchor && pending.length > 0;
+  // Something sits where the toasts go. Toasts showing then are dropped, not
+  // held back to pop up later: everyone waiting is in Arrivals.
+  const covered = listOpen || panelOpen;
+  const coveredRef = useRef(covered);
+  useEffect(() => {
+    coveredRef.current = covered;
+  }, [covered]);
+  const [wasCovered, setWasCovered] = useState(covered);
+  if (covered !== wasCovered) {
+    setWasCovered(covered);
+    if (covered) setToasts([]);
+  }
 
   useEffect(() => {
     seen.current ??= loadSeen();
@@ -74,7 +91,13 @@ export default function DeskArrivals() {
         if (fresh.length === 0) return;
         for (const s of fresh) seen.current!.add(s.scanId);
         saveSeen(seen.current!);
-        setToasts((t) => [...t, ...fresh.map((s) => s.scanId)]);
+        // No toasts while the panel or the Arrivals list is open: the
+        // arrival is in Arrivals, and the sound still plays.
+        if (!coveredRef.current) {
+          // Keep only the newest few. One pushed out is dropped rather than
+          // held back, or it would pop up again late (it's in Arrivals).
+          setToasts((t) => [...t, ...fresh.map((s) => s.scanId)].slice(-MAX_TOASTS));
+        }
         // One sound per new arrival, spaced out so two arrivals are two sounds.
         // None for a repeat scan: nothing to do.
         fresh
@@ -126,7 +149,7 @@ export default function DeskArrivals() {
   // A toast whose scan was dealt with (checked in here or on another desk) goes.
   // Hidden while the Arrivals list is open: the list already shows everyone,
   // and the toasts would sit on top of it.
-  const shown = listOpen ? [] : toasts
+  const shown = covered ? [] : toasts
     .map((id) => waiting.find((s) => s.scanId === id))
     .filter((s): s is DeskScan => !!s)
     .slice(-MAX_TOASTS);

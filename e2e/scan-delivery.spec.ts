@@ -106,3 +106,25 @@ test("two quick scans are two toasts, and neither replaces the other", async ({ 
   await clearArrival(desk, "Demo Valid-Active");
   await clearArrival(desk, "Demo Missing-None");
 });
+
+test("toasts make way for the climber panel; the arrival waits in Arrivals", async ({ browser }) => {
+  test.slow(); // two phones log in and scan
+  const desk = await newPage(browser);
+  const phoneA = await newPage(browser, true);
+  const phoneB = await newPage(browser, true);
+  await logIn(desk, "desk", /\/desk/);
+  await logIn(phoneA, "demo-expired-active", /\/me/);
+  await logIn(phoneB, "demo-missing-expired", /\/me/);
+
+  await scan(phoneA);
+  await expect(arrivalToast(desk, "Demo Expired-Active")).toBeVisible({ timeout: 20_000 });
+  await arrivalToast(desk, "Demo Expired-Active").getByRole("button", { name: "Open check-in" }).click();
+  await expect(desk).toHaveURL(/\/desk\?climber=/);
+
+  // A scan while the panel is open: no toast over it, but it's in Arrivals.
+  await scan(phoneB);
+  await expect(desk.getByRole("button", { name: /^Arrivals \(2\)/ })).toBeVisible({ timeout: 20_000 });
+  await expect(desk.locator('[role="status"]')).toHaveCount(0);
+  await clearArrival(desk, "Demo Missing-Expired");
+  await clearArrival(desk, "Demo Expired-Active");
+});

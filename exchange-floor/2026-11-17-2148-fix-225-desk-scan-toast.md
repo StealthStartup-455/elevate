@@ -9,6 +9,7 @@
   - Ding (ready) or buzz (blocked) once per arrival via Web Audio (`scan-sound.ts`); announced scan ids kept in `sessionStorage` so polling and reloads never replay a sound.
   - `nextDeskScan` / `isDeskScanWaiting` replaced by `waitingDeskScans` (all waiting scans, cap 20). `scan-store.ts` adds `waitingScans` and `finishScansForClimber`; `checkInClimber` now finishes the climber's waiting scans (logs `scan_taken`, outcome `checked_in`).
   - A repeat scan by someone checked in within the last 2 hours (`checkInClimber` would refuse them) gets an "Already checked in at 7:02 p.m." toast with no sound, stays out of Arrivals, and is finished when its toast closes. `ScannedClimber.checkedInAt` carries that time.
+  - After review (SethMess): a toast pushed out by newer ones is dropped, not held to reappear late; toasts are dropped and held back while the Check-in climber panel (`?climber=`) or the Arrivals list is open (the sound still plays); `waitingDeskScans` loads all waiting climbers in one query (`getClimberStatuses`); a failure clearing scans after a saved check-in is logged (`scan_finish_failed`) instead of failing the check-in.
   - Rewrote the e2e scan tests for toasts (`e2e/desk-arrivals.ts` helpers), and added unit and DB tests.
 - **Files touched:** `src/features/check-ins/{components/DeskArrivals.tsx,scan-toast.ts,scan-sound.ts,actions.ts,scan-store.ts,README.md}`, `src/features/climbers/actions.ts`, `src/app/desk/layout.tsx`, `e2e/{smoke,scan-delivery,scan-next-step,offline,release}.spec.ts`, `e2e/desk-arrivals.ts`.
 - **Decisions and why:**
@@ -22,5 +23,5 @@
   - Manual check in loses focus after "is checked in", so Escape doesn't close it; tests press Done.
   - `npm ci` fails on dev today (`package-lock.json` missing `yaml@2.9.1`); not changed here.
   - `next build` may stop once with a Next.js security notice; running it again builds.
-- **Open follow-ups:** profile photos on climbers (the toast's avatar is ready for one); `useOtherDeskDialogOpen` in `desk-dialogs.ts` is now unused.
-- **Verification:** `npm run lint`: clean. `npx tsc --noEmit`: clean. `npm test`: 42 files, 400 passed, 2 todo. `scan-store.db.test.ts`: 12 passed. `npm run build`: passes. Playwright on a fresh local seed: 80 passed, 3 skipped, 1 failed (release check, Escape on Manual check in); fixed and re-run with scan-next-step: 2 passed. Checked the toast and Arrivals list in light and dark.
+- **Open follow-ups:** a rush of more than 3 scans has no e2e test (needs 4 phones); profile photos on climbers (the toast's avatar is ready for one); `useOtherDeskDialogOpen` in `desk-dialogs.ts` is now unused.
+- **Verification:** `npm run lint`: clean. `npx tsc --noEmit`: clean. `npm test`: 42 files, 400 passed, 2 todo. `scan-store.db.test.ts`: 12 passed. `npm run build`: passes. Playwright on a fresh local seed: 80 passed, 3 skipped, 1 failed (release check, Escape on Manual check in); fixed and re-run with scan-next-step: 2 passed. After the repeat-scan and review fixes: full Playwright suite on a fresh seed 82 passed, 3 skipped; check-ins DB tests 28 passed. Checked the toast and Arrivals list in light and dark.
