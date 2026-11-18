@@ -7,6 +7,8 @@ import { deskNextStep, needsPass } from "./scan-messages";
 
 export type ScanResult = {
   ready: boolean;
+  /** Already checked in recently: a repeat scan, with nothing for staff to do. */
+  alreadyIn: boolean;
   /** Short label for the status pill. */
   label: string;
   /** Each thing that stops them, in plain words. Empty when ready. */
@@ -21,7 +23,18 @@ const MEMBERSHIP_REASON = {
   paused: "Membership paused, and no day pass or punch card",
 } as const;
 
-export function scanResult(s: ScanStatus): ScanResult {
+export function scanResult(s: ScanStatus & { checkedInAt?: string }): ScanResult {
+  // A repeat scan: checkInClimber would refuse another check-in, so don't
+  // offer one or list what's missing (#225).
+  if (s.checkedInAt) {
+    return {
+      ready: false,
+      alreadyIn: true,
+      label: `Already checked in at ${s.checkedInAt}`,
+      reasons: [],
+      nextStep: null,
+    };
+  }
   const reasons: string[] = [];
   if (s.waiverStatus === "missing") reasons.push("No waiver signed");
   if (s.waiverStatus === "expired") reasons.push("Waiver expired");
@@ -31,6 +44,7 @@ export function scanResult(s: ScanStatus): ScanResult {
   const ready = reasons.length === 0;
   return {
     ready,
+    alreadyIn: false,
     label: ready ? "Ready to check in" : "Can't check in yet",
     reasons,
     nextStep: deskNextStep(s),

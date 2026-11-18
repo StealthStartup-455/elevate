@@ -52,21 +52,22 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   const toast = arrivalToast(desk, "Demo Valid-Active");
   await expect(toast).toContainText("Ready to check in", { timeout: 20_000 });
   await expect(toast).not.toContainText("Checked in");
-  let panel = await openArrival(desk, "Demo Valid-Active");
+  const panel = await openArrival(desk, "Demo Valid-Active");
   await panel.getByRole("button", { name: "Check in" }).click();
   await expect(panel).toContainText("Checked in at");
   // Checking in deals with the scan on every desk (#225).
   await expectNotWaiting(desk, "Demo Valid-Active");
 
-  // Second scan within two hours: a toast again, but nothing to check in twice.
+  // Second scan within two hours: the toast says they're already in, and the
+  // scan clears itself once the toast goes, so nothing waits in Arrivals (#225).
   await phone.keyboard.press("Escape");
   await phone.reload();
   await pressScan(phone);
-  await expect(toast).toBeVisible({ timeout: 20_000 });
-  panel = await openArrival(desk, "Demo Valid-Active");
+  await expect(toast).toContainText("Already checked in at", { timeout: 20_000 });
+  await expect(toast).not.toContainText("Ready to check in");
+  await toast.getByRole("button", { name: /^Dismiss/ }).click();
+  await expectNotWaiting(desk, "Demo Valid-Active");
   await expect(panel).toContainText("Checked in at");
-  await expect(panel.getByRole("button", { name: "Check in" })).toHaveCount(0);
-  await clearArrival(desk, "Demo Valid-Active");
 });
 
 test("a scan made before the desk opens still shows when it opens", async ({ browser }) => {

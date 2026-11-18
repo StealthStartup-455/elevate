@@ -39,6 +39,21 @@ describe("scanResult", () => {
   });
 });
 
+describe("scanResult for a repeat scan", () => {
+  it("says they're already in, with nothing to fix, whatever else is true", () => {
+    const r = scanResult({ ...ok, waiverStatus: "expired", checkedInAt: "7:02 p.m." });
+    expect(r.alreadyIn).toBe(true);
+    expect(r.ready).toBe(false);
+    expect(r.label).toBe("Already checked in at 7:02 p.m.");
+    expect(r.reasons).toEqual([]);
+    expect(r.nextStep).toBeNull();
+  });
+
+  it("isn't a repeat scan without a recent check-in", () => {
+    expect(scanResult(ok).alreadyIn).toBe(false);
+  });
+});
+
 describe("newArrivals", () => {
   it("returns only scans this desk hasn't announced, so polling doesn't replay sounds", () => {
     const waiting = [{ scanId: "a" }, { scanId: "b" }, { scanId: "c" }];

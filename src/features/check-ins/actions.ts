@@ -30,6 +30,11 @@ export type ScannedClimber = {
   membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
+  /**
+   * "7:02 p.m." when they were already checked in within ACTIVE_WINDOW_MINUTES,
+   * so another check-in would be refused (a repeat scan). Absent otherwise.
+   */
+  checkedInAt?: string;
 };
 
 async function getGymForClimberId(climberId: string): Promise<string | null> {
@@ -75,7 +80,25 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
   const staff = await getStaffContext();
   if (!staff) return [];
   const scans = await waitingScans(staff.gymId);
-  const climbers = await Promise.all(scans.map((scan) => getClimber(scan.climberId)));
+  if (scans.length === 0) return [];
+  const now = new Date();
+  const [climbers, gym, recent] = await Promise.all([
+    Promise.all(scans.map((scan) => getClimber(scan.climberId))),
+    getGymById(staff.gymId),
+    // Who is already in: checkInClimber refuses them for this long, so a
+    // repeat scan has nothing to do (#225).
+    db.checkIn.findMany({
+      where: {
+        gymId: staff.gymId,
+        climberId: { in: scans.map((s) => s.climberId) },
+        checkedInAt: { gt: new Date(now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000) },
+      },
+      orderBy: { checkedInAt: "desc" },
+      select: { climberId: true, checkedInAt: true },
+    }),
+  ]);
+  const latestCheckIn = new Map<string, Date>();
+  for (const c of recent) if (!latestCheckIn.has(c.climberId)) latestCheckIn.set(c.climberId, c.checkedInAt);
   const result: DeskScan[] = [];
   for (const [i, scan] of scans.entries()) {
     const climber = climbers[i];
@@ -99,10 +122,16 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
         membershipRecurring: climber.membershipRecurring,
         hasDayPass: climber.hasDayPass,
         punchesLeft: climber.punchesLeft,
+        checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym?.timeZone),
       },
     });
   }
   return result;
+}
+
+function checkedInAtLabel(at: Date | undefined, timeZone: string | undefined): string | undefined {
+  if (!at) return undefined;
+  return timeZone ? formatTime(at, timeZone) : at.toISOString();
 }
 
 // Staff dealt with a scan: checked the person in, or cleared the arrival from

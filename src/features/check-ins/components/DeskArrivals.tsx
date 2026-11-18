@@ -55,8 +55,11 @@ export default function DeskArrivals() {
   const [listAnchor, setListAnchor] = useState<HTMLElement | null>(null);
   const seen = useRef<Set<string> | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  // Arrivals lists only people staff still need to deal with: a repeat scan by
+  // someone already checked in gets a toast, then clears itself (#225).
+  const pending = waiting.filter((s) => !s.climber.checkedInAt);
   // Closes by itself once nobody is waiting (the button goes too).
-  const listOpen = !!listAnchor && waiting.length > 0;
+  const listOpen = !!listAnchor && pending.length > 0;
 
   useEffect(() => {
     seen.current ??= loadSeen();
@@ -73,9 +76,11 @@ export default function DeskArrivals() {
         saveSeen(seen.current!);
         setToasts((t) => [...t, ...fresh.map((s) => s.scanId)]);
         // One sound per new arrival, spaced out so two arrivals are two sounds.
-        fresh.forEach((s, i) =>
-          playScanSound(scanResult(s.climber).ready ? "ding" : "buzz", i * 0.6),
-        );
+        // None for a repeat scan: nothing to do.
+        fresh
+          .map((s) => scanResult(s.climber))
+          .filter((r) => !r.alreadyIn)
+          .forEach((r, i) => playScanSound(r.ready ? "ding" : "buzz", i * 0.6));
       } catch {
         // Offline or the server didn't answer: try again on the next tick.
       }
@@ -89,14 +94,14 @@ export default function DeskArrivals() {
   }, []);
 
   // Nobody waiting: forget the list's anchor so the next arrival's toast shows.
-  if (listAnchor && waiting.length === 0) setListAnchor(null);
+  if (listAnchor && pending.length === 0) setListAnchor(null);
 
   function dismiss(scanId: string) {
     setToasts((t) => t.filter((id) => id !== scanId));
   }
 
   function open(scan: DeskScan) {
-    dismiss(scan.scanId);
+    closeToast(scan);
     setListAnchor(null);
     router.push(`/desk?climber=${scan.climber.id}`);
   }
@@ -111,6 +116,13 @@ export default function DeskArrivals() {
     finishDeskScan(scan.scanId, "closed").catch(() => {});
   }
 
+  // A toast closed (✕ or after 10 seconds). A repeat scan by someone already
+  // checked in is then dealt with too, so it doesn't wait anywhere.
+  function closeToast(scan: DeskScan) {
+    dismiss(scan.scanId);
+    if (scan.climber.checkedInAt) finishDeskScan(scan.scanId, "closed").catch(() => {});
+  }
+
   // A toast whose scan was dealt with (checked in here or on another desk) goes.
   // Hidden while the Arrivals list is open: the list already shows everyone,
   // and the toasts would sit on top of it.
@@ -122,7 +134,7 @@ export default function DeskArrivals() {
   return (
     <>
       {/* Only while someone is waiting, so there's never a disabled button here. */}
-      {waiting.length > 0 ? (
+      {pending.length > 0 ? (
         <Button
           variant="outlined"
           color="secondary"
@@ -131,7 +143,7 @@ export default function DeskArrivals() {
           aria-expanded={listOpen}
           onClick={(e) => setListAnchor(e.currentTarget)}
         >
-          Arrivals ({waiting.length})
+          Arrivals ({pending.length})
         </Button>
       ) : null}
       <Popover
@@ -142,7 +154,7 @@ export default function DeskArrivals() {
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
         <Box component="ul" ref={listRef} tabIndex={-1} aria-label="Waiting arrivals" className="flex w-80 max-w-full flex-col gap-3 p-3">
-          {waiting.map((scan) => {
+          {pending.map((scan) => {
             const result = scanResult(scan.climber);
             return (
               <Box component="li" key={scan.scanId} className="flex items-center gap-3">
@@ -174,7 +186,7 @@ export default function DeskArrivals() {
             key={scan.scanId}
             scan={scan}
             onOpen={() => open(scan)}
-            onDismiss={() => dismiss(scan.scanId)}
+            onDismiss={() => closeToast(scan)}
           />
         ))}
       </Box>
@@ -215,7 +227,7 @@ function ArrivalToast({
       className="flex gap-3 p-3"
       sx={{
         borderLeft: 4,
-        borderColor: result.ready ? "success.main" : "error.main",
+        borderColor: result.ready || result.alreadyIn ? "success.main" : "error.main",
       }}
       // Moving the pointer onto it pauses; a toast that appears under a
       // pointer resting there doesn't, or it would never go.
@@ -231,7 +243,7 @@ function ArrivalToast({
           {scan.climber.name}
         </Typography>
         <Box>
-          <StatusPill status={result.ready ? "ok" : "bad"} label={result.label} />
+          <StatusPill status={result.ready || result.alreadyIn ? "ok" : "bad"} label={result.label} />
         </Box>
         {result.reasons.map((r) => (
           <Typography key={r} variant="body">
