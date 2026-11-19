@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#232 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#232 / #233
 - **Branch:** `chore/232-reset-staging-action`
 - **What the agent did:**
   - New manual workflow `.github/workflows/reset-staging.yml` (Actions, Reset staging, Run workflow): runs `prisma/seed.ts` against staging with `STAGING_DIRECT_URL` from the staging environment, the same reset as `npm run staging:reset` (#138).
