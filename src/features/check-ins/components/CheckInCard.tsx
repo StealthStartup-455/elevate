@@ -3,7 +3,7 @@ import ClimberCard from "@/components/climber/ClimberCard";
 import ClimberLink from "@/components/climber/ClimberLink";
 import { SunIcon } from "@/components/climber/icons";
 import StatusPill from "@/components/ui/StatusPill";
-import DemoQrCode from "@/features/climbers/components/DemoQrCode";
+import ClimberBarcode from "@/features/climbers/components/ClimberBarcode";
 import { getMyMembership, type Membership } from "@/features/climbers/queries";
 import ScanButton from "./ScanButton";
 
@@ -33,13 +33,13 @@ export default async function CheckInCard() {
     <>
       <ClimberCard label="Your check-in code">
         <div className="flex flex-col items-center gap-4 text-center">
-          <DemoQrCode value={membership.memberCode} size={240} />
+          <ClimberBarcode value={membership.studentId} width={300} />
           <div className="flex flex-col gap-1">
             <Typography variant="cardTitle" component="p" sx={{ fontSize: "1.375rem" }}>
               {membership.firstName} {membership.lastName}
             </Typography>
             <Typography variant="body" sx={{ fontFamily: "var(--font-plex-mono)", letterSpacing: "0.06em", color: "text.secondary" }}>
-              {membership.memberCode}
+              {membership.studentId}
             </Typography>
           </div>
           <div className="flex flex-wrap justify-center gap-2">

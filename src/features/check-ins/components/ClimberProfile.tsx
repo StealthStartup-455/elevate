@@ -14,7 +14,7 @@ import { checkInClimber } from "@/features/climbers/actions";
 import DeskWaiverDialog from "@/features/waivers/components/DeskWaiverDialog";
 import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import LinkButton from "@/features/climbers/components/LinkButton";
-import { formatDate, memberCode, membershipDateLine, membershipPlanName } from "@/features/climbers/format";
+import { formatDate, membershipDateLine, membershipPlanName } from "@/features/climbers/format";
 import type { Climber } from "@/features/climbers/types";
 import type { DeskClimberPanel } from "../actions";
 import { badgeFor } from "../day";
@@ -103,8 +103,8 @@ export default function ClimberProfile({
             className="inline-flex rounded-md border px-2"
             sx={{ fontFamily: "var(--font-mono)" }}
           >
-            <span className="sr-only">Member code </span>
-            {memberCode(c.id)}
+            <span className="sr-only">Student ID </span>
+            {c.studentId}
           </Typography>
         </div>
         <StatusBox panel={panel} onChanged={onChanged} />
@@ -408,6 +408,7 @@ function PassesAndDetails({ climber: c, onChanged }: { climber: Climber; onChang
               details={{
                 firstName: c.firstName,
                 lastName: c.lastName,
+                studentId: c.studentId,
                 phone: c.phone,
                 email: c.email,
                 dateOfBirth: c.dateOfBirth,

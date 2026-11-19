@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { pressScan } from "./climber";
 import { arrivalToast, expectNotWaiting, openArrival } from "./desk-arrivals";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // A scan with a problem (#90): the phone says the desk will help, and the
 // desk's arrival toast (#225) names each problem and the next step, until the
@@ -31,6 +32,7 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
   await phone.getByLabel("First name").fill("Jesse");
   await phone.getByLabel("Last name").fill(`Scan${unique}`);
   await phone.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
+  await phone.getByLabel("Student ID").fill(randomStudentId());
   await phone.getByLabel("Date of birth").fill("1994-06-06");
   await phone.getByRole("button", { name: "Create account" }).click();
   await expect(phone.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
@@ -64,9 +66,9 @@ test("a new climber with no waiver or membership scans in, and the desk fixes bo
 
   // The free day pass stopgap (#62) is in Manual check in, on the Check-in page.
   await desk.goto("/desk");
-  await desk.getByRole("button", { name: /manual check in/i }).click();
+  await desk.getByRole("button", { name: "Check in", exact: true }).click();
   const dialog = desk.getByRole("dialog");
-  await dialog.getByLabel("Search name or phone").fill(name);
+  await dialog.getByLabel("Search name, phone or V number").fill(name);
   await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
   await dialog.getByRole("button", { name: "Give free day pass" }).click();
   await dialog.getByRole("button", { name: "Manually check in" }).click();

@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { openTab, pressScan } from "./climber";
 import { arrivalToast, expectNotWaiting } from "./desk-arrivals";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Release check (#43): the pilot journey from start to finish, in the order a
 // new climber meets it. One test, so a failure says which step of the journey
@@ -69,6 +70,7 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await phone.getByLabel("First name").fill(firstName);
     await phone.getByLabel("Last name").fill(lastName);
     await phone.getByLabel("Phone number").fill(`250559${unique.slice(-4)}`);
+    await phone.getByLabel("Student ID").fill(randomStudentId());
     await phone.getByLabel("Date of birth").fill("1993-07-07");
     await phone.getByRole("button", { name: "Create account" }).click();
     await expect(phone.getByText("You're registered.")).toBeVisible();
@@ -112,9 +114,9 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await expect(toast).toContainText("No membership, day pass or punch card", { timeout: 20_000 });
     // The no-charge day pass is the stopgap until the POS (#53, PR #119); it
     // lives in Manual check in now that the scan popup is a toast.
-    await desk.getByRole("button", { name: /manual check in/i }).click();
+    await desk.getByRole("button", { name: "Check in", exact: true }).click();
     const dialog = desk.getByRole("dialog");
-    await dialog.getByLabel("Search name or phone").fill(name);
+    await dialog.getByLabel("Search name, phone or V number").fill(name);
     await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
     await dialog.getByRole("button", { name: "Give free day pass" }).click();
     await expect(dialog.getByRole("button", { name: "Manually check in" })).toBeEnabled();

@@ -7,6 +7,7 @@ import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { hashWaiver } from "./hash";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-waiver-editor";
 const OTHER_SLUG = "test-waiver-editor-other";
@@ -157,7 +158,7 @@ describe("getStaffWaiverWording", () => {
     await expect(publish({ baseVersion: "v1", title: "Waiver", body: "New text." })).rejects.toThrow();
     const v1 = await db.waiverTemplate.findFirstOrThrow({ where: { gymId, version: "v1" } });
     const climber = await db.climber.create({
-      data: { gymId, firstName: "Ada", lastName: "Test", dateOfBirth: new Date("1990-01-01"), phone: "+12505550100" },
+      data: { studentId: randomStudentId(), gymId, firstName: "Ada", lastName: "Test", dateOfBirth: new Date("1990-01-01"), phone: "+12505550100" },
     });
     await db.waiver.create({
       data: { gymId, climberId: climber.id, version: "v1", templateId: v1.id, signedByName: "Ada Test" },

@@ -23,6 +23,19 @@ const nextConfig: NextConfig = {
       { source: "/me/events", destination: "/me/classes?view=events", permanent: false },
     ];
   },
+  // `npm run dev` only. Next blocks a browser that opens the dev server by
+  // anything but localhost, scripts included, so on a phone or iPad the page
+  // shows but no button works. These are the usual private networks (home and
+  // office Wi-Fi, Tailscale); add others with ALLOWED_DEV_ORIGINS=host1,host2.
+  // Has no effect on a build.
+  allowedDevOrigins: [
+    "*.local",
+    "192.168.*.*",
+    "10.*.*.*",
+    "172.*.*.*",
+    "100.*.*.*",
+    ...(process.env.ALLOWED_DEV_ORIGINS?.split(",").map((h) => h.trim()).filter(Boolean) ?? []),
+  ],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

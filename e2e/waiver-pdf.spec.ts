@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Browser, type Download, type Page } from "@playwright/test";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Download a signed waiver as a PDF (#111): the climber from their waiver page,
 // and the desk from /desk/waivers/[id]. Another climber gets a 404, and anyone
@@ -30,6 +31,7 @@ test("the climber and the desk download a signed waiver as a PDF", async ({ brow
   await phone.getByLabel("First name").fill("Morgan");
   await phone.getByLabel("Last name").fill(`Pdf${unique}`);
   await phone.getByLabel("Phone number").fill(`250557${unique.slice(-4)}`);
+  await phone.getByLabel("Student ID").fill(randomStudentId());
   await phone.getByLabel("Date of birth").fill("1990-05-05");
   await phone.getByRole("button", { name: "Create account" }).click();
   await phone.getByRole("link", { name: "Sign the waiver" }).click();
@@ -66,6 +68,7 @@ test("the climber and the desk download a signed waiver as a PDF", async ({ brow
   await other.getByLabel("First name").fill("Avery");
   await other.getByLabel("Last name").fill(`Other${unique}`);
   await other.getByLabel("Phone number").fill(`250558${unique.slice(-4)}`);
+  await other.getByLabel("Student ID").fill(randomStudentId());
   await other.getByLabel("Date of birth").fill("1991-06-06");
   await other.getByRole("button", { name: "Create account" }).click();
   await expect(other.getByRole("link", { name: "Sign the waiver" })).toBeVisible();

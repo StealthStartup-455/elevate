@@ -12,6 +12,7 @@ function form(values: Record<string, string>): FormData {
 const VALID = {
   firstName: "Geoff",
   lastName: "Newman",
+  studentId: "V00123456",
   phone: "250-555-0142",
   email: "Geoff.N@Example.com",
   dateOfBirth: "1995-03-03",
@@ -26,6 +27,16 @@ describe("parseClimberInput", () => {
     });
   });
 
+  it("tidies the student ID and refuses one that isn't a V and 8 digits", () => {
+    const tidy = parseClimberInput(form({ ...VALID, studentId: " v00 123456 " }), NOW);
+    expect(tidy.ok && tidy.value.studentId).toBe("V00123456");
+    for (const bad of ["00123456", "V1234567", "V001234567", "VABCDEFGH", "ELV-B07C44"]) {
+      const result = parseClimberInput(form({ ...VALID, studentId: bad }), NOW);
+      expect(result.ok, bad).toBe(false);
+      if (!result.ok) expect(result.errors.studentId).toBeTruthy();
+    }
+  });
+
   it("allows an empty email", () => {
     expect(parseClimberInput(form({ ...VALID, email: "" }), NOW).ok).toBe(true);
   });
@@ -35,7 +46,7 @@ describe("parseClimberInput", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(Object.keys(result.errors).sort()).toEqual(
-        ["dateOfBirth", "firstName", "lastName", "phone"].sort(),
+        ["dateOfBirth", "firstName", "lastName", "phone", "studentId"].sort(),
       );
     }
   });

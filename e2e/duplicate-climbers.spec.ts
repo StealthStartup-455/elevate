@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Possible duplicate climbers: Add climber warns before a second record, and
 // Manual check in shows a birthday so same-name climbers can be told apart.
@@ -18,6 +19,7 @@ async function addClimber(page: Page, last: string, phone: string, born: string)
   await page.getByRole("textbox", { name: "First name" }).fill("Casey");
   await page.getByRole("textbox", { name: "Last name" }).fill(last);
   await page.getByRole("textbox", { name: "Phone number" }).fill(phone);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill(born);
   await page.getByRole("button", { name: "Create account" }).click();
 }
@@ -55,11 +57,11 @@ test("adding the same person twice warns, and staff can open them or add anyway"
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);
   expect(page.url().split("?")[0]).not.toBe(firstUrl);
 
-  // Manual check in now shows both, told apart by phone and birthday.
+  // Check in now shows both, told apart by phone and birthday.
   await page.goto("/desk");
-  await page.getByRole("button", { name: /manual check in/i }).click();
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Search name or phone").fill(`Casey ${last}`);
+  await dialog.getByLabel("Search name, phone or V number").fill(`Casey ${last}`);
   const results = dialog.getByRole("list", { name: "Matching climbers" });
   await expect(results.getByRole("button")).toHaveCount(2);
   await expect(results.getByText(/Born Apr 4, 1992/)).toHaveCount(2);
@@ -75,6 +77,7 @@ test("/join warns a returning climber without naming anyone", async ({ page }) =
     await page.getByRole("textbox", { name: "First name" }).fill("Jordan");
     await page.getByRole("textbox", { name: "Last name" }).fill(last);
     await page.getByRole("textbox", { name: "Phone number" }).fill(phone);
+    await page.getByLabel("Student ID").fill(randomStudentId());
     await page.getByLabel("Date of birth").fill("1994-02-02");
     await page.getByRole("button", { name: "Create account" }).click();
   }

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // The climber panel on the Check-in page (#169). At Playwright's default width
 // (1280px) it opens beside the table, as an <aside>. Needs the demo login and
@@ -92,6 +93,7 @@ test("a new climber: sign the real waiver form from the panel, then only the pas
   await page.getByRole("textbox", { name: "First name" }).fill("Panel");
   await page.getByRole("textbox", { name: "Last name" }).fill(`Test${unique}`);
   await page.getByRole("textbox", { name: "Phone number" }).fill(`250557${unique.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1990-02-02");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);

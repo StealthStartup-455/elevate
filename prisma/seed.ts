@@ -26,6 +26,7 @@ import { db } from "../src/lib/db";
 import { DEMO_ACCOUNTS } from "../src/features/climbers/demo-accounts";
 import { hashWaiver } from "../src/features/waivers/hash";
 import { SAMPLE_WAIVER } from "../src/features/waivers/sample-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 import { toStoredPhone } from "../src/features/climbers/phone";
 import { startOfGymDay } from "../src/features/check-ins/day";
 import { endOfGymDay } from "../src/features/climbers/status";
@@ -38,6 +39,9 @@ import type {
 } from "../src/features/climbers/types";
 
 // Fictional on purpose: the repo is public, so no real gym's name (#67).
+// Agam Kamran's real student number, kept in the demo data (#38).
+const AGAM_STUDENT_ID = "V00946178";
+
 const SEED_GYM_NAME = "Elevate Demo Gym";
 
 type SeedClimber = {
@@ -319,6 +323,21 @@ async function main() {
       const waivers = [];
       const passes = [];
       const seeded: Seeded[] = [];
+      // Made-up student IDs, the same on every seed (a small seeded generator),
+      // so the barcodes stay the same. Agam keeps his real one (#38).
+      let state = 946178;
+      const random = () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 2 ** 32;
+      };
+      const used = new Set<string>([AGAM_STUDENT_ID]);
+      const studentIdFor = (c: SeedClimber) => {
+        if (c.firstName === "Agam" && c.lastName === "Kamran") return AGAM_STUDENT_ID;
+        let id = randomStudentId(random);
+        while (used.has(id)) id = randomStudentId(random);
+        used.add(id);
+        return id;
+      };
       for (const [i, c] of all.entries()) {
         const n = c.externalId ? numberOf(c.externalId) || i + 1 : i + 1;
         const climber = await tx.climber.create({
@@ -326,6 +345,7 @@ async function main() {
             gymId: gym.id,
             firstName: c.firstName,
             lastName: c.lastName,
+            studentId: studentIdFor(c),
             phone: c.phone,
             email: c.email,
             dateOfBirth: new Date(`${c.dateOfBirth}T00:00:00Z`),

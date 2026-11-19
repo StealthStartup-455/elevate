@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Release candidate fixes for the Milestone 3 demo (#149): a reload after
 // joining (#133) and a double-click on Checkout (#134). Needs the demo login
@@ -20,6 +21,7 @@ test("after joining, a reload says who is signed in and links to the dashboard (
   await page.getByLabel("First name").fill("Robin");
   await page.getByLabel("Last name").fill(`Reload${unique}`);
   await page.getByLabel("Phone number").fill(`250556${unique.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1991-02-02");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("link", { name: "Go to your dashboard" })).toBeVisible();

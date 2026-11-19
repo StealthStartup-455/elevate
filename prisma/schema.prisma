@@ -84,6 +84,7 @@ model Climber {
   authUserId       String? // the login that manages this climber; one parent login can manage several kids
   createdByStaffId String? // empty means they signed themselves up
   externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
+  studentId        String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -99,6 +100,7 @@ model Climber {
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
+  @@unique([gymId, studentId])
   @@index([gymId, phone])
   @@index([gymId, email])
   @@index([gymId, lastName])

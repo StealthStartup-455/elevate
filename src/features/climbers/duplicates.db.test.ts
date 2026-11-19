@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "./student-id";
 import type { FormState } from "./types";
 
 const SLUG = "test-duplicates";
@@ -49,7 +50,7 @@ beforeEach(async () => {
   existingId = (
     await db.climber.create({
       data: {
-        gymId,
+        gymId, studentId: randomStudentId(),
         firstName: "Riley",
         lastName: "Haverford",
         phone: "+12505550101",
@@ -76,6 +77,7 @@ function form(fields: Partial<Record<string, string>>): FormData {
   const all = {
     firstName: "Riley",
     lastName: "Haverford",
+    studentId: randomStudentId(),
     phone: "250-555-0101",
     email: "",
     dateOfBirth: "1990-03-04",
@@ -122,7 +124,7 @@ describe("Add climber at the desk", () => {
     const otherId = (
       await db.climber.create({
         data: {
-          gymId,
+          gymId, studentId: randomStudentId(),
           firstName: "Jo",
           lastName: "Park",
           phone: "+12505550177",

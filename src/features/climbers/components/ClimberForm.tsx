@@ -26,6 +26,7 @@ type Props = {
 const EMPTY: ClimberInput = {
   firstName: "",
   lastName: "",
+  studentId: "",
   phone: "",
   email: "",
   dateOfBirth: "",
@@ -90,6 +91,16 @@ export default function ClimberForm({
               slotProps={{ htmlInput: { autoComplete: "family-name" } }}
             />
           </Stack>
+          <TextField
+            name="studentId"
+            label="Student ID"
+            required
+            fullWidth
+            defaultValue={values.studentId}
+            error={Boolean(errors.studentId)}
+            helperText={errors.studentId ?? "A V and 8 digits, like V00123456. The check-in barcode is made from it."}
+            slotProps={{ htmlInput: { autoComplete: "off", autoCapitalize: "characters", maxLength: 12 } }}
+          />
           <TextField
             name="phone"
             label="Phone number"

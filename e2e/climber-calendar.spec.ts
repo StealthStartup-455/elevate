@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { openTab } from "./climber";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // The Calendar view on the Classes tab (#101): a day with a class shows it underneath, tapping
 // it opens a sheet that signs up and cancels like the Classes list, and the choice of view
@@ -16,6 +17,7 @@ test("a climber finds a class on the calendar and signs up from its sheet", asyn
   await page.getByLabel("First name").fill("Casey");
   await page.getByLabel("Last name").fill(`Cal${unique}`);
   await page.getByLabel("Phone number").fill(`250559${unique.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1992-07-07");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("link", { name: "Sign the waiver" })).toBeVisible();
