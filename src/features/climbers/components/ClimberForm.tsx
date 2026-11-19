@@ -5,14 +5,18 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import { type ReactNode, useActionState } from "react";
-import type { ClimberInput, FormState } from "../types";
+import { formatDate } from "../format";
+import type { ClimberInput, FormState, PossibleDuplicate } from "../types";
 import LinkButton from "./LinkButton";
 
 type Props = {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   defaults?: ClimberInput;
   submitLabel: string;
+  /** The submit button after a possible-duplicate warning (#129): it adds them anyway. */
+  confirmLabel?: string;
   /** Replace the form with the success message once it submits (customer flow). */
   hideOnSuccess?: boolean;
   /** Shown above the form, but not once it has submitted (the join page's "signed in as", #133). */
@@ -33,6 +37,7 @@ export default function ClimberForm({
   action,
   defaults = EMPTY,
   submitLabel,
+  confirmLabel = "Add anyway",
   hideOnSuccess = false,
   notice,
 }: Props) {
@@ -126,15 +131,49 @@ export default function ClimberForm({
           {state.status === "error" && state.message ? (
             <Alert severity="error">{state.message}</Alert>
           ) : null}
+          {state.status === "duplicate" ? (
+            <Alert severity="warning">
+              <Stack spacing={3}>
+                <span>{state.message}</span>
+                {state.duplicates?.map((d) => <Duplicate key={d.id} person={d} />)}
+              </Stack>
+            </Alert>
+          ) : null}
+          {state.status === "duplicate" && state.confirmKey ? (
+            <input type="hidden" name="confirmDuplicate" value={state.confirmKey} />
+          ) : null}
           {state.status === "success" && state.message ? (
             <Alert severity="success">{state.message}</Alert>
           ) : null}
 
           <Button type="submit" variant="contained" size="large" disabled={pending}>
-            {pending ? "Saving…" : submitLabel}
+            {pending ? "Saving…" : state.status === "duplicate" ? confirmLabel : submitLabel}
           </Button>
         </Stack>
       </Box>
     </>
+  );
+}
+
+// One possible match on the desk: enough to tell who it is, and a way to open them.
+function Duplicate({ person }: { person: PossibleDuplicate }) {
+  const details = [
+    person.phone,
+    person.dateOfBirth ? `Born ${formatDate(person.dateOfBirth, true)}` : "",
+  ].filter(Boolean);
+  return (
+    <Stack direction="row" spacing={3} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+      <Box>
+        <Typography variant="body" component="p" sx={{ fontWeight: 600 }}>
+          {person.name}
+        </Typography>
+        <Typography variant="secondary" component="p">
+          {details.join(" · ")}
+        </Typography>
+      </Box>
+      <LinkButton href={`/desk/customers/${person.id}`} variant="outlined" size="small">
+        Open
+      </LinkButton>
+    </Stack>
   );
 }

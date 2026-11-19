@@ -27,6 +27,7 @@ export default function JoinPage() {
           <ClimberForm
             action={joinAsCustomer}
             submitLabel="Create account"
+            confirmLabel="Create a new account anyway"
             hideOnSuccess
             notice={
               <Suspense fallback={null}>
