@@ -20,13 +20,11 @@ import WeekHours, { type WeekRow } from "./WeekHours";
 // usually is. Counts only, so no other climber's data reaches the phone.
 export default async function CustomerBusyness({
   gymId,
-  mockGymId,
 }: {
   gymId: string;
-  mockGymId?: string;
 }) {
   const [busyness, gymWeek, typical] = await Promise.all([
-    getBusynessSummary(gymId, mockGymId),
+    getBusynessSummary(gymId),
     getMyGymWeek(),
     getWeeklyBusyness(gymId),
   ]);

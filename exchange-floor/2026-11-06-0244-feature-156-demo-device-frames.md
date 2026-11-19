@@ -1,0 +1,22 @@
+# 2026-11-06 02:44 UTC: Demo device frames at /demo-phone and /demo
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#156 / #185
+- **Branch:** `feature/156-demo-device-frames`
+- **What the agent did:**
+  - `/demo-phone/<app path>`: the app in an iPhone 17 Pro frame (screen 402 x 874: status bar and home bar drawn outside a 402 x 796 app area, Dynamic Island, bezel). Fixed at 100%, centered, and it keeps its size when the window is resized (a small window scrolls).
+  - `/demo/<app path>`: the app filling the whole window inside a thin, iPad-style black bezel. The app sees the window size minus the bezel and follows it on resize.
+  - `<app path>` is the page to show: `/demo-phone/me/classes` shows `/me/classes`. No path shows `/`. The query string is passed on.
+  - New feature folder `src/features/demo-frame/` (`DeviceFrame.tsx`, `devices.ts`, `path.ts`, `path.test.ts`, README) and two thin pages, `src/app/demo-phone/[[...path]]/page.tsx` and `src/app/demo/[[...path]]/page.tsx`.
+- **Files touched:** `src/features/demo-frame/`, `src/app/demo-phone/`, `src/app/demo/`
+- **Decisions and why:**
+  - The app runs in an **iframe**, so its media queries see the device screen, not the browser window; the frame is same-origin, so the demo login cookies apply and the app is unchanged.
+  - `appPath` (`path.ts`) only builds a path on this site: segments are decoded, checked, and re-encoded, so the frame can't load another site (`//evil.com`, `..`, backslashes), and it refuses `/demo...` inside a frame. This is covered by tests.
+  - The frame pages are **not** in the proxy matcher (`/desk`, `/me` only), so they open without login; the page inside still redirects to `/login` as usual.
+  - Only MUI theme palette keys are used (`common.black`, `grey.*`, `background.*`), so there are **no new design tokens** and no raw colors.
+  - A zoom control (+ / -) and an Apple-monitor style were built and then removed at the developer's request; don't re-add them without asking.
+  - `params` and `searchParams` are read in a child component inside `<Suspense>`, as the Cache Components docs recommend, so the pages build.
+- **Gotchas:** The device size of the phone is the `DEVICES.phone` constant in `devices.ts` (iPhone 17 Pro, the newest model known when this was written): update it for a newer iPhone. The Next.js dev indicator ("N") shows inside the frames in `npm run dev` only.
+- **Open follow-ups:** None for this change. #156 stays open: it covers preparing and testing the whole demo, of which this is one part.
+- **Verification:** `npm run lint` clean. `npm run build` passes (both routes listed as partial prerender). `tsc --noEmit` clean. `npm test` (unit): 40 files, 390 passed (2 todo), including 5 new in `src/features/demo-frame`. Checked by hand in headless Chromium: the phone's app area is 402 x 796 at 700 and 1400 px window widths and stays centered; `/demo` fills the window (1560 x 860 in a 1600 x 900 window, 960 x 660 in 1000 x 700) with no page scroll. Database tests and e2e were not run.

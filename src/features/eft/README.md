@@ -6,7 +6,7 @@ A member's bank account for EFT (pre-authorized debit) of their monthly membersh
 
 ## What it does
 
-- **Member, `/me`:** the "Monthly payments" card shows the account on file ("RBC ••••7890", name, transit, date added) or "No bank account on file". **Add bank account** opens a form (name, transit, institution and account number, and a box agreeing to the debit). **Change bank account** replaces it; **Remove** deletes it after a confirm.
+- **Member, `/me/membership` (the Membership tab):** the "Monthly payments" card shows the account on file ("RBC ••••7890", name, transit, date added) or "No bank account on file". **Add bank account** opens a form (name, transit, institution and account number, and a box agreeing to the debit). **Change bank account** replaces it; **Remove** deletes it after a confirm.
 - **Desk, POS climber card and customer page (`/desk/customers/[id]`):** "EFT on file: RBC ••••7890" with **Change** and **Remove**, or "No EFT bank account on file" with **Add bank account**, for a member who gives their details at the front desk. The customer page also shows the name on the account and the transit number. The Renewals due rows add "· EFT on file".
 
 ## What is stored (`BankAccount`)
@@ -22,7 +22,7 @@ features/eft/
 ├── validate.ts    # Canadian account number rules
 ├── banks.ts       # institution number to bank name, "RBC ••••1234"
 ├── types.ts
-└── components/    # BankAccountPanel (member, /me), DeskBankAccount (POS, customer page), BankAccountDialogs (shared)
+└── components/    # BankAccountPanel (member, /me/membership), DeskBankAccount (POS, customer page), BankAccountDialogs (shared)
 ```
 
 The member's actions take the climber from the session, never from the request. The desk's actions and `getBankAccountForStaff` check for staff (`requireStaff`) and reach only a climber of the staff member's own gym (`getClimber`, #34). The POS reads the account through `getPosClimber`. Every save and remove is logged with `source` (`member` or `desk`), never the details.

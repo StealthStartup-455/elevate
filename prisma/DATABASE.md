@@ -23,6 +23,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Product` | Something the desk sells on the POS | 10-punch card, $200 |
 | `Sale` | One POS sale, for one climber | Kim, $217.35 by card |
 | `SaleLine` | One line of a sale | 10-punch card ×1, $200 |
+| `BankAccount` | A climber's EFT bank account for monthly payments (mock) | Kim's RBC account ending 7890 |
 | `OpeningHours` | One weekday of the gym's regular week | Monday, 6 AM to 10 PM |
 | `SpecialHours` | One date with different hours | Nov 11, closed, "Remembrance Day" |
 | `GymEvent` | Something the gym announces to climbers | Fall bouldering comp, Sat 10 AM |
@@ -30,7 +31,6 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `ClassType` | A kind of class the gym runs | Intro to bouldering, 1 h, 8 places |
 | `GymClass` | One session of a class, climbers sign up in the app | Intro to bouldering, Tue 6 PM |
 | `ClassBooking` | One climber's place in a class | Kim, Intro to bouldering |
-| `BankAccount` | A climber's EFT bank account for monthly payments (mock) | Kim's RBC account ending 7890 |
 
 ```text
 Gym

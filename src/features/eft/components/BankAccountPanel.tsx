@@ -11,7 +11,7 @@ import { removeMyBankAccount, saveMyBankAccount } from "../actions";
 import type { BankAccountSummary } from "../types";
 import { BankAccountDialog, RemoveBankAccountDialog } from "./BankAccountDialogs";
 
-// The member's own "Monthly payments" card on /me.
+// The member's own "Monthly payments" card on /me/membership.
 export default function BankAccountPanel({ account: initial }: { account: BankAccountSummary | null }) {
   // Shown at once after a save or remove, before the page refreshes.
   const [account, setAccount] = useState(initial);

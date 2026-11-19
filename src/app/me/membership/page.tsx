@@ -2,14 +2,16 @@ import Typography from "@mui/material/Typography";
 import { Suspense } from "react";
 import AccountCard from "@/features/auth/components/AccountCard";
 import { getMyMembership } from "@/features/climbers/queries";
+import BankAccountCard from "@/features/eft/components/BankAccountCard";
 import PlanCard from "@/features/purchase/components/PlanCard";
 import PurchaseHistory from "@/features/purchase/components/PurchaseHistory";
 import PurchaseOptions from "@/features/purchase/components/PurchaseOptions";
 import { getPurchasePage } from "@/features/purchase/queries";
 import WaiverCard from "@/features/waivers/components/WaiverCard";
 
-// Membership tab: the plan, the waiver, buying passes, rentals and chalk (when the gym sells in
-// the app, elevate-docs#58), purchase history and logging out (#101).
+// Membership tab: the plan, the EFT bank account for monthly payments (a mock, #179), the waiver,
+// buying passes, rentals and chalk (when the gym sells in the app, elevate-docs#58), purchase
+// history and logging out (#101).
 export default function MembershipPage() {
   return (
     <Suspense fallback={<Typography variant="pageTitle">Membership</Typography>}>
@@ -34,6 +36,10 @@ async function Membership() {
         upcoming={purchase?.upcoming}
         canPurchase={purchase !== null}
       />
+      {/* Outside the purchase check: it moves no money, so it shows outside demo mode too. */}
+      <Suspense fallback={null}>
+        <BankAccountCard />
+      </Suspense>
       <Suspense fallback={null}>
         <WaiverCard />
       </Suspense>

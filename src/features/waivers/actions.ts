@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/features/auth/queries";
 import { getStaffContext } from "@/features/auth/staff";
 import { db } from "@/lib/db";
-import { forgetGym, getGym } from "@/lib/gym";
+import { forgetGym, getGym, getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { canActForClimber, canEditWaiver } from "./access";
 import { hashWaiver } from "./hash";
+import { getSignedWaiverForStaff, type SignedWaiverView } from "./queries";
 import { parseWaiverSignature, type WaiverFieldErrors } from "./validate";
 import { nextVersion, parseWaiverWording, type WordingFieldErrors } from "./wording";
 
@@ -231,4 +232,18 @@ export async function publishWaiver(
   revalidatePath("/desk", "layout");
   revalidatePath("/me", "layout");
   redirect(`/desk/waivers?published=${result.version}`);
+}
+
+/**
+ * A signed waiver for the desk's "Look at waiver" dialog (#147, #214). Staff
+ * only, and only from the staff member's own gym; anyone else gets null.
+ */
+export async function readDeskWaiver(
+  waiverId: string,
+): Promise<{ waiver: SignedWaiverView; timeZone: string } | null> {
+  if (!UUID.test(waiverId)) return null;
+  const staff = await getStaffContext();
+  if (!staff) return null;
+  const [waiver, gym] = await Promise.all([getSignedWaiverForStaff(waiverId), getGymById(staff.gymId)]);
+  return waiver && gym ? { waiver, timeZone: gym.timeZone } : null;
 }

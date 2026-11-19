@@ -3,7 +3,7 @@ import { requireStaff } from "@/features/auth/staff";
 import { getSavedCheckIns } from "@/features/climbers/queries";
 import { activeWindowStart, getBusynessLevel, gymClock } from "./busyness";
 import { ACTIVE_WINDOW_MINUTES, getGymBusynessSettings } from "./config";
-import { mockCheckIns, mockClimbers, mockNow, mockWeek } from "./mock-data";
+import { DEMO_CHECK_IN_PREFIX, mockWeek } from "./mock-data";
 import type {
   ActiveCheckIn,
   BusynessSummary,
@@ -14,47 +14,18 @@ import type {
 // Busyness is computed, not stored: a climber is "in the gym" for
 // ACTIVE_WINDOW_MINUTES after checking in. There is no checked-out state.
 
-/**
- * The current time for busyness. With a mock scenario, the scenario's fixed
- * clock, so its results are the same on every request; with `none`, the real
- * clock (see mockNow).
- *
- * When the mock goes (#39), return `new Date()` instead.
- */
+/** All attendance uses the real clock and saved visits, including demo visits. */
 async function busynessNow(): Promise<Date> {
-  // Render per request, never at build time.
   await connection();
-  return mockNow();
+  return new Date();
 }
 
-/**
- * Check-ins for a gym inside the active window, newest first.
- *
- * This is the only function that reads check-in data. To switch to the
- * database, replace the body with a query like
- * `timestamp > now - ACTIVE_WINDOW_MINUTES` joined to the climber.
- */
 export async function getActiveCheckIns(
   gymId: string,
   now: Date,
-  mockGymId = gymId,
 ): Promise<ActiveCheckIn[]> {
   const since = activeWindowStart(now, ACTIVE_WINDOW_MINUTES);
-  const climbers = new Map(mockClimbers().map((c) => [c.id, c]));
-
-  const mock = mockCheckIns()
-    .filter((c) => c.gymId === mockGymId && c.timestamp > since && c.timestamp <= now)
-    .flatMap((c) => {
-      const climber = climbers.get(c.climberId);
-      return climber ? [{ ...c, climber, sample: true }] : [];
-    });
-
-  // Visits saved by the front desk happen on the real clock, not the mock's,
-  // so they are cut off by the real active window.
-  const saved = await getSavedCheckIns(
-    activeWindowStart(new Date(), ACTIVE_WINDOW_MINUTES),
-    gymId,
-  );
+  const saved = await getSavedCheckIns(since, now, gymId);
   const live: ActiveCheckIn[] = saved.map((c) => ({
     id: c.id,
     climberId: c.climberId,
@@ -67,10 +38,10 @@ export async function getActiveCheckIns(
       phone: c.phone,
       waiverStatus: c.waiverStatus,
     },
-    sample: false,
+    sample: c.id.startsWith(DEMO_CHECK_IN_PREFIX),
   }));
 
-  return [...live, ...mock].sort(
+  return live.sort(
     (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
   );
 }
@@ -94,12 +65,11 @@ function summarize(
 // Staff view: count, level and the check-ins behind them.
 export async function getFrontDeskBusyness(
   gymId: string,
-  mockGymId = gymId,
 ): Promise<FrontDeskBusyness> {
   const now = await busynessNow();
   // Names and phone numbers: staff only.
   await requireStaff();
-  const checkIns = await getActiveCheckIns(gymId, now, mockGymId);
+  const checkIns = await getActiveCheckIns(gymId, now);
   return { ...summarize(gymId, checkIns, now), checkIns };
 }
 
@@ -107,10 +77,9 @@ export async function getFrontDeskBusyness(
 // other climbers reaches a member's browser.
 export async function getBusynessSummary(
   gymId: string,
-  mockGymId = gymId,
 ): Promise<BusynessSummary> {
   const now = await busynessNow();
-  const checkIns = await getActiveCheckIns(gymId, now, mockGymId);
+  const checkIns = await getActiveCheckIns(gymId, now);
   return summarize(gymId, checkIns, now);
 }
 

@@ -3,8 +3,10 @@
 // The desk's day of check-ins (#168): the gym's day in its time zone, gym
 // isolation, paging, and what each row says.
 import "dotenv/config";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { ensureDemoDay } from "./demo-day";
+import { getFrontDeskBusyness } from "@/features/analytics/queries";
 
 const SLUG = "test-desk-day";
 const OTHER_SLUG = "test-desk-day-other";
@@ -49,6 +51,11 @@ beforeEach(async () => {
   auth.staff = true;
   auth.gymId = gymId;
   for (const id of [gymId, otherGymId]) await clearGym(id);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 
 afterAll(async () => {
@@ -113,6 +120,77 @@ function checkIn(climberId: string, when: string, gym = gymId) {
 }
 
 describe("getDeskDay", () => {
+  it("keeps daily demo attendance, the table and new check-ins connected", async () => {
+    vi.stubEnv("DEMO_MODE", "true");
+    vi.stubEnv("APP_ENV", "test");
+    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "quiet");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-04T19:00:00Z"));
+    const id = await climber("Demo", "Starter");
+    await db.climber.update({ where: { id }, data: { externalId: "climber-1" } });
+    const gym = await db.gym.findUniqueOrThrow({ where: { id: gymId } });
+    const now = new Date();
+    const demo = { ...gym, slug: "demo-gym" };
+    // Two desks arriving together and a later refresh must not add more people.
+    await Promise.all([ensureDemoDay(demo, now), ensureDemoDay(demo, now)]);
+    await ensureDemoDay(demo, new Date(now.getTime() + 60_000));
+    const before = await getDeskDay({}, now);
+    expect(before.total).toBe(4);
+    expect(before.hourly.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 4, sampleCount: 4 });
+
+    const examples = new Map(before.rows.map((r) => [r.lastName, r]));
+    expect(examples.get("Employee")).toMatchObject({ badge: "EMPLOYEE", message: { text: "Employee access" } });
+    expect(examples.get("Day pass")).toMatchObject({ badge: "DAY_PASS", waiver: { text: "Valid" } });
+    expect(examples.get("Expired waiver")).toMatchObject({ waiver: { text: "Expired" }, message: { text: "Waiver expired" } });
+
+    const arrival = await climber("New", "Arrival");
+    await checkIn(arrival, now.toISOString());
+    const after = await getDeskDay({}, now);
+    expect(after.total).toBe(5);
+    expect(after.hourly.reduce((a, b) => a + b, 0)).toBe(5);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 5, sampleCount: 4 });
+
+    // Saved visits age out and their timestamps never move, but the window is
+    // topped up: two hours on, the sample climber is back with a new visit,
+    // so the header doesn't drop to 0 partway through a demo.
+    const firstVisits = await db.checkIn.findMany({ where: { gymId }, orderBy: { id: "asc" } });
+    const later = new Date(now.getTime() + 121 * 60_000);
+    vi.setSystemTime(later);
+    await Promise.all([ensureDemoDay(demo, later), ensureDemoDay(demo, later)]);
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(6);
+    for (const v of firstVisits) {
+      expect((await db.checkIn.findUniqueOrThrow({ where: { id: v.id } })).checkedInAt).toEqual(v.checkedInAt);
+    }
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 1, sampleCount: 1 });
+    // While the window is full, refreshing adds nobody.
+    await ensureDemoDay(demo, new Date(later.getTime() + 60_000));
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(6);
+
+    // The next local day gets its own starting attendance, preserving history.
+    const tomorrow = new Date(now.getTime() + DAY_MS);
+    vi.setSystemTime(tomorrow);
+    await ensureDemoDay(demo, tomorrow);
+    expect((await getDeskDay({}, tomorrow)).total).toBe(4);
+    expect((await getDeskDay({ date: before.day }, tomorrow)).total).toBe(6);
+    expect(await getFrontDeskBusyness(gymId)).toMatchObject({ count: 4, sampleCount: 4 });
+  });
+
+  it("never populates attendance in production or an unrelated gym", async () => {
+    vi.stubEnv("DEMO_MODE", "true");
+    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "moderate");
+    const id = await climber("Demo", "Guard");
+    await db.climber.update({ where: { id }, data: { externalId: "climber-1" } });
+    const gym = await db.gym.findUniqueOrThrow({ where: { id: gymId } });
+    vi.stubEnv("APP_ENV", "production");
+    await ensureDemoDay({ ...gym, slug: "demo-gym" }, new Date());
+    vi.stubEnv("APP_ENV", "test");
+    await ensureDemoDay(gym, new Date());
+    vi.stubEnv("MOCK_BUSYNESS_SCENARIO", "none");
+    await ensureDemoDay({ ...gym, slug: "demo-gym" }, new Date());
+    expect(await db.checkIn.count({ where: { gymId } })).toBe(0);
+  });
+
   it("reads the gym's day in its time zone, not UTC's", async () => {
     const id = await climber("Jose", "Garcia");
     await checkIn(id, "2026-10-20T06:59:00Z"); // Oct 19, 11:59 p.m.

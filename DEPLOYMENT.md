@@ -16,8 +16,17 @@ Staging never holds real member data: the demo login is a plain cookie anyone ca
 ## Hosting (proposed in #30)
 
 - **App:** Vercel. Staging is the Vercel deployment of `dev`, made by GitHub Actions (`deploy-staging.yml`) on every merge; the Vercel project is not connected to the repository, so merges don't deploy twice.
+- **Product page:** Vercel. Its project is connected to GitHub and deploys the static `docs/` site after pushes to its `dev` production branch.
 - **Database:** a hosted Supabase project in the Canada (Central) region, one per environment.
 - **Accounts:** owned by the team, not one person. On the free tiers, Vercel's Hobby plan is for non-commercial use and Supabase's free plan has no backups and pauses after a week without activity; both need their paid plans before a pilot with a real gym.
+
+## Product page deployment
+
+The public product page is the static site in `docs/`. In Vercel, import this repository, set the Root Directory to `docs`, choose `Other` as the framework preset, and set `dev` as the production branch. Set the project name to `elevate` to use `elevate.vercel.app` when that name is available. In Vercel, add the preferred custom domain to this project and complete the DNS records Vercel provides.
+
+`docs/vercel.json` overrides the repository-root Next.js configuration for this static Vercel project. Do not remove it: without `"framework": null`, Vercel tries to build the product page as the application's Next.js project.
+
+After the first successful Vercel deployment, disable the repository's GitHub Pages source so the old `github.io` URL no longer serves a stale copy.
 
 ## Environment variables
 

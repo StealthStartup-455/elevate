@@ -56,7 +56,7 @@ export default function CashOutDialog({
     <Dialog
       open={open}
       onClose={(_event, reason) => {
-        // Not on a click outside, like Void (#134): a typed count shouldn't be lost by accident.
+        // Not on a click outside: a typed count shouldn't be lost by accident (#134).
         if (reason !== "backdropClick") close();
       }}
       fullWidth

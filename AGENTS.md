@@ -77,7 +77,7 @@ A hook, CI check or ruleset rejection is the system working. Fix the cause (usua
 1. Add **one new file** `exchange-floor/YYYY-MM-DD-HHMM-<branch>.md` (UTC; the branch's `/` written as `-`) using the template in `exchange-floor/README.md`: what you did, files touched, decisions, gotchas, follow-ups, and the real verification results.
 2. Say in the PR description that you added an Exchange Floor entry.
 
-Never edit or delete another entry, never add to `EXCHANGE_FLOOR.md`, and never put secrets in an entry. You may update your own entry while your branch is open.
+Entries added only by the current branch may be updated or consolidated into one before merge. Never edit or delete entries already present on `origin/dev` or added by another branch. Never add to `EXCHANGE_FLOOR.md`, and never put secrets in an entry.
 
 # UI and styling (mandatory)
 

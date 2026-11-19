@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { formatTime } from "@/features/analytics/components/format";
+import { DEMO_CHECK_IN_PREFIX } from "@/features/analytics/mock-data";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import type { Climber } from "@/features/climbers/types";
 import { formatPhone } from "@/features/climbers/phone";
@@ -108,7 +109,9 @@ async function listProducts(gymId: string): Promise<Product[]> {
  * The climbers the desk checked in today, newest first, once each. Today is
  * from midnight in the gym's time zone. Only saved check-ins: the busyness
  * sample's check-ins aren't real visits, and its two hour window reaches back
- * into the previous evening after midnight (#135).
+ * into the previous evening after midnight (#135). The demo's saved sample
+ * visits (demo mode only, check-ins/demo-day.ts) aren't real either, so they
+ * stay out too.
  */
 async function getCheckedInToday(
   gymId: string,
@@ -116,7 +119,7 @@ async function getCheckedInToday(
   timeZone: string,
 ): Promise<RecentCheckIn[]> {
   const saved = await db.checkIn.findMany({
-    where: { gymId, checkedInAt: { gte: since } },
+    where: { gymId, checkedInAt: { gte: since }, NOT: { id: { startsWith: DEMO_CHECK_IN_PREFIX } } },
     orderBy: { checkedInAt: "desc" },
     select: {
       climberId: true,

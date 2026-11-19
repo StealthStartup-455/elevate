@@ -19,11 +19,13 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 ## How a scan reaches the desk (#127)
 
 1. The climber taps Simulate scan on `/me`: `recordScan` saves a `QrScan` row for their gym.
-2. Every open desk page polls `nextDeskScan` every 2.5 s (`ScanWatcher`, in the desk layout, so Check-in, POS and Climbers all get it). It returns the oldest waiting scan **without taking it**, so every desk shows the same arrival, and a reload shows it again.
-3. Staff deal with it: **Check in** (when it succeeds) or **Close** calls `finishDeskScan`, which sets `takenAt` on that scan and on any repeat taps by the same climber. Other desks see it's gone (`isDeskScanWaiting`) and close their popup.
-4. A scan nobody deals with expires after `SCAN_TTL_MS` (5 minutes).
+2. Every open desk page polls `waitingDeskScans` every 2.5 s (`DeskArrivals`, in the desk layout's nav, so Check-in, POS, Customers and the rest all get it). It returns every waiting scan **without taking any**, so every desk sees the same arrivals, and a reload shows them again.
+3. Each scan the tab hasn't announced yet gets a toast in the top-right corner (#225): initials (no profile photos yet), name, a `StatusPill` (✓ Ready to check in, or ✕ Can't check in yet), the reasons and the next step from `scan-toast.ts`, and **Open check-in**, which opens `/desk?climber=<id>`. It plays a ding (ready) or a buzz (something missing) once per arrival (`scan-sound.ts`, Web Audio, nothing to download). Announced scan ids are kept in `sessionStorage`, so polling and reloads never replay a sound.
+4. A toast goes after 10 seconds or with ✕, and pauses while the pointer moves over it or it has keyboard focus. It is not a dialog: it takes no focus, closes nothing and doesn't change the selected climber, so it can show while manual check in, a POS sale or the climber panel is open.
+5. Dismissing a toast only hides it. The scan stays in the nav's **Arrivals (N)** list until staff check the climber in (anywhere: `checkInClimber` calls `finishScansForClimber`) or press **Clear** there (`finishDeskScan`). Either sets `takenAt` on that scan and any repeat taps by the same climber, on every desk.
+6. A scan nobody deals with expires after `SCAN_TTL_MS` (5 minutes).
 
-The popup waits while another desk dialog is open (manual check in, POS checkout, void, revoke: `useDeskDialogOpen`, #92). A click outside the popup doesn't dismiss it; Close and Escape do.
+The free day pass stopgap (#62) is in Manual check in; the old scan popup that also offered it is gone.
 
 ## The desk's day of check-ins (#168)
 
@@ -38,3 +40,7 @@ The popup waits while another desk dialog is open (manual check in, POS checkout
 ## Seeded check-ins
 
 `npm run db:seed` saves 27 check-ins earlier today (and return visits last week) for busyness climbers, all over 2 hours old so tests can still check people in.
+
+Daily demo attendance is initialized by `demo-day.ts` in demo mode for the fictional `demo-gym` only. Both day and recent-window reads await initialization before querying. Deterministic daily ids and `skipDuplicates` prevent duplicates across concurrent requests. Starting visits are saved once per local day, never shifted on refresh. `MOCK_BUSYNESS_SCENARIO=none` disables new daily visits.
+
+The daily demo also has exactly one Employee pass, one Day pass and one Expired waiver example, created once per gym day alongside ordinary sample visits. Employee pass is a demo-only badge backed by a membership, not a new authorization role. The expired-waiver row is a display fixture; real check-in actions still require a valid waiver. All saved visits, including these fixtures, age out of the recent count after two hours.

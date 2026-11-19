@@ -3,7 +3,15 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { finishScan, isScanWaiting, oldestWaitingScan, SCAN_TTL_MS, saveScan } from "./scan-store";
+import {
+  finishScan,
+  finishScansForClimber,
+  isScanWaiting,
+  oldestWaitingScan,
+  SCAN_TTL_MS,
+  saveScan,
+  waitingScans,
+} from "./scan-store";
 
 const SLUG = "test-scan-store";
 let gymId = "";
@@ -118,5 +126,29 @@ describe("scan store", () => {
 
   it("refuses a scan for a climber from another gym", async () => {
     await expect(saveScan(otherGymId, alex)).rejects.toThrow();
+  });
+
+  it("lists every waiting scan oldest first, for the arrival toasts (issue 225)", async () => {
+    await saveScan(gymId, alex);
+    await saveScan(gymId, sam);
+    expect((await waitingScans(gymId)).map((s) => s.climberId)).toEqual([alex, sam]);
+    expect(await waitingScans(otherGymId)).toEqual([]);
+    // Expired scans are left out.
+    const later = new Date(Date.now() + SCAN_TTL_MS + 1000);
+    expect(await waitingScans(gymId, later)).toEqual([]);
+  });
+
+  it("checking a climber in finishes all their waiting scans, and nobody else's (issue 225)", async () => {
+    await saveScan(gymId, alex);
+    await saveScan(gymId, alex); // tapped twice
+    await saveScan(gymId, sam);
+    const done = await finishScansForClimber(gymId, alex);
+    expect(done).toHaveLength(2);
+    expect((await waitingScans(gymId)).map((s) => s.climberId)).toEqual([sam]);
+    // Nothing left to finish the second time.
+    expect(await finishScansForClimber(gymId, alex)).toEqual([]);
+    // Another gym's desk can't finish this gym's scans.
+    expect(await finishScansForClimber(otherGymId, sam)).toEqual([]);
+    expect((await waitingScans(gymId)).map((s) => s.climberId)).toEqual([sam]);
   });
 });

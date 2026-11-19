@@ -2,12 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { getSessionClimberId } from "@/features/auth/queries";
 import { setSession } from "@/features/auth/session";
+import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
-import { logEvent } from "@/lib/log";
+import { logEvent, logWarning } from "@/lib/log";
+import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { getClimber, searchClimbers } from "./queries";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
@@ -16,8 +17,7 @@ import { parseClimberInput, type ParsedClimberInput } from "./validate";
 
 // Server actions are public POST endpoints, so each one checks the caller
 // itself; a page guard is not enough. createClimberAtDesk, updateClimber and
-// checkInClimber are staff only, and signWaiver takes the caller's own id (or
-// staff). joinAsCustomer is intentionally public: it only creates a new record.
+// checkInClimber are staff only. joinAsCustomer is intentionally public: it only creates a new record.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -126,48 +126,6 @@ export async function updateClimber(
   return { status: "success", message: "Saved." };
 }
 
-// Records a signed waiver for the climber, valid for a year. The signing
-// itself is a placeholder until the waivers feature exists: it saves a new
-// Waiver row (old ones are kept, they are legal records).
-export async function signWaiver(
-  climberId: string,
-): Promise<{ ok: boolean; message?: string }> {
-  if (!UUID.test(climberId)) return { ok: false, message: "Climber not found." };
-  // The climber signs on /join or /me, staff sign for them on the desk.
-  const staff = await getStaffContext();
-  const signedInClimberId = await getSessionClimberId();
-  if (climberId !== signedInClimberId && !staff) {
-    return { ok: false, message: "Log in to sign the waiver." };
-  }
-
-  const gymId = staff?.gymId ?? (signedInClimberId === climberId ? (await db.climber.findUnique({ where: { id: climberId }, select: { gymId: true } }))?.gymId ?? null : null);
-  if (!gymId) return { ok: false, message: "Log in to sign the waiver." };
-  if (staff) {
-    const targetGym = await db.climber.findUnique({ where: { id: climberId }, select: { gymId: true } });
-    if (!targetGym || targetGym.gymId !== staff.gymId) {
-      return { ok: false, message: "Log in to sign the waiver." };
-    }
-  }
-  const climber = await db.climber.findFirst({
-    where: { id: climberId, gymId },
-    select: { firstName: true, lastName: true },
-  });
-  if (!climber) return { ok: false, message: "Climber not found." };
-
-  const gym = await getGymById(gymId);
-  await db.waiver.create({
-    data: {
-      gymId,
-      climberId,
-      version: gym?.waiverVersion ?? "v1",
-      signedByName: `${climber.firstName} ${climber.lastName}`,
-    },
-  });
-  logEvent("waiver_signed", { gymId, climberId, version: gym?.waiverVersion ?? "v1" });
-  refreshClimberPages(climberId);
-  return { ok: true };
-}
-
 // STOPGAP(#62): staff give a climber with a valid waiver and no active
 // membership a no-charge day pass, so a new sign-up can climb today. Saves a
 // DAY Pass row that ends at midnight in the gym's time zone. Replace with real
@@ -259,7 +217,7 @@ export async function checkInClimber(
     where: {
       gymId: staff.gymId,
       climberId,
-      checkedInAt: { gt: new Date(Date.now() - 120 * 60 * 1000) },
+      checkedInAt: { gt: new Date(Date.now() - ACTIVE_WINDOW_MINUTES * 60_000) },
     },
     select: { id: true },
   });
@@ -300,6 +258,27 @@ export async function checkInClimber(
     method: "FRONT_DESK",
     pass: usePunch ? "punch" : "membership_or_day",
   });
+  // However staff checked them in, their waiting scans are dealt with, so the
+  // arrival leaves Arrivals on every desk (#225). Logged like Close (scan_taken).
+  // The check-in is saved: a failure here must not report it as failed (a
+  // retry would then say "Already checked in"). The scan just waits in
+  // Arrivals until it expires or someone clears it.
+  try {
+    for (const scan of await finishScansForClimber(staff.gymId, climberId, now)) {
+      logEvent("scan_taken", {
+        gymId: staff.gymId,
+        climberId,
+        waitMs: now.getTime() - scan.scannedAt.getTime(),
+        outcome: "checked_in",
+      });
+    }
+  } catch (error) {
+    logWarning("scan_finish_failed", {
+      gymId: staff.gymId,
+      climberId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   revalidatePath("/desk");
   revalidatePath("/me", "layout");
   return { ok: true };

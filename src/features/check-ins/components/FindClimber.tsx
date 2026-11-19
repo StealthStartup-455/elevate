@@ -7,14 +7,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { findClimbersToCheckIn } from "@/features/climbers/actions";
 import type { CheckInCandidate } from "@/features/climbers/types";
+import { useClimberPanel } from "./ClimberPanel";
 
 const SEARCH_DELAY_MS = 200;
 
 // "Find climber" in the Check-in toolbar: the same server search as Manual
 // check in (#85), so the page never carries every climber. Picking someone
-// opens their page.
+// opens their panel (#169), or their page where there is no panel.
 export default function FindClimber() {
   const router = useRouter();
+  const panel = useClimberPanel();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CheckInCandidate[]>([]);
   // The query the current results are for, so "No climbers found" only shows
@@ -65,7 +67,9 @@ export default function FindClimber() {
           if (reason !== "reset") setQuery(value);
         }}
         onChange={(_, climber) => {
-          if (climber) router.push(`/desk/customers/${climber.id}`);
+          if (!climber) return;
+          if (panel) panel.openClimber(climber.id);
+          else router.push(`/desk/customers/${climber.id}`);
         }}
         loading={q !== "" && !searched && !failed}
         loadingText="Searching..."

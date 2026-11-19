@@ -17,6 +17,8 @@ test("a member adds a bank account, the desk sees it on the POS, then the member
 }) => {
   const member = await (await browser.newContext()).newPage();
   await logIn(member, "demo-valid-active", /\/me/);
+  // The card is on the Membership tab (#101).
+  await member.goto("/me/membership");
   const card = member.locator("main").getByRole("heading", { name: "Monthly payments" }).locator("../../..");
 
   // Start clean if an earlier run left one behind.

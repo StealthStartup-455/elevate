@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import QRCode from "qrcode";
 import { openTab } from "./climber";
 
 // Fixes found while testing the release candidate (#149): switching logins,
@@ -41,14 +42,23 @@ test("the climber dashboard says who is signed in (#144)", async ({ page }) => {
   await expect(page.getByText("Signed in as Demo Valid-Active")).toHaveCount(0);
 });
 
-test("the demo QR code on the Check in tab is a real, full-size QR code (#146)", async ({ page }) => {
+test("the demo QR code on the Check in tab is a real QR code holding the member code (#146, #151)", async ({
+  page,
+}) => {
   await logIn(page, "demo-valid-active", /\/me/);
   await openTab(page, "Check in");
   const code = page.getByRole("img", { name: /Demo check-in code for ELV-/ });
   await expect(code).toBeVisible();
-  // The placeholder is 25 modules (viewBox 29); a code for a link is bigger.
-  const viewBox = await code.getAttribute("viewBox");
-  expect(Number(viewBox?.split(" ")[2])).toBeGreaterThan(29);
+
+  // It draws exactly the QR code for the member code shown on the label, not a
+  // link (the class-demo song, #151) and not the 25-module placeholder.
+  const memberCode = (await code.getAttribute("aria-label"))!.replace("Demo check-in code for ", "");
+  expect(memberCode).toMatch(/^ELV-[0-9A-Z]{6}$/);
+  const { modules } = QRCode.create(memberCode, { errorCorrectionLevel: "M" });
+  expect(await code.getAttribute("viewBox")).toBe(`-2 -2 ${modules.size + 4} ${modules.size + 4}`);
+  const dark = Array.from(modules.data).filter(Boolean).length;
+  await expect(code.locator("rect")).toHaveCount(dark);
+
   // Check in still goes through the button, not the code.
   await expect(page.getByRole("button", { name: "Simulate scan" })).toBeVisible();
 });
@@ -61,18 +71,20 @@ test("the desk reads a climber's waiver from their page, and opens POS for them 
 
   // A valid waiver is a panel: status, signed date, expiry and wording version.
   const panel = page.locator("div", { has: page.getByText("Waiver", { exact: true }) }).filter({
-    has: page.getByRole("link", { name: "Look at waiver" }),
+    has: page.getByRole("button", { name: "Look at waiver" }),
   });
   await expect(panel.first()).toContainText("Valid");
   await expect(panel.first()).toContainText("Signed");
   await expect(panel.first()).toContainText("Expires");
   await expect(panel.first()).toContainText("Version");
 
-  await page.getByRole("link", { name: "Look at waiver" }).click();
-  await expect(page).toHaveURL(/\/desk\/waivers\/[0-9a-f-]+/);
-  await expect(page.getByRole("heading", { name: "Signed waiver", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Signature" })).toBeVisible();
-  await page.getByRole("link", { name: /Demo Valid-Active/ }).click();
+  // It opens in a dialog, so staff stay on the climber's page (#214).
+  await page.getByRole("button", { name: "Look at waiver" }).click();
+  const dialog = page.getByRole("dialog", { name: "Signed waiver" });
+  await expect(dialog.getByRole("heading", { name: "Signature" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+/);
 
   // One click to the POS, with this climber already picked.
   await page.getByRole("link", { name: "Open in POS" }).click();
@@ -95,5 +107,5 @@ test("a climber without a waiver shows 'No waiver' and no Look at waiver button 
   await logIn(page, "desk", /\/desk/);
   await openAccount(page, "Demo Missing-None");
   await expect(page.getByText("No waiver", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Look at waiver" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Look at waiver" })).toHaveCount(0);
 });

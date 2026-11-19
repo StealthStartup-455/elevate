@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { openTab, pressScan, signUpDemoCustomer } from "./climber";
+import { arrivalToast, clearArrival, expectNotWaiting, openArrival } from "./desk-arrivals";
 import { signWaiverForm } from "./sign-waiver";
 
 // The Milestone 3 demo, end to end: a climber on a phone and the front desk
@@ -46,24 +47,29 @@ test("a member scans in, the desk checks them in once", async ({ browser }) => {
   await logIn(desk, "desk", /\/desk/);
   await logIn(phone, "demo-valid-active", /\/me/);
 
-  // First scan: the desk pops up the member and checks them in.
+  // First scan: a toast says they're ready (not checked in), and staff open them.
   await pressScan(phone);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Valid-Active", { timeout: 20_000 });
-  await popup.getByRole("button", { name: "Check in" }).click();
-  await expect(popup).toContainText("is checked in");
-  await popup.getByRole("button", { name: "Close" }).click();
+  const toast = arrivalToast(desk, "Demo Valid-Active");
+  await expect(toast).toContainText("Ready to check in", { timeout: 20_000 });
+  await expect(toast).not.toContainText("Checked in");
+  const panel = await openArrival(desk, "Demo Valid-Active");
+  await panel.getByRole("button", { name: "Check in" }).click();
+  await expect(panel).toContainText("Checked in at");
+  // Checking in deals with the scan on every desk (#225).
+  await expectNotWaiting(desk, "Demo Valid-Active");
 
-  // Second scan within two hours: shown again, but not counted twice.
+  // Second scan within two hours: the toast says they're already in, and the
+  // scan clears itself once the toast goes, so nothing waits in Arrivals (#225).
+  // Toasts make way for the climber panel, so close it first (#228 review).
+  await panel.getByRole("button", { name: "Close" }).first().click();
+  await expect(desk).not.toHaveURL(/climber=/);
   await phone.keyboard.press("Escape");
   await phone.reload();
   await pressScan(phone);
-  await expect(popup).toContainText("Demo Valid-Active", { timeout: 20_000 });
-  await popup.getByRole("button", { name: "Check in" }).click();
-  await expect(popup).toContainText("Already checked in");
-  // Close deals with the scan, so it doesn't pop up again on any desk (#127).
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  await expect(toast).toContainText("Already checked in at", { timeout: 20_000 });
+  await expect(toast).not.toContainText("Ready to check in");
+  await toast.getByRole("button", { name: /^Dismiss/ }).click();
+  await expectNotWaiting(desk, "Demo Valid-Active");
 });
 
 test("a scan made before the desk opens still shows when it opens", async ({ browser }) => {
@@ -76,34 +82,41 @@ test("a scan made before the desk opens still shows when it opens", async ({ bro
 
   // The desk opens afterwards: the arrival is waiting for it (#127).
   await logIn(desk, "desk", /\/desk/);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText("Demo Expired-Active", { timeout: 20_000 });
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  const toast = arrivalToast(desk, "Demo Expired-Active");
+  await expect(toast).toContainText("Can't check in yet", { timeout: 20_000 });
+  await expect(toast).toContainText("Waiver expired");
+  await clearArrival(desk, "Demo Expired-Active");
 });
 
-test("a scan waits while manual check in is open, so dialogs never stack", async ({ browser }) => {
+test("a scan never interrupts manual check in, and the toast goes after 10 seconds", async ({ browser }) => {
   const desk = await newPage(browser);
   const phone = await newPage(browser, true);
   await logIn(desk, "desk", /\/desk/);
   await logIn(phone, "demo-valid-paused", /\/me/);
 
   await desk.getByRole("button", { name: /manual check in/i }).click();
-  await expect(desk.getByRole("dialog")).toHaveCount(1);
+  const dialog = desk.getByRole("dialog");
+  await expect(dialog).toHaveCount(1);
+  const search = dialog.getByLabel("Search name or phone");
+  await search.fill("Demo");
 
   await pressScan(phone);
-  await desk.waitForTimeout(6_000); // two polls
-  // Still only manual check in (#92). MUI hides a dialog under another from
-  // the accessibility tree, so count the dialogs in the page, not by role.
-  const dialogs = desk.locator(".MuiDialog-root");
-  await expect(dialogs).toHaveCount(1);
-  await expect(dialogs).toContainText("Manual check in");
+  // MUI hides everything outside an open dialog from screen readers, so look
+  // for the toast on screen rather than by role.
+  const toast = desk.locator('[role="status"]').filter({ hasText: "Demo Valid-Paused" });
+  await expect(toast).toContainText("Membership paused", { timeout: 20_000 });
+  // The dialog stays open with what staff typed, and keeps the keyboard (#225).
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog).toContainText("Manual check in");
+  await expect(search).toHaveValue("Demo");
+  await expect(search).toBeFocused();
+  // Only one dialog ever: the arrival isn't one.
+  await expect(desk.locator(".MuiDialog-root")).toHaveCount(1);
 
+  await expect(toast).toHaveCount(0, { timeout: 15_000 });
+  // Gone from the corner, but still waiting in Arrivals.
   await desk.keyboard.press("Escape");
-  await expect(dialogs).toContainText("Demo Valid-Paused", { timeout: 20_000 });
-  await expect(dialogs).toHaveCount(1);
-  await desk.getByRole("dialog").getByRole("button", { name: "Close" }).click();
-  await expect(dialogs).toHaveCount(0);
+  await clearArrival(desk, "Demo Valid-Paused");
 });
 
 test("a new climber joins, signs the waiver and reaches their account", async ({ browser }) => {
@@ -130,10 +143,9 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   // Known gap (proposal item D1): a new climber has no membership yet, so the
   // desk is told why it can't check them in instead of offering Check in.
   await pressScan(phone);
-  const popup = desk.getByRole("dialog");
-  await expect(popup).toContainText(`Taylor Test${unique}`, { timeout: 20_000 });
-  await expect(popup).toContainText("has no active membership");
-  await expect(popup.getByRole("button", { name: "Check in" })).toHaveCount(0);
-  await popup.getByRole("button", { name: "Close" }).click();
-  await expect(popup).toHaveCount(0);
+  const toast = arrivalToast(desk, `Taylor Test${unique}`);
+  await expect(toast).toContainText("Can't check in yet", { timeout: 20_000 });
+  await expect(toast).toContainText("No membership, day pass or punch card");
+  await expect(toast).not.toContainText("No waiver signed");
+  await clearArrival(desk, `Taylor Test${unique}`);
 });

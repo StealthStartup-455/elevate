@@ -74,3 +74,36 @@ export async function finishScan(
   });
   return scan;
 }
+
+// Every scan still waiting at this gym, oldest first, for the desk's arrival
+// toasts and Arrivals list (#225). Capped so a busy rush can't make the poll slow.
+export async function waitingScans(
+  gymId: string,
+  now: Date = new Date(),
+): Promise<WaitingScan[]> {
+  return db.qrScan.findMany({
+    where: { gymId, takenAt: null, scannedAt: { gt: new Date(now.getTime() - SCAN_TTL_MS) } },
+    orderBy: { scannedAt: "asc" },
+    select: { id: true, climberId: true, scannedAt: true },
+    take: 20,
+  });
+}
+
+// A climber was checked in (from the panel, manual check in or anywhere else):
+// their waiting scans are dealt with, so they leave Arrivals on every desk (#225).
+export async function finishScansForClimber(
+  gymId: string,
+  climberId: string,
+  now: Date = new Date(),
+): Promise<WaitingScan[]> {
+  const scans = await db.qrScan.findMany({
+    where: { gymId, climberId, takenAt: null },
+    select: { id: true, climberId: true, scannedAt: true },
+  });
+  if (scans.length === 0) return [];
+  await db.qrScan.updateMany({
+    where: { id: { in: scans.map((s) => s.id) }, takenAt: null },
+    data: { takenAt: now },
+  });
+  return scans;
+}

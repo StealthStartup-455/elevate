@@ -25,11 +25,12 @@ Each branch adds its own new file, so two pull requests never edit the same file
 2. Fill it in from the template below.
 3. Commit it in the same pull request as the work, and say in the PR description that you added an Exchange Floor entry.
 
-While your branch is open you may update your own file (for example, the verification after a review fix). Once it's merged, it's fixed.
+Before merge you may update or consolidate entries added only by your current branch into one file (for example, combining iteration notes and final verification). Entries already present on `origin/dev` or added by another branch are fixed.
 
 ## Rules
 
-- Never edit or delete another entry. Correct a mistake with a new file that names the old one.
+- Never edit or delete entries already present on `origin/dev` or added by another branch. Correct a mistake in those entries with a new file that names the old one.
+- Entries added only by the current branch may be consolidated into one before merge.
 - Facts, not narrative: what was done, what was decided, and what the next agent must know.
 - Never put secrets, tokens, `.env` values or personal data in an entry.
 - Don't add new entries to `EXCHANGE_FLOOR.md`; it is the archive.
