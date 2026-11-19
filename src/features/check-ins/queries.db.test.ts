@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { db } from "@/lib/db";
 import { ensureDemoDay } from "./demo-day";
 import { getFrontDeskBusyness } from "@/features/analytics/queries";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-desk-day";
 const OTHER_SLUG = "test-desk-day-other";
@@ -88,7 +89,7 @@ async function climber(
   { gym = gymId, member = true }: { gym?: string; member?: boolean } = {},
 ): Promise<string> {
   const { id } = await db.climber.create({
-    data: { gymId: gym, firstName, lastName, dateOfBirth: at("1995-01-01T00:00:00Z") },
+    data: { studentId: randomStudentId(), gymId: gym, firstName, lastName, dateOfBirth: at("1995-01-01T00:00:00Z") },
   });
   await db.waiver.create({
     data: {

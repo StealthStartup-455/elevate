@@ -1,0 +1,22 @@
+# 2026-11-18 16:10 UTC: Student IDs, climber barcode and a camera scanner on the desk (#38)
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#38 / PR number added when opened
+- **Branch:** `feature/38-barcode-check-in`
+- **What the agent did:**
+  - New `Climber.studentId` (`V` and 8 digits, unique per gym, required). Migration `20261118190000_climber_student_id` gives existing climbers `V90000001`, `V90000002`, … in join order.
+  - Student ID field on /join and in the desk's add and edit forms (same `ClimberForm`), checked in `validate.ts`; a taken ID gives a field error (and the unique index catches races). It shows on the desk climber details and the Check-in panel in place of the old `ELV-` member code.
+  - The climber's Check in tab shows a Code 128 barcode of the student ID (`ClimberBarcode`, `code128.ts` over `jsbarcode`) instead of the QR code. `DemoQrCode`, `memberCode()` and the `qrcode` use are gone.
+  - The desk's "Manual check in" button is now **Check in** with a camera icon, and its dialog has the camera (`BarcodeCamera`, `@zxing/browser`) above the search box. A scanned V number goes straight to that climber; the box searches name, phone or V number, forgiving typos (`climbers/search.ts`). A separate Scan button was built first and removed as repetitive.
+  - Seed: Agam Kamran has `V00946178`; every other seeded climber gets a random but repeatable V number.
+- **Files touched:** `prisma/{schema.prisma,seed.ts,DATABASE.md,migrations/20261118190000_climber_student_id}`, `src/features/climbers/{student-id.ts,code128.ts,validate.ts,actions.ts,queries.ts,types.ts,format.ts,components/*}`, `src/features/check-ins/components/{BarcodeCamera,CheckInCard,ClimberProfile}.tsx`, `src/features/climbers/{search.ts,components/ManualCheckIn.tsx}`, db tests (a `randomStudentId()` on every climber they create), e2e specs.
+- **Decisions and why:**
+  - Code 128: it holds letters and digits, every scanner reads it, and `V00946178` stays short. The SVG is drawn on the server from `jsbarcode`'s bits, always dark on white.
+  - The student ID is required for everyone, as asked. A climber with no student number (a child, a visitor) is blocked on /join until the team decides what they get; see follow-ups.
+  - Placeholders for old rows use the `V9` range, so they can't be mistaken for real student numbers (those start `V00`).
+  - The camera runs only while the dialog is on its search step, and zxing loads only then.
+  - A scan only selects the climber: staff still press the check-in button, so the rules in `checkInClimber` apply.
+- **Gotchas:** The camera needs https or localhost. `qrScans`/`QrScan` keep their names (the phone's "Simulate scan"). Run `npx prisma generate` after pulling. The staging deploy was failing on 2026-11-18 for a database connection reason (not this change), so the migration has not run there.
+- **Open follow-ups:** What non-students get (auto-generated ID or a different barcode). The "Find climber" box and POS search match V numbers only where they use `searchClimbers` (they do, via the same search); not separately tested. The camera has only been tested by the typed path in e2e (and the barcode image decodes in a unit test); try it on the iPad over https.
+- **Verification:** see the PR description.

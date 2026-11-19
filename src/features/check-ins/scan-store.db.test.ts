@@ -12,6 +12,7 @@ import {
   saveScan,
   waitingScans,
 } from "./scan-store";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-scan-store";
 let gymId = "";
@@ -26,8 +27,8 @@ beforeAll(async () => {
   gymId = gym.id;
   otherGymId = other.id;
   const person = { lastName: "Test", dateOfBirth: new Date("1990-01-01T00:00:00Z") };
-  alex = (await db.climber.create({ data: { gymId, firstName: "Alex", ...person } })).id;
-  sam = (await db.climber.create({ data: { gymId, firstName: "Sam", ...person } })).id;
+  alex = (await db.climber.create({ data: { studentId: randomStudentId(), gymId, firstName: "Alex", ...person } })).id;
+  sam = (await db.climber.create({ data: { studentId: randomStudentId(), gymId, firstName: "Sam", ...person } })).id;
 });
 
 beforeEach(async () => {

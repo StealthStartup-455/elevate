@@ -6,6 +6,7 @@ import "dotenv/config";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_CHECK_IN_PREFIX } from "@/features/analytics/mock-data";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-desk-panel";
 const OTHER_SLUG = "test-desk-panel-other";
@@ -85,7 +86,7 @@ async function cleanUp() {
 // A member with a waiver signed a month ago, born Jun 14, 1997.
 async function member(gym = gymId): Promise<string> {
   const { id } = await db.climber.create({
-    data: { gymId: gym, firstName: "Alex", lastName: "Nguyen", dateOfBirth: new Date("1997-06-14T00:00:00Z") },
+    data: { studentId: randomStudentId(), gymId: gym, firstName: "Alex", lastName: "Nguyen", dateOfBirth: new Date("1997-06-14T00:00:00Z") },
   });
   await db.waiver.create({
     data: { gymId: gym, climberId: id, version: "v1", signedByName: "Alex Nguyen", signedAt: new Date(NOW.getTime() - 30 * 1440 * MINUTE) },

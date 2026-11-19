@@ -51,6 +51,7 @@ export default function ClimberDetails({ climberId, details, startEditing = fals
   }
 
   const rows: [string, string][] = [
+    ["Student ID", details.studentId],
     ["Phone", details.phone],
     ["Email", details.email || "None"],
     ["Born", details.dateOfBirth ? formatDate(details.dateOfBirth, true) : "Unknown"],

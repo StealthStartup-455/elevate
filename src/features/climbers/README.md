@@ -18,7 +18,8 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 
 ## On the climber app
 
-The Check in tab (`/me/check-in`, `features/check-ins/components/CheckInCard.tsx`) shows the check-in code, the member code and whether the membership and waiver are in order. Home shows `components/ReadyToClimb.tsx` ("Before you climb") only when the waiver or a pass is missing. The plan itself is on the Membership tab (`features/purchase/components/PlanCard.tsx`).
+The Check in tab (`/me/check-in`, `features/check-ins/components/CheckInCard.tsx`) shows the check-in barcode, the student ID under it and whether the membership and waiver are in order. Home shows `components/ReadyToClimb.tsx` ("Before you climb") only when the waiver or a pass is missing. The plan itself is on the Membership tab (`features/purchase/components/PlanCard.tsx`).
 
 - `getMyMembership()` in `queries.ts` returns one demo member until auth and the memberships table exist.
-- `DemoQrCode` is a real, scannable QR code in demo mode (it holds the member code, `ELV-…`, #151) and a placeholder that only looks like one everywhere else. Nothing reads its content: check-in goes through "Simulate scan". Replace it once the check-in ticket picks a code format.
+- `ClimberBarcode` draws the climber's student ID (`V` and 8 digits, #38) as a Code 128 barcode. It replaced the QR code. It is the same in every mode and never changes. The bars come from `code128.ts` (`jsbarcode`); the desk's Check in dialog reads it with the camera (`BarcodeCamera` in features/check-ins, `@zxing/browser`), or finds it by typing a V number, name or phone number. Check-in on the phone still goes through "Simulate scan".
+- Every climber has a `studentId`, unique per gym. It is a required field on /join and in the desk's add and edit forms (`student-id.ts` holds the format). Climbers from before it existed got `V9xxxxxxx` placeholders in the migration; staff can correct them on the climber's page.

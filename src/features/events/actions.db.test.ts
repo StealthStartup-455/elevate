@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-calendar";
 const OTHER_SLUG = "test-calendar-other";
@@ -55,13 +56,13 @@ beforeAll(async () => {
   otherGymId = (await db.gym.create({ data: { name: "Other calendar gym", slug: OTHER_SLUG } })).id;
   for (const firstName of ["Ana", "Ben", "Cy"]) {
     const climber = await db.climber.create({
-      data: { gymId, firstName, lastName: "Test", dateOfBirth: new Date("1990-01-01") },
+      data: { studentId: randomStudentId(), gymId, firstName, lastName: "Test", dateOfBirth: new Date("1990-01-01") },
     });
     climbers.push(climber.id);
   }
   otherClimber = (
     await db.climber.create({
-      data: { gymId: otherGymId, firstName: "Dee", lastName: "Test", dateOfBirth: new Date("1990-01-01") },
+      data: { studentId: randomStudentId(), gymId: otherGymId, firstName: "Dee", lastName: "Test", dateOfBirth: new Date("1990-01-01") },
     })
   ).id;
 });

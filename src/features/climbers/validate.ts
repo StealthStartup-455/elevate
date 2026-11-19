@@ -1,3 +1,4 @@
+import { isStudentId, normalizeStudentId } from "./student-id";
 import type { ClimberInput, FieldErrors } from "./types";
 
 const MAX_NAME_LENGTH = 60;
@@ -30,6 +31,7 @@ export function parseClimberInput(
   const values: ClimberInput = {
     firstName: field(formData, "firstName"),
     lastName: field(formData, "lastName"),
+    studentId: normalizeStudentId(field(formData, "studentId")),
     phone: field(formData, "phone"),
     email: field(formData, "email").toLowerCase(),
     dateOfBirth: field(formData, "dateOfBirth"),
@@ -43,6 +45,10 @@ export function parseClimberInput(
   if (!values.lastName) errors.lastName = "Enter a last name.";
   else if (values.lastName.length > MAX_NAME_LENGTH)
     errors.lastName = `Use ${MAX_NAME_LENGTH} characters or fewer.`;
+
+  if (!values.studentId) errors.studentId = "Enter your student ID.";
+  else if (!isStudentId(values.studentId))
+    errors.studentId = "Use a V followed by 8 digits, like V00123456.";
 
   const digits = values.phone.replace(/\D/g, "");
   if (!values.phone) errors.phone = "Enter a phone number.";

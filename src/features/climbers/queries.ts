@@ -7,7 +7,7 @@ import { getDemoClimberId } from "@/features/auth/session";
 import { getStaffContext, isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
-import { memberCode, membershipPlanName } from "./format";
+import { membershipPlanName } from "./format";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
@@ -30,8 +30,8 @@ export type Membership = {
   waiverStatus: WaiverStatus;
   // Calendar date the waiver runs out (or ran out). Unset when never signed.
   waiverExpiresOn?: string;
-  // Printed under the QR code for manual entry at the desk.
-  memberCode: string;
+  // The student ID the barcode holds, printed under it for manual entry at the desk (#38).
+  studentId: string;
   /** A day pass covers today. */
   hasDayPass: boolean;
   /** Visits left on their punch cards. */
@@ -98,6 +98,7 @@ function toClimber(
     phone: row.phone ? formatPhone(row.phone) : "",
     email: row.email ?? "",
     dateOfBirth: isoDay(row.dateOfBirth),
+    studentId: row.studentId,
     username: usernameFor(row),
     waiverStatus: waiver.status,
     waiverExpiresOn: waiver.expiresOn,
@@ -138,8 +139,7 @@ export async function getMyMembership(): Promise<Membership> {
     recurring: climber.membershipRecurring ?? false,
     waiverStatus: climber.waiverStatus,
     waiverExpiresOn: climber.waiverExpiresOn,
-    // Printed code until real member numbers exist.
-    memberCode: memberCode(climber.id),
+    studentId: climber.studentId,
     hasDayPass: climber.hasDayPass,
     punchesLeft: climber.punchesLeft,
   };
@@ -261,13 +261,14 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
   if (!gym) return [];
   const people = await db.climber.findMany({
     where: { gymId: gym.id },
-    select: { id: true, firstName: true, lastName: true, phone: true },
+    select: { id: true, firstName: true, lastName: true, phone: true, studentId: true },
   });
   const matches = bestMatches(
     people.map((p) => ({
       id: p.id,
       name: `${p.firstName} ${p.lastName}`,
       phone: p.phone ? formatPhone(p.phone) : "",
+      studentId: p.studentId,
     })),
     q,
     limit,

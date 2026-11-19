@@ -6,6 +6,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-pos";
 const auth = vi.hoisted(() => ({ staff: true }));
@@ -85,7 +86,7 @@ async function cleanUp() {
 
 async function newClimber(withWaiver = true): Promise<string> {
   const { id } = await db.climber.create({
-    data: { gymId, firstName: "New", lastName: "Climber", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+    data: { studentId: randomStudentId(), gymId, firstName: "New", lastName: "Climber", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
   });
   if (withWaiver) {
     await db.waiver.create({ data: { gymId, climberId: id, version: "v1", signedByName: "New Climber" } });
@@ -290,7 +291,7 @@ describe("POS climber search", () => {
     await sell(id, [["10-punch card", 1]]);
     const otherGym = await db.gym.create({ data: { name: "Other gym", slug: "test-pos-other" } });
     const other = await db.climber.create({
-      data: { gymId: otherGym.id, firstName: "Searchable", lastName: "Zephyr", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+      data: { studentId: randomStudentId(), gymId: otherGym.id, firstName: "Searchable", lastName: "Zephyr", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
     });
     try {
       const found = await findPosClimbers("Searchable Zephyr");

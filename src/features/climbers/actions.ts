@@ -36,6 +36,34 @@ function invalid(
   };
 }
 
+// One student ID belongs to one climber in a gym, so the barcode finds one
+// person (#38). Checked first for a friendly message; the database's unique
+// index still has the last word if two sign-ups race.
+async function studentIdTaken(
+  gymId: string,
+  parsed: Extract<ParsedClimberInput, { ok: true }>,
+  exceptClimberId?: string,
+): Promise<FormState | null> {
+  const other = await db.climber.findFirst({
+    where: { gymId, studentId: parsed.value.studentId, id: exceptClimberId ? { not: exceptClimberId } : undefined },
+    select: { id: true },
+  });
+  if (!other) return null;
+  logEvent("climber_form_invalid", { form: exceptClimberId ? "desk_edit" : "join", fields: "studentId_taken" });
+  return {
+    status: "error",
+    message: "Please fix the highlighted fields.",
+    errors: { studentId: "Someone already has this student ID. Check it, or ask the front desk." },
+    values: parsed.value,
+  };
+}
+
+const RETRY: FormState = { status: "error", message: "Something went wrong. Please try again." };
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
+}
+
 function refreshClimberPages(climberId?: string) {
   revalidatePath("/desk");
   revalidatePath("/desk/customers");
@@ -49,6 +77,7 @@ function toColumns(input: ClimberInput) {
   return {
     firstName: input.firstName,
     lastName: input.lastName,
+    studentId: input.studentId,
     phone: toStoredPhone(input.phone),
     email: input.email || null,
     dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00Z`),
@@ -64,10 +93,15 @@ export async function joinAsCustomer(
   if (!parsed.ok) return invalid(parsed, "join");
 
   const gym = await getGym();
-  const climber = await db.climber.create({
-    data: { gymId: gym.id, ...toColumns(parsed.value) },
-    select: { id: true },
-  });
+  const taken = await studentIdTaken(gym.id, parsed);
+  if (taken) return taken;
+  const climber = await db.climber
+    .create({ data: { gymId: gym.id, ...toColumns(parsed.value) }, select: { id: true } })
+    .catch((error: unknown) => {
+      if (isUniqueViolation(error)) return null;
+      throw error;
+    });
+  if (!climber) return (await studentIdTaken(gym.id, parsed)) ?? RETRY;
   logEvent("climber_created", { gymId: gym.id, climberId: climber.id, source: "self" });
   // Demo only: "sign in" as the new climber so /me shows their account.
   await setSession(climber.id);
@@ -92,11 +126,16 @@ export async function createClimberAtDesk(
   if (!parsed.ok) return invalid(parsed, "desk_add");
 
   const gymId = staff.gymId;
+  const taken = await studentIdTaken(gymId, parsed);
+  if (taken) return taken;
   // TODO(auth): set createdByStaffId from the logged-in staff member.
-  const climber = await db.climber.create({
-    data: { gymId, ...toColumns(parsed.value) },
-    select: { id: true },
-  });
+  const climber = await db.climber
+    .create({ data: { gymId, ...toColumns(parsed.value) }, select: { id: true } })
+    .catch((error: unknown) => {
+      if (isUniqueViolation(error)) return null;
+      throw error;
+    });
+  if (!climber) return (await studentIdTaken(gymId, parsed)) ?? RETRY;
   logEvent("climber_created", { gymId, climberId: climber.id, source: "desk" });
   refreshClimberPages();
   redirect(`/desk/customers/${climber.id}?added=1`);
@@ -115,10 +154,15 @@ export async function updateClimber(
   if (!parsed.ok) return invalid(parsed, "desk_edit");
   if (!UUID.test(climberId)) return { status: "error", message: "Climber not found." };
 
-  const { count } = await db.climber.updateMany({
-    where: { id: climberId, gymId: staff.gymId },
-    data: toColumns(parsed.value),
-  });
+  const taken = await studentIdTaken(staff.gymId, parsed, climberId);
+  if (taken) return taken;
+  const { count } = await db.climber
+    .updateMany({ where: { id: climberId, gymId: staff.gymId }, data: toColumns(parsed.value) })
+    .catch((error: unknown) => {
+      if (isUniqueViolation(error)) return { count: -1 };
+      throw error;
+    });
+  if (count === -1) return (await studentIdTaken(staff.gymId, parsed, climberId)) ?? RETRY;
   if (count === 0) return { status: "error", message: "Climber not found." };
 
   logEvent("climber_updated", { gymId: staff.gymId, climberId });
@@ -294,6 +338,7 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
   return climbers.map((c) => ({
     id: c.id,
     name: `${c.firstName} ${c.lastName}`,
+    studentId: c.studentId,
     phone: c.phone,
     waiverStatus: c.waiverStatus,
     waiverExpiresOn: c.waiverExpiresOn,

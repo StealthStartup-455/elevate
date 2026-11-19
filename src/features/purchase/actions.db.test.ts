@@ -5,6 +5,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-membership";
 const OTHER_SLUG = "test-membership-other";
@@ -99,7 +100,7 @@ async function cleanUpGym(slug: string) {
 // A climber who has joined but not signed the waiver, like a new sign-up.
 async function newClimber(): Promise<string> {
   const { id } = await db.climber.create({
-    data: { gymId, firstName: "Joined", lastName: "Climber", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+    data: { studentId: randomStudentId(), gymId, firstName: "Joined", lastName: "Climber", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
   });
   return id;
 }
@@ -273,7 +274,7 @@ describe("buyOnline", () => {
 
     // A climber of the other gym buys there, at that gym's price and tax rates.
     const { id } = await db.climber.create({
-      data: { gymId: other.id, firstName: "Other", lastName: "Gym", dateOfBirth: new Date("1990-01-01T00:00:00Z") },
+      data: { studentId: randomStudentId(), gymId: other.id, firstName: "Other", lastName: "Gym", dateOfBirth: new Date("1990-01-01T00:00:00Z") },
     });
     session.climberId = id;
     const bought = await buyOnline({ items: [{ productId: theirDay.id }], idempotencyKey: randomUUID() });

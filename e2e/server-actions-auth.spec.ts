@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { expect, test, type Browser } from "@playwright/test";
 import { actionId, manifestPath } from "./action-id";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Server actions are public POST endpoints. The proxy only guards /desk and
 // /me, but Next.js bundles every export of a "use server" file into each page
@@ -22,6 +23,7 @@ async function newClimberId(browser: Browser): Promise<string> {
   await page.getByLabel("First name").fill("Avery");
   await page.getByLabel("Last name").fill(`Probe${unique}`);
   await page.getByLabel("Phone number").fill(`250556${unique.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1990-01-01");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("link", { name: /sign the waiver/i })).toBeVisible();

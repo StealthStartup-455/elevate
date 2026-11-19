@@ -165,12 +165,12 @@ test("the Check in tab centres the code, the member code and the scan button for
     await page.context().clearCookies();
     await logIn(page, user);
     await openTab(page, "Check in");
-    const code = (await page.getByRole("img", { name: /Demo check-in code/ }).boundingBox())!;
-    const member = (await page.getByText(/^ELV-/).boundingBox())!;
+    const code = (await page.getByRole("img", { name: /Check-in barcode for/ }).boundingBox())!;
+    const member = (await page.getByText(/^V\d{8}$/).boundingBox())!;
     const scan = (await page.getByRole("button", { name: "Simulate scan" }).boundingBox())!;
     const middle = (box: { x: number; width: number }) => box.x + box.width / 2;
-    expect(Math.abs(middle(code) - middle(member)), `${user}: member code vs QR code`).toBeLessThan(2);
-    expect(Math.abs(middle(code) - middle(scan)), `${user}: scan button vs QR code`).toBeLessThan(2);
+    expect(Math.abs(middle(code) - middle(member)), `${user}: student ID vs barcode`).toBeLessThan(2);
+    expect(Math.abs(middle(code) - middle(scan)), `${user}: scan button vs barcode`).toBeLessThan(2);
   }
 });
 

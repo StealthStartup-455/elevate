@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-eft";
 const OTHER_SLUG = "test-eft-other";
@@ -80,7 +81,7 @@ async function cleanUp() {
 
 async function newClimber(gym = gymId): Promise<string> {
   const { id } = await db.climber.create({
-    data: { gymId: gym, firstName: "Kim", lastName: "Lee", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
+    data: { studentId: randomStudentId(), gymId: gym, firstName: "Kim", lastName: "Lee", dateOfBirth: new Date("1995-01-01T00:00:00Z") },
   });
   return id;
 }

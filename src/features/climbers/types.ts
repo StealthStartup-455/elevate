@@ -18,6 +18,8 @@ export type Climber = {
   email: string;
   /** ISO calendar date, YYYY-MM-DD. */
   dateOfBirth: string;
+  /** "V00946178": V and 8 digits. Their barcode holds it (#38). */
+  studentId: string;
   /** What they type to log in (demo login only). */
   username: string;
   waiverStatus: WaiverStatus;
@@ -39,7 +41,7 @@ export type Climber = {
 // The fields a customer or staff member enters.
 export type ClimberInput = Pick<
   Climber,
-  "firstName" | "lastName" | "phone" | "email" | "dateOfBirth"
+  "firstName" | "lastName" | "studentId" | "phone" | "email" | "dateOfBirth"
 >;
 
 export type FieldErrors = Partial<Record<keyof ClimberInput, string>>;
@@ -58,6 +60,7 @@ export type FormState = {
 export type CheckInCandidate = {
   id: string;
   name: string;
+  studentId: string;
   phone: string;
   waiverStatus: WaiverStatus;
   waiverExpiresOn?: string;

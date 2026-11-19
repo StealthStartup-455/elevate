@@ -5,25 +5,47 @@ import { fuzzyScore } from "@/lib/fuzzy";
 
 const digits = (s: string) => s.replace(/\D/g, "");
 
-// Match quality, 0 for no match. Number-only words match the phone, the rest
-// fuzzy match the name (same rules as the check-in table).
+// Is `needle` (digits) in `hay` (digits), allowing one wrong digit or two
+// neighbouring digits swapped? Only for needles of 5+ digits, so a short
+// number can't match everything.
+function nearDigits(hay: string, needle: string): boolean {
+  if (hay.includes(needle)) return true;
+  if (needle.length < 5) return false;
+  for (let start = 0; start + needle.length <= hay.length; start++) {
+    const wrong: number[] = [];
+    for (let i = 0; i < needle.length; i++) if (hay[start + i] !== needle[i]) wrong.push(i);
+    if (wrong.length <= 1) return true;
+    if (wrong.length === 2 && wrong[1] === wrong[0] + 1) {
+      const [i, j] = wrong;
+      if (hay[start + i] === needle[j] && hay[start + j] === needle[i]) return true;
+    }
+  }
+  return false;
+}
+
+// Match quality, 0 for no match. Number-only words match the phone or the
+// V number (student ID, #38), a word like "v0094" matches the V number, and
+// the rest fuzzy match the name (same rules as the check-in table).
 export function searchScore(
-  row: { name: string; phone: string },
+  row: { name: string; phone: string; studentId?: string },
   query: string,
 ): number {
   const terms = query.split(/\s+/).filter(Boolean);
+  const idTerms = terms.filter((t) => /^v[\d-]+$/i.test(t)).map(digits);
   const numbers = terms.filter((t) => /^[\d()+-]+$/.test(t)).map(digits);
-  const words = terms.filter((t) => !/^[\d()+-]+$/.test(t));
+  const words = terms.filter((t) => !/^[\d()+-]+$/.test(t) && !/^v[\d-]+$/i.test(t));
 
   const phone = digits(row.phone);
-  if (!numbers.every((n) => n === "" || phone.includes(n))) return 0;
+  const student = digits(row.studentId ?? "");
+  if (!idTerms.every((n) => n === "" || nearDigits(student, n))) return 0;
+  if (!numbers.every((n) => n === "" || phone.includes(n) || nearDigits(student, n))) return 0;
   const nameScore = words.length ? fuzzyScore(row.name, words.join(" ")) : 1;
-  return nameScore === 0 ? 0 : nameScore + numbers.length * 5;
+  return nameScore === 0 ? 0 : nameScore + (numbers.length + idTerms.length) * 5;
 }
 
 // The best `limit` matches for `query`, best first. Rows that don't match are
 // left out.
-export function bestMatches<T extends { name: string; phone: string }>(
+export function bestMatches<T extends { name: string; phone: string; studentId?: string }>(
   rows: T[],
   query: string,
   limit: number,

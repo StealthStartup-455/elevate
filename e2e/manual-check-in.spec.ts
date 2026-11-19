@@ -13,18 +13,35 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 
 test("the desk page doesn't contain climbers who aren't checked in", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
-  await expect(page.getByRole("button", { name: /manual check in/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check in", exact: true })).toBeVisible();
   // A seeded demo climber nobody checks in during the tests.
   expect(await page.content()).not.toContain("Demo Missing-Expired");
 });
 
 test("manual check in finds a climber from a typo, searching on the server", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
-  await page.getByRole("button", { name: /manual check in/i }).click();
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Search name or phone").fill("demo misng expird");
+  await dialog.getByLabel("Search name, phone or V number").fill("demo misng expird");
   const results = dialog.getByRole("list", { name: "Matching climbers" });
   await expect(results.getByText("Demo Missing-Expired")).toBeVisible();
   await results.getByText("Demo Missing-Expired").click();
   await expect(dialog).toContainText("needs a valid waiver");
+});
+
+test("Check in finds a climber by V number, even with a wrong digit (#38)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Check in" });
+  const results = dialog.getByRole("list", { name: "Matching climbers" });
+
+  // Agam Kamran keeps V00946178 in the seed. The last digit is wrong here.
+  await dialog.getByLabel("Search name, phone or V number").fill("v00946179");
+  await expect(results.getByText("Agam Kamran")).toBeVisible();
+  await expect(results.getByText(/V00946178/)).toBeVisible();
+
+  await dialog.getByLabel("Search name, phone or V number").fill("0094617");
+  await results.getByText("Agam Kamran").click();
+  await expect(dialog.getByRole("heading", { name: "Agam Kamran" })).toBeVisible();
+  await expect(dialog).toContainText("V00946178");
 });

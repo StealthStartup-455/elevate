@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { openTab, pressScan } from "./climber";
 import { arrivalToast, clearArrival, expectNotWaiting, openArrival } from "./desk-arrivals";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // The Milestone 3 demo, end to end: a climber on a phone and the front desk
 // on a laptop, each in its own browser session. Needs the demo login
@@ -94,10 +95,10 @@ test("a scan never interrupts manual check in, and the toast goes after 10 secon
   await logIn(desk, "desk", /\/desk/);
   await logIn(phone, "demo-valid-paused", /\/me/);
 
-  await desk.getByRole("button", { name: /manual check in/i }).click();
+  await desk.getByRole("button", { name: "Check in", exact: true }).click();
   const dialog = desk.getByRole("dialog");
   await expect(dialog).toHaveCount(1);
-  const search = dialog.getByLabel("Search name or phone");
+  const search = dialog.getByLabel("Search name, phone or V number");
   await search.fill("Demo");
 
   await pressScan(phone);
@@ -107,7 +108,7 @@ test("a scan never interrupts manual check in, and the toast goes after 10 secon
   await expect(toast).toContainText("Membership paused", { timeout: 20_000 });
   // The dialog stays open with what staff typed, and keeps the keyboard (#225).
   await expect(dialog).toHaveCount(1);
-  await expect(dialog).toContainText("Manual check in");
+  await expect(dialog).toContainText("Check in");
   await expect(search).toHaveValue("Demo");
   await expect(search).toBeFocused();
   // Only one dialog ever: the arrival isn't one.
@@ -129,6 +130,7 @@ test("a new climber joins, signs the waiver and reaches their account", async ({
   await phone.getByLabel("First name").fill("Taylor");
   await phone.getByLabel("Last name").fill(`Test${unique}`);
   await phone.getByLabel("Phone number").fill(`250555${unique.slice(-4)}`);
+  await phone.getByLabel("Student ID").fill(randomStudentId());
   await phone.getByLabel("Date of birth").fill("1995-03-03");
   await phone.getByRole("button", { name: "Create account" }).click();
   await phone.getByRole("link", { name: /sign the waiver/i }).click();
