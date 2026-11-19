@@ -61,7 +61,7 @@ test("a new gym owner and multi-gym customer can publish, sign and download thei
     await owner.getByRole("textbox", { name: "Title", exact: true }).fill("Our new gym waiver");
     await owner.getByRole("textbox", { name: "Text", exact: true }).fill("Only this new gym's waiver wording.");
     await owner.getByRole("textbox", { name: "Rules", exact: true }).fill("I understand this gym's rules.");
-    await owner.getByLabel("I understand every climber will have to sign again.").check();
+    await owner.getByRole("checkbox", { name: "I understand every climber will have to sign again.", exact: true }).check();
     await owner.getByRole("button", { name: "Publish v1", exact: true }).click();
     await expect(owner).toHaveURL(/\/desk\/waivers\?published=v1$/);
 
