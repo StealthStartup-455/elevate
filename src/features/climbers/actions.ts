@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
-import { getClimber, searchClimbers } from "./queries";
+import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
 import type { CheckInCandidate, ClimberInput, FormState } from "./types";
@@ -64,6 +64,47 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 }
 
+// #129: before adding a climber, look for someone who may already be them. A
+// match returns "duplicate" without saving; the form sends `confirmKey` back
+// as `confirmDuplicate` to add them anyway. On the desk the key is the matched
+// ids, so a changed form that matches someone else warns again.
+async function duplicateWarning(
+  gymId: string,
+  input: ClimberInput,
+  formData: FormData,
+  rule: "desk" | "join",
+): Promise<FormState | null> {
+  const columns = toColumns(input);
+  const matches = await findPossibleDuplicates(gymId, columns, rule);
+  if (matches.length === 0) return null;
+  const confirmKey =
+    rule === "desk"
+      ? matches
+          .map((m) => m.id)
+          .sort()
+          .join(",")
+      : "new-person";
+  if (formData.get("confirmDuplicate") === confirmKey) return null;
+  logEvent("climber_possible_duplicate", { gymId, form: rule, matches: matches.length });
+  if (rule === "join") {
+    // Nothing about the other person: /join is public.
+    return {
+      status: "duplicate",
+      message:
+        "You may already have an account here. Ask the front desk to find it, or create a new account if this is someone else.",
+      values: input,
+      confirmKey,
+    };
+  }
+  return {
+    status: "duplicate",
+    message: "This person may already exist. Open them instead, or add a new customer anyway.",
+    values: input,
+    duplicates: matches,
+    confirmKey,
+  };
+}
+
 function refreshClimberPages(climberId?: string) {
   revalidatePath("/desk");
   revalidatePath("/desk/customers");
@@ -95,6 +136,8 @@ export async function joinAsCustomer(
   const gym = await getGym();
   const taken = await studentIdTaken(gym.id, parsed);
   if (taken) return taken;
+  const warning = await duplicateWarning(gym.id, parsed.value, formData, "join");
+  if (warning) return warning;
   const climber = await db.climber
     .create({ data: { gymId: gym.id, ...toColumns(parsed.value) }, select: { id: true } })
     .catch((error: unknown) => {
@@ -128,6 +171,8 @@ export async function createClimberAtDesk(
   const gymId = staff.gymId;
   const taken = await studentIdTaken(gymId, parsed);
   if (taken) return taken;
+  const warning = await duplicateWarning(gymId, parsed.value, formData, "desk");
+  if (warning) return warning;
   // TODO(auth): set createdByStaffId from the logged-in staff member.
   const climber = await db.climber
     .create({ data: { gymId, ...toColumns(parsed.value) }, select: { id: true } })
@@ -340,6 +385,7 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     name: `${c.firstName} ${c.lastName}`,
     studentId: c.studentId,
     phone: c.phone,
+    dateOfBirth: c.dateOfBirth,
     waiverStatus: c.waiverStatus,
     waiverExpiresOn: c.waiverExpiresOn,
     membershipStatus: c.membershipStatus,

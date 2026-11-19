@@ -11,7 +11,7 @@ import { membershipPlanName } from "./format";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
-import type { Climber, MembershipStatus, WaiverStatus } from "./types";
+import type { Climber, MembershipStatus, PossibleDuplicate, WaiverStatus } from "./types";
 
 // Reads for the climbers feature, from the Climber, Waiver and Pass tables.
 // Every query is limited to the gym (see prisma/DATABASE.md, "Gym isolation").
@@ -342,5 +342,50 @@ export async function getSavedCheckIns(since: Date, until: Date = new Date()): P
     phone: r.climber.phone ? formatPhone(r.climber.phone) : "",
     timestamp: r.checkedInAt,
     waiverStatus: summarizeWaiver(r.climber.waivers[0], gym.waiverVersion, now, gym.timeZone).status,
+  }));
+}
+
+/**
+ * Climbers in the gym who may be the person about to be added (#129), so
+ * nobody creates a second record by accident. Names match ignoring case.
+ * - "desk": the same phone, or the same name and birthday. A shared family
+ *   phone matches too, which is why staff see who matched and can still add.
+ * - "join": the same name and either the phone or the birthday. Stricter
+ *   because /join is public: a phone number alone must not reveal that its
+ *   owner climbs here.
+ * No staff check: the callers (createClimberAtDesk, joinAsCustomer) decide
+ * what to show.
+ */
+export async function findPossibleDuplicates(
+  gymId: string,
+  person: { firstName: string; lastName: string; phone: string; dateOfBirth: Date },
+  rule: "desk" | "join",
+): Promise<PossibleDuplicate[]> {
+  const sameName = {
+    firstName: { equals: person.firstName, mode: "insensitive" as const },
+    lastName: { equals: person.lastName, mode: "insensitive" as const },
+  };
+  const where =
+    rule === "desk"
+      ? {
+          gymId,
+          OR: [{ phone: person.phone }, { ...sameName, dateOfBirth: person.dateOfBirth }],
+        }
+      : {
+          gymId,
+          ...sameName,
+          OR: [{ phone: person.phone }, { dateOfBirth: person.dateOfBirth }],
+        };
+  const rows = await db.climber.findMany({
+    where,
+    select: { id: true, firstName: true, lastName: true, phone: true, dateOfBirth: true },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+    take: 5,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: `${r.firstName} ${r.lastName}`,
+    phone: r.phone ? formatPhone(r.phone) : "",
+    dateOfBirth: isoDay(r.dateOfBirth),
   }));
 }

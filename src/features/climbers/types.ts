@@ -46,14 +46,29 @@ export type ClimberInput = Pick<
 
 export type FieldErrors = Partial<Record<keyof ClimberInput, string>>;
 
+/** An existing climber who may be the person being added (#129). */
+export type PossibleDuplicate = {
+  id: string;
+  name: string;
+  /** Shown like 250-555-0101. */
+  phone: string;
+  /** ISO calendar date, YYYY-MM-DD. */
+  dateOfBirth: string;
+};
+
 export type FormState = {
-  status: "idle" | "error" | "success";
+  /** "duplicate": not saved yet, because someone like this may already exist (#129). */
+  status: "idle" | "error" | "success" | "duplicate";
   message?: string;
   errors?: FieldErrors;
   /** Echoed back after a validation error so the form keeps what was typed. */
   values?: ClimberInput;
   /** Set after a successful sign up, so the next step can act on the new climber. */
   climberId?: string;
+  /** Staff only: who matched, so they can open that person instead. Never sent on /join. */
+  duplicates?: PossibleDuplicate[];
+  /** Sent back as `confirmDuplicate` to create the climber anyway. */
+  confirmKey?: string;
 };
 
 // A climber as manual check in shows them (#85: found on the server).
@@ -62,6 +77,8 @@ export type CheckInCandidate = {
   name: string;
   studentId: string;
   phone: string;
+  /** ISO calendar date, so same-name climbers can be told apart (#129). */
+  dateOfBirth: string;
   waiverStatus: WaiverStatus;
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
