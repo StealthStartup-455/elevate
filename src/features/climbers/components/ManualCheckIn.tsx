@@ -186,11 +186,9 @@ export default function ManualCheckIn() {
               <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
                 {selected.name}
               </Typography>
-              {selected.phone ? (
-                <Typography variant="body2" color="text.secondary">
-                  {selected.phone}
-                </Typography>
-              ) : null}
+              <Typography variant="body2" color="text.secondary">
+                {personDetails(selected)}
+              </Typography>
 
               <Box
                 sx={{
@@ -304,7 +302,7 @@ export default function ManualCheckIn() {
                 <List aria-label="Matching climbers" sx={{ mt: 2 }}>
                   {results.map((c) => (
                     <ListItemButton key={c.id} onClick={() => setSelected(c)}>
-                      <ListItemText primary={c.name} secondary={c.phone} />
+                      <ListItemText primary={c.name} secondary={personDetails(c)} />
                       <WaiverBadge status={c.waiverStatus} />
                     </ListItemButton>
                   ))}
@@ -319,4 +317,11 @@ export default function ManualCheckIn() {
       </Dialog>
     </>
   );
+}
+
+// Phone and birthday, so two climbers with the same name can be told apart (#129).
+function personDetails(c: CheckInCandidate): string {
+  return [c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 }
