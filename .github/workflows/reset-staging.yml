@@ -1,0 +1,76 @@
+name: Reset staging
+
+# Resets the hosted staging demo to the seed from any browser (#232): Actions,
+# Reset staging, Run workflow, type "reset". The same reset as
+# `npm run staging:reset` (#138), without a computer with the repo, Node or the
+# database password: it uses STAGING_DIRECT_URL from the "staging" environment.
+#
+# The seed deletes every climber in the demo gym, with their passes, waivers,
+# sales, check ins and scans, then creates the seeded climbers again, in one
+# transaction. The gym, its settings, the waiver wording, products and staff
+# stay. See DEPLOYMENT.md, "Reset before a demo".
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "reset" to delete every climber on staging and reseed'
+        required: true
+        default: ""
+
+# Never at the same time as a staging deploy: both use the staging database.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+      DATABASE_URL: ${{ secrets.STAGING_DIRECT_URL }}
+    steps:
+      - name: Check the confirmation, the branch and the staging settings
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "reset" ]; then
+            echo "::error::Type reset in the confirmation box to run the reset. Nothing was changed."
+            exit 1
+          fi
+          if [ "$GITHUB_REF_NAME" != "dev" ]; then
+            echo "::error::Run this from dev (the branch staging deploys), not $GITHUB_REF_NAME. Nothing was changed."
+            exit 1
+          fi
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::STAGING_DIRECT_URL is missing from the staging environment. See DEPLOYMENT.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # The seed writes the current schema, so the database must have every
+      # migration. Deploy staging applies them on each merge.
+      - name: Stop if migrations are pending
+        run: |
+          if ! npx prisma migrate status; then
+            echo "::error::The staging database is missing migrations (or can't be reached; if Supabase paused it, restore it). Run Deploy staging first, then this again."
+            exit 1
+          fi
+
+      - name: Reset to the seed
+        run: |
+          set -o pipefail
+          npx tsx prisma/seed.ts | tee seed-output.txt
+          {
+            echo "### Staging reset to the seed"
+            grep -E "^(Removed|Seeded)" seed-output.txt || true
+            echo ""
+            echo "Anyone signed in as a climber is sent back to log in; use the demo usernames."
+          } >> "$GITHUB_STEP_SUMMARY"
