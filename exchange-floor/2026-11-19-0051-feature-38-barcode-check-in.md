@@ -1,0 +1,21 @@
+# 2026-11-19 00:51 UTC: Exact V number ranks first in climber search (#38 review)
+
+- **Developer:** Tyler Le
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#38 / PR number added when opened
+- **Branch:** `feature/38-barcode-check-in`
+- **What the agent did:**
+  - Bug: in `searchScore` (`src/features/climbers/search.ts`), an exact V number and a near miss (one wrong digit or two swapped) scored the same, and `findClimbersToCheckIn` keeps only the top 8. The migration numbers existing climbers `V90000001`, `V90000002`, …, so many are one digit apart: with 60 of them, scanning `V90000001` returned 8 near misses and not the climber, and the dialog said "No climber has student ID V90000001". A number found as typed now scores 5 more than one found only with a typo, so the exact climber is always first. Near misses still show after it.
+  - New unit test for this in `search.test.ts` (failed before the fix, passes after).
+  - Wording: the student ID help text in `ClimberForm` said "Your check-in barcode…" to staff at the desk too; now "The check-in barcode is made from it." The taken-ID error said "ask the front desk", also shown to the front desk; now "Another climber already has this student ID. Check it and try again."
+- **Files touched:** `src/features/climbers/{search.ts,search.test.ts,actions.ts,components/ClimberForm.tsx}`.
+- **Decisions and why:** Fixed the ranking rather than adding a separate exact lookup for scans, so typed searches get the same order and there's one code path.
+- **Gotchas:** `tsc --noEmit` reports errors in `.next/types/validator.ts` from older routes until `npx next typegen` is run (same as the #209 entry). `next dev` stops once with a Next.js security notice; running it again works.
+- **Open follow-ups (not changed, for the team):**
+  - `qrcode` and `@types/qrcode` are still in `package.json`, but nothing imports them since `DemoQrCode` was removed.
+  - `prisma/seed.ts` stores what it calls a real student number (`AGAM_STUDENT_ID`) in a public repo; its owner may want a made-up one.
+  - The dialog's action button still says "Manually check in" (it was "Manual check in" before); e2e `release.spec.ts` and `scan-next-step.spec.ts` click it by that name.
+  - `ManualCheckIn.tsx` still uses `h6`/`body2`/`caption` and `fontWeight` instead of the six style-guide variants (already so on `dev`).
+  - `BarcodeCamera`: once the camera fails, the warning replaces the "Use front/back camera" button, so there's no retry without closing the dialog.
+  - On the iPad, check that `autoFocus` on the search box doesn't bring up the keyboard over the camera.
+- **Verification:** `npm run lint` clean. `npx tsc --noEmit` clean (after `npx next typegen`). `npm test`: 43 files, 408 passed (2 todo). `npm run test:db`: 15 files, 165 passed. Not run: `npm run build`, Playwright e2e. The camera was not tried on an iPad.

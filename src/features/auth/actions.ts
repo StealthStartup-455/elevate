@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
@@ -117,6 +118,7 @@ export async function signUpCustomer(
       data: {
         firstName: signup.profile.firstName,
         lastName: signup.profile.lastName,
+        studentId: signup.profile.studentId,
         phone: signup.profile.phone,
         email: signup.profile.email,
         dateOfBirth: signup.profile.dateOfBirth,
@@ -148,13 +150,25 @@ async function demoCustomerSignup(signup: CustomerSignup): Promise<SignupState> 
       authUserId: `demo-customer-${randomUUID()}`,
       firstName: signup.profile.firstName,
       lastName: signup.profile.lastName,
+      studentId: signup.profile.studentId,
       phone: toStoredPhone(signup.profile.phone),
       email: signup.email,
       dateOfBirth: new Date(`${signup.profile.dateOfBirth}T00:00:00Z`),
       onboardingComplete: false,
     },
     select: { id: true },
+  }).catch((error: unknown) => {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    logEvent("signup_failed", { kind: "customer", reason: "student_id_taken" });
+    return null;
   });
+  if (!climber) {
+    return {
+      error: "Check the highlighted fields.",
+      errors: { studentId: "Another climber already has this student ID. Check it or ask the front desk." },
+      values: signup.profile,
+    };
+  }
   await clearSession();
   await setSession(climber.id);
   logEvent("signup_succeeded", { kind: "customer", source: "demo", climberId: climber.id });

@@ -1,0 +1,26 @@
+# 2026-11-18 16:10 UTC: Student IDs, climber barcode and a camera scanner on the desk (#38)
+
+- **Developer:** @agamkamran02
+- **AI tool / model:** Claude Code (claude-sonnet-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#38 / PR number added when opened
+- **Branch:** `feature/38-barcode-check-in`
+- **What the agent did:**
+  - New `Climber.studentId` (`V` and 8 digits, unique per gym, required). Migration `20261118190000_climber_student_id` gives existing climbers `V90000001`, `V90000002`, … in join order.
+  - Student ID field on /join and in the desk's add and edit forms (same `ClimberForm`), checked in `validate.ts`; a taken ID gives a field error (and the unique index catches races). It shows on the desk climber details and the Check-in panel in place of the old `ELV-` member code.
+  - The climber's Check in tab shows a Code 128 barcode of the student ID (`ClimberBarcode`, `code128.ts` over `jsbarcode`) instead of the QR code. `DemoQrCode`, `memberCode()` and the `qrcode` use are gone.
+  - The desk's "Manual check in" button is now **Check in** with a camera icon, and its dialog has the camera (`BarcodeCamera`, `@zxing/browser`) above the search box. A scanned V number goes straight to that climber; the box searches name, phone or V number, forgiving typos (`climbers/search.ts`). A separate Scan button was built first and removed as repetitive.
+  - The camera has a **Use front camera / Use back camera** button (remembered per device); it starts on the back camera.
+  - Phone and iPad fixes: `next.config.ts` has `allowedDevOrigins` (private networks, plus `ALLOWED_DEV_ORIGINS`), without which a phone or iPad opening `npm run dev` by its network address got no scripts and no working buttons. Icon buttons are at least 44x44 on touch screens and links in table rows are taller (`theme.ts`). The login labels always sit above the boxes (iOS autofill left them over the text).
+  - Seed: Agam Kamran has `V00946178`; every other seeded climber gets a random but repeatable V number.
+- **Files touched:** `prisma/{schema.prisma,seed.ts,DATABASE.md,migrations/20261118190000_climber_student_id}`, `src/features/climbers/{student-id.ts,code128.ts,validate.ts,actions.ts,queries.ts,types.ts,format.ts,components/*}`, `src/features/check-ins/components/{BarcodeCamera,CheckInCard,ClimberProfile}.tsx`, `src/features/climbers/{search.ts,components/ManualCheckIn.tsx}`, db tests (a `randomStudentId()` on every climber they create), e2e specs.
+- **Decisions and why:**
+  - Code 128: it holds letters and digits, every scanner reads it, and `V00946178` stays short. The SVG is drawn on the server from `jsbarcode`'s bits, always dark on white.
+  - The student ID is required for everyone, as asked. A climber with no student number (a child, a visitor) is blocked on /join until the team decides what they get; see follow-ups.
+  - Placeholders for old rows use the `V9` range, so they can't be mistaken for real student numbers (those start `V00`).
+  - The camera runs only while the dialog is on its search step, and zxing loads only then.
+  - A scan only selects the climber: staff still press the check-in button, so the rules in `checkInClimber` apply.
+- **Gotchas:** `allowedDevOrigins` only affects `npm run dev`. The Next.js dev badge covers the phone bottom nav in dev only. The camera needs https or localhost. `qrScans`/`QrScan` keep their names (the phone's "Simulate scan"). Run `npx prisma generate` after pulling. The staging deploy was failing on 2026-11-18 for a database connection reason (not this change), so the migration has not run there.
+- **Merged `dev` (#129 duplicate climbers):** kept both sides in `climbers/actions.ts` (student ID taken first, then the possible-duplicate warning), the climbers README, and `ManualCheckIn.tsx` (`personDetails` now shows student ID, phone and birthday). The #129 e2e and database tests now give each climber a student ID, and the duplicate spec uses the Check in button.
+- **Also on this branch:** Tyler Le's entry `2026-11-19-0051-feature-38-barcode-check-in.md` (exact V number ranks first in search, wording fixes).
+- **Open follow-ups:** Tyler's list in his entry (unused `qrcode` packages, the seeded student number, "Manually check in" wording, camera retry button). What non-students get (auto-generated ID or a different barcode). The "Find climber" box and POS search match V numbers only where they use `searchClimbers` (they do, via the same search); not separately tested. The camera has only been tested by the typed path in e2e (and the barcode image decodes in a unit test); try it on the iPad over https.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 43 files, 408 passed (2 todo); `npm run test:db` 10 files, 119 passed (after merging dev); `npm run build` passes; Playwright on a fresh seed after merging dev: 83 passed, 3 skipped, and the 2 that failed there (duplicate-climbers and the V number search) pass after the fixes above; the full suite was not re-run after those two fixes. The camera was read with a fake camera in headless Chromium (live video, front and back switch); the barcode image decodes to its ID in a unit test. Tried on a real iPad and phone by Agam and Tyler (their report).

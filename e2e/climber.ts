@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Helpers for the climber app's tabs (#101). The QR code and "Simulate scan" are on the Check
 // in tab, so a scan opens it first, through the tab bar like a climber would.
@@ -28,6 +29,7 @@ export async function signUpDemoCustomer(
   await page.goto("/signup");
   await page.getByLabel("First name").fill(firstName);
   await page.getByLabel("Last name").fill(lastName);
+  await page.getByRole("textbox", { name: "Student ID", exact: true }).fill(randomStudentId());
   await page.getByLabel("Phone number").fill(phone);
   await page.getByLabel("Email").fill(`${firstName}.${lastName}@elevate.test`);
   await page.getByLabel("Date of birth").fill(dateOfBirth);

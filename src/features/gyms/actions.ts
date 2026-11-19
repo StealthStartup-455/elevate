@@ -143,6 +143,7 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
         gymId: true,
         firstName: true,
         lastName: true,
+        studentId: true,
         phone: true,
         email: true,
         dateOfBirth: true,
@@ -179,13 +180,15 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
               authUserId,
               firstName: source.firstName,
               lastName: source.lastName,
+              studentId: source.studentId,
               phone: source.phone,
               email: source.email,
               dateOfBirth: source.dateOfBirth,
             },
             select: { id: true },
           });
-    });
+    }).catch(studentIdConflict);
+    if ("error" in climber) studentIdTaken(gym.id);
     await setSession(climber.id);
     revalidatePath("/me", "layout");
     logEvent("gym_joined", { gymId: gym.id, climberId: climber.id, source: "demo" });
@@ -210,19 +213,31 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
         authUserId: user.authUserId,
         firstName: profile.firstName,
         lastName: profile.lastName,
+        studentId: profile.studentId,
         phone: toStoredPhone(profile.phone),
         email: profile.email || null,
         dateOfBirth: new Date(`${profile.dateOfBirth}T00:00:00Z`),
       },
       select: { id: true },
     });
-  });
+  }).catch(studentIdConflict);
   if (!climber) redirect("/me/profile");
+  if ("error" in climber) studentIdTaken(gym.id);
 
   await setActiveClimberSession(climber.id);
   revalidatePath("/me", "layout");
   logEvent("gym_joined", { gymId: gym.id, climberId: climber.id });
   redirect("/me/register");
+}
+
+function studentIdConflict(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+  return { error: "student-id-taken" } as const;
+}
+
+function studentIdTaken(gymId: string): never {
+  logEvent("gym_join_failed", { gymId, reason: "student_id_taken" });
+  redirect("/me/explore?error=student-id-taken");
 }
 
 export async function openJoinedGym(climberId: string, _formData: FormData): Promise<void> {

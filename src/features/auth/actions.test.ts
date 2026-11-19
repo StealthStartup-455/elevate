@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "./queries";
-import { login } from "./actions";
+import { Prisma } from "@/generated/prisma/client";
+import { login, signUpCustomer } from "./actions";
 
 // The real (Supabase) login, with Supabase and the database faked so it runs
 // in CI. redirect() throws in Next.js too, so nothing after it runs.
@@ -11,10 +12,13 @@ const fake = vi.hoisted(() => ({
   clearSession: vi.fn(),
   setActiveClimberSession: vi.fn(),
   provisionGym: vi.fn(),
+  demo: false,
+  signUp: vi.fn(),
+  createClimber: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    auth: { signInWithPassword: fake.signInWithPassword, signOut: fake.signOut },
+    auth: { signInWithPassword: fake.signInWithPassword, signOut: fake.signOut, signUp: fake.signUp },
   }),
 }));
 vi.mock("./queries", () => ({ findAccount: fake.findAccount }));
@@ -25,7 +29,9 @@ vi.mock("./session", () => ({
   setSession: vi.fn(),
   setDeskSession: vi.fn(),
 }));
-vi.mock("./demo-mode", () => ({ isDemoMode: () => false }));
+vi.mock("./demo-mode", () => ({ isDemoMode: () => fake.demo }));
+vi.mock("@/lib/gym", () => ({ getGym: async () => ({ id: "demo-gym" }) }));
+vi.mock("@/lib/db", () => ({ db: { climber: { create: fake.createClimber } } }));
 vi.mock("./mock-users", () => ({ DESK_USERNAME: "desk", findClimberIdByUsername: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -49,7 +55,39 @@ const account = (staff: boolean, climberIds: string[]): CurrentUser => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fake.demo = false;
   fake.signInWithPassword.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+});
+
+describe("customer signup after student-ID integration", () => {
+  function signupForm() {
+    const data = form("alex@example.test", "password");
+    for (const [key, value] of Object.entries({
+      firstName: "Alex", lastName: "Climber", studentId: "v00123456",
+      phone: "2505550100", dateOfBirth: "1990-01-01",
+    })) data.set(key, value);
+    return data;
+  }
+
+  it("persists the normalized student ID in real account metadata", async () => {
+    fake.signUp.mockResolvedValue({ data: { user: { id: "new-user" }, session: null }, error: null });
+    expect(await signUpCustomer({}, signupForm())).toHaveProperty("success");
+    expect(fake.signUp).toHaveBeenCalledWith(expect.objectContaining({
+      options: { data: expect.objectContaining({ studentId: "V00123456" }) },
+    }));
+  });
+
+  it("reports a taken demo student ID without replacing the current session", async () => {
+    fake.demo = true;
+    fake.createClimber.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("taken", {
+      code: "P2002", clientVersion: "test",
+    }));
+    expect(await signUpCustomer({}, signupForm())).toMatchObject({
+      errors: { studentId: expect.stringContaining("already has this student ID") },
+      values: { studentId: "V00123456" },
+    });
+    expect(fake.clearSession).not.toHaveBeenCalled();
+  });
 });
 
 describe("login", () => {

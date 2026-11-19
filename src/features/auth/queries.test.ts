@@ -25,7 +25,7 @@ beforeEach(() => {
   fake.findStaff.mockResolvedValue(null);
   fake.findClimbers.mockResolvedValue([{ id: "legacy-climber" }]);
   fake.findClimber.mockResolvedValue({
-    firstName: "Alex", lastName: "Climber", phone: "+12505550100", email: null,
+    firstName: "Alex", lastName: "Climber", studentId: "V90123456", phone: "+12505550100", email: null,
     dateOfBirth: new Date("1990-01-01"),
   });
 });
@@ -34,7 +34,7 @@ describe("legacy customer profiles", () => {
   it("uses an existing customer record when signup metadata is absent", async () => {
     expect(await getCurrentUser()).toMatchObject({
       customerProfile: {
-        firstName: "Alex", lastName: "Climber", phone: "+12505550100",
+        firstName: "Alex", lastName: "Climber", studentId: "V90123456", phone: "+12505550100",
         email: "", dateOfBirth: "1990-01-01",
       },
     });

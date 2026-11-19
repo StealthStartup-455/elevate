@@ -50,12 +50,14 @@ export async function findDemoStaffSession(token: string | undefined) {
 function customerProfile(metadata: Record<string, unknown>): ClimberInput | undefined {
   const firstName = metadata.firstName;
   const lastName = metadata.lastName;
+  const studentId = metadata.studentId;
   const phone = metadata.phone;
   const email = metadata.email;
   const dateOfBirth = metadata.dateOfBirth;
   if (
     typeof firstName !== "string" ||
     typeof lastName !== "string" ||
+    typeof studentId !== "string" ||
     typeof phone !== "string" ||
     typeof email !== "string" ||
     typeof dateOfBirth !== "string"
@@ -63,7 +65,7 @@ function customerProfile(metadata: Record<string, unknown>): ClimberInput | unde
     return undefined;
   }
   const form = new FormData();
-  for (const [key, value] of Object.entries({ firstName, lastName, phone, email, dateOfBirth })) {
+  for (const [key, value] of Object.entries({ firstName, lastName, studentId, phone, email, dateOfBirth })) {
     form.set(key, value);
   }
   const parsed = parseClimberInput(form);
@@ -107,7 +109,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     const climber = await db.climber.findFirst({
       where: { authUserId: user.id },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: { firstName: true, lastName: true, phone: true, email: true, dateOfBirth: true },
+      select: { firstName: true, lastName: true, studentId: true, phone: true, email: true, dateOfBirth: true },
     });
     if (climber) {
       profile = customerProfile({

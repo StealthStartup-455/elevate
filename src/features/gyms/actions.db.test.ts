@@ -51,7 +51,7 @@ afterAll(async () => {
 });
 
 const profile = {
-  firstName: "Alex", lastName: "Climber", phone: "+12505550100",
+  firstName: "Alex", lastName: "Climber", studentId: "V00123456", phone: "+12505550100",
   email: "alex@example.test", dateOfBirth: "1990-01-01",
 };
 
@@ -75,7 +75,7 @@ describe("concurrent gym joins", () => {
     const climber = await concurrentJoins();
     expect(climber.authUserId).toBe("test-join-account");
     await db.climber.create({
-      data: { ...profile, dateOfBirth: new Date("2015-01-01"), gymId: targetGymId, authUserId: "test-join-account" },
+      data: { ...profile, studentId: "V00123457", dateOfBirth: new Date("2015-01-01"), gymId: targetGymId, authUserId: "test-join-account" },
     });
     expect(await db.climber.count({ where: { gymId: targetGymId } })).toBe(2);
   });
@@ -105,6 +105,20 @@ describe("concurrent gym joins", () => {
     const rows = await db.climber.findMany({ where: { gymId: targetGymId } });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: existing.id, authUserId: `demo-customer-${source.id}` });
+  });
+
+  it.each(["real", "demo"])("does not claim another climber's student ID during a %s join", async (mode) => {
+    const data = { ...profile, dateOfBirth: new Date("1990-01-01") };
+    const existing = await db.climber.create({ data: { ...data, gymId: targetGymId } });
+    if (mode === "demo") {
+      auth.demoId = (await db.climber.create({ data: { ...data, gymId: sourceGymId } })).id;
+    } else {
+      auth.user = { authUserId: "test-join-account", staff: null, climberIds: [], customerProfile: profile };
+    }
+    await expect(joinGym(SLUGS[1], new FormData())).rejects.toThrow("redirect /me/explore?error=student-id-taken");
+    const rows = await db.climber.findMany({ where: { gymId: targetGymId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: existing.id, authUserId: null });
   });
 });
 

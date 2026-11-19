@@ -48,7 +48,7 @@ beforeAll(async () => {
     data: { ...wording, gymId: secondGymId, version: "v2", bodyHash: hashWaiver(wording) },
   });
   climberId = (await db.climber.create({
-    data: { gymId: secondGymId, firstName: "Alex", lastName: "Climber", dateOfBirth: new Date("1990-01-01") },
+    data: { gymId: secondGymId, firstName: "Alex", lastName: "Climber", studentId: "V00123456", dateOfBirth: new Date("1990-01-01") },
   })).id;
 });
 beforeEach(async () => {

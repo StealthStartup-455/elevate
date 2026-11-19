@@ -94,10 +94,10 @@ test("a scan never interrupts manual check in, and the toast goes after 10 secon
   await logIn(desk, "desk", /\/desk/);
   await logIn(phone, "demo-valid-paused", /\/me/);
 
-  await desk.getByRole("button", { name: /manual check in/i }).click();
+  await desk.getByRole("button", { name: "Check in", exact: true }).click();
   const dialog = desk.getByRole("dialog");
   await expect(dialog).toHaveCount(1);
-  const search = dialog.getByLabel("Search name or phone");
+  const search = dialog.getByLabel("Search name, phone or V number");
   await search.fill("Demo");
 
   await pressScan(phone);
@@ -107,7 +107,7 @@ test("a scan never interrupts manual check in, and the toast goes after 10 secon
   await expect(toast).toContainText("Membership paused", { timeout: 20_000 });
   // The dialog stays open with what staff typed, and keeps the keyboard (#225).
   await expect(dialog).toHaveCount(1);
-  await expect(dialog).toContainText("Manual check in");
+  await expect(dialog).toContainText("Check in");
   await expect(search).toHaveValue("Demo");
   await expect(search).toBeFocused();
   // Only one dialog ever: the arrival isn't one.

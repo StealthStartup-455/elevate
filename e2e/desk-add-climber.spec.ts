@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signWaiverForm } from "./sign-waiver";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // Staff add a climber at the desk and land on that climber's page with the
 // waiver step, the same next step /join gives a climber (#88).
@@ -18,6 +19,7 @@ test("the desk adds a climber and lands on their page with the waiver step", asy
   await page.getByRole("textbox", { name: "First name" }).fill("Casey");
   await page.getByRole("textbox", { name: "Last name" }).fill(`Desk${unique}`);
   await page.getByRole("textbox", { name: "Phone number" }).fill(`250556${unique.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1992-04-04");
   await page.getByRole("button", { name: "Create account" }).click();
 

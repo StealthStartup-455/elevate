@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { randomStudentId } from "../src/features/climbers/student-id";
 
 // The desk's climber page shows details read-only, with an Edit button that
 // opens the form; the climber table has an Edit link per row (#89).
@@ -19,6 +20,7 @@ async function addClimber(page: Page, lastName: string) {
   await page.getByRole("textbox", { name: "First name" }).fill("Robin");
   await page.getByRole("textbox", { name: "Last name" }).fill(lastName);
   await page.getByRole("textbox", { name: "Phone number" }).fill(`250557${lastName.slice(-4)}`);
+  await page.getByLabel("Student ID").fill(randomStudentId());
   await page.getByLabel("Date of birth").fill("1990-05-05");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+/);

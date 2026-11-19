@@ -7,11 +7,11 @@ import { getDemoClimberId } from "@/features/auth/session";
 import { getStaffContext, isStaff, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
-import { memberCode, membershipPlanName } from "./format";
+import { membershipPlanName } from "./format";
 import { formatPhone } from "./phone";
 import { bestMatches } from "./search";
 import { hasDayPass, isoDay, punchesLeft, summarizeMembership, summarizeWaiver } from "./status";
-import type { Climber, MembershipStatus, WaiverStatus } from "./types";
+import type { Climber, MembershipStatus, PossibleDuplicate, WaiverStatus } from "./types";
 
 // Reads for the climbers feature, from the Climber, Waiver and Pass tables.
 // Every query is limited to the gym (see prisma/DATABASE.md, "Gym isolation").
@@ -32,8 +32,8 @@ export type Membership = {
   waiverStatus: WaiverStatus;
   // Calendar date the waiver runs out (or ran out). Unset when never signed.
   waiverExpiresOn?: string;
-  // Printed under the QR code for manual entry at the desk.
-  memberCode: string;
+  // The student ID the barcode holds, printed under it for manual entry at the desk (#38).
+  studentId: string;
   /** A day pass covers today. */
   hasDayPass: boolean;
   /** Visits left on their punch cards. */
@@ -102,6 +102,7 @@ function toClimber(
     phone: row.phone ? formatPhone(row.phone) : "",
     email: row.email ?? "",
     dateOfBirth: isoDay(row.dateOfBirth),
+    studentId: row.studentId,
     username: usernameFor(row),
     waiverStatus: waiver.status,
     waiverExpiresOn: waiver.expiresOn,
@@ -144,8 +145,7 @@ export async function getMyMembership(): Promise<Membership> {
     recurring: climber.membershipRecurring ?? false,
     waiverStatus: climber.waiverStatus,
     waiverExpiresOn: climber.waiverExpiresOn,
-    // Printed code until real member numbers exist.
-    memberCode: memberCode(climber.id),
+    studentId: climber.studentId,
     hasDayPass: climber.hasDayPass,
     punchesLeft: climber.punchesLeft,
   };
@@ -267,13 +267,14 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
   if (!gym) return [];
   const people = await db.climber.findMany({
     where: { gymId: gym.id },
-    select: { id: true, firstName: true, lastName: true, phone: true },
+    select: { id: true, firstName: true, lastName: true, phone: true, studentId: true },
   });
   const matches = bestMatches(
     people.map((p) => ({
       id: p.id,
       name: `${p.firstName} ${p.lastName}`,
       phone: p.phone ? formatPhone(p.phone) : "",
+      studentId: p.studentId,
     })),
     q,
     limit,
@@ -340,5 +341,50 @@ export async function getSavedCheckIns(since: Date, until: Date = new Date(), ex
     phone: r.climber.phone ? formatPhone(r.climber.phone) : "",
     timestamp: r.checkedInAt,
     waiverStatus: summarizeWaiver(r.climber.waivers[0], gym.waiverVersion, now, gym.timeZone).status,
+  }));
+}
+
+/**
+ * Climbers in the gym who may be the person about to be added (#129), so
+ * nobody creates a second record by accident. Names match ignoring case.
+ * - "desk": the same phone, or the same name and birthday. A shared family
+ *   phone matches too, which is why staff see who matched and can still add.
+ * - "join": the same name and either the phone or the birthday. Stricter
+ *   because /join is public: a phone number alone must not reveal that its
+ *   owner climbs here.
+ * No staff check: the callers (createClimberAtDesk, joinAsCustomer) decide
+ * what to show.
+ */
+export async function findPossibleDuplicates(
+  gymId: string,
+  person: { firstName: string; lastName: string; phone: string; dateOfBirth: Date },
+  rule: "desk" | "join",
+): Promise<PossibleDuplicate[]> {
+  const sameName = {
+    firstName: { equals: person.firstName, mode: "insensitive" as const },
+    lastName: { equals: person.lastName, mode: "insensitive" as const },
+  };
+  const where =
+    rule === "desk"
+      ? {
+          gymId,
+          OR: [{ phone: person.phone }, { ...sameName, dateOfBirth: person.dateOfBirth }],
+        }
+      : {
+          gymId,
+          ...sameName,
+          OR: [{ phone: person.phone }, { dateOfBirth: person.dateOfBirth }],
+        };
+  const rows = await db.climber.findMany({
+    where,
+    select: { id: true, firstName: true, lastName: true, phone: true, dateOfBirth: true },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+    take: 5,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: `${r.firstName} ${r.lastName}`,
+    phone: r.phone ? formatPhone(r.phone) : "",
+    dateOfBirth: isoDay(r.dateOfBirth),
   }));
 }

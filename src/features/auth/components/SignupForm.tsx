@@ -55,6 +55,16 @@ export default function SignupForm() {
               />
             </Stack>
             <TextField
+              name="studentId"
+              label="Student ID"
+              required
+              fullWidth
+              defaultValue={values.studentId}
+              error={Boolean(errors.studentId)}
+              helperText={errors.studentId ?? "The check-in barcode is made from it."}
+              slotProps={{ htmlInput: { autoCapitalize: "characters", spellCheck: false } }}
+            />
+            <TextField
               name="phone"
               label="Phone number"
               type="tel"

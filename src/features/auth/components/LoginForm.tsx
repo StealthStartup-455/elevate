@@ -276,6 +276,10 @@ export default function LoginForm({
               autoComplete="username"
               slotProps={{
                 htmlInput: { autoCapitalize: "none", spellCheck: false },
+                // Always above the box: on iOS, autofill and the keyboard can
+                // fill the field without MUI noticing, and the label then sat
+                // on top of what was typed.
+                inputLabel: { shrink: true },
               }}
             />
             <TextField
@@ -285,6 +289,7 @@ export default function LoginForm({
               required
               fullWidth
               autoComplete="current-password"
+              slotProps={{ inputLabel: { shrink: true } }}
             />
             {state.error ? <Alert severity="error">{state.error}</Alert> : null}
             <Button type="submit" variant="contained" size="large" disabled={pending}>

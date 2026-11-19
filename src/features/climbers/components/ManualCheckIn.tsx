@@ -13,10 +13,12 @@ import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
+import { isStudentId, normalizeStudentId } from "../student-id";
 import type { CheckInCandidate, MembershipStatus } from "../types";
 import WaiverBadge from "./WaiverBadge";
 
@@ -63,7 +65,18 @@ function canGiveDayPass(c: CheckInCandidate): boolean {
   );
 }
 
-// Front desk "Manual check in": find a climber with fuzzy search, see their
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
+}
+
+// Front desk "Check in" (it was "Manual check in" before the barcode scanner,
+// #38): find a climber by scanning their barcode with the camera, or by
+// typing a name, phone number or V number with fuzzy search, see their
 // membership and waiver, and check them in, all in one dialog. The search runs
 // on the server as staff type, so the page never carries every climber (#85).
 export default function ManualCheckIn() {
@@ -79,6 +92,8 @@ export default function ManualCheckIn() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [scanNote, setScanNote] = useState<string | null>(null);
+  const scanning = useRef(false);
 
   useEffect(() => {
     const q = query.trim();
@@ -103,6 +118,30 @@ export default function ManualCheckIn() {
 
   const searched = query.trim() !== "" && resultsFor === query.trim();
 
+  // A barcode the camera read: straight to that climber's check in, or say why not.
+  async function scanned(text: string) {
+    const id = normalizeStudentId(text);
+    if (scanning.current) return;
+    if (!isStudentId(id)) {
+      setScanNote("That isn't a student ID barcode.");
+      return;
+    }
+    scanning.current = true;
+    try {
+      const found = (await findClimbersToCheckIn(id)).find((c) => c.studentId === id);
+      if (found) {
+        setScanNote(null);
+        setSelected(found);
+      } else {
+        setScanNote(`No climber has student ID ${id}.`);
+      }
+    } catch {
+      setScanNote(OFFLINE);
+    } finally {
+      scanning.current = false;
+    }
+  }
+
   function close() {
     setOpen(false);
     // Reset after the closing animation so nothing flashes.
@@ -113,6 +152,7 @@ export default function ManualCheckIn() {
       setSelected(null);
       setError(null);
       setDone(null);
+      setScanNote(null);
     }, 200);
   }
 
@@ -147,17 +187,17 @@ export default function ManualCheckIn() {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
-        Manual check in
+      <Button variant="outlined" onClick={() => setOpen(true)} startIcon={<CameraIcon />}>
+        Check in
       </Button>
       <Dialog
         open={open}
         onClose={close}
         fullWidth
         maxWidth="sm"
-        aria-labelledby="manual-check-in-title"
+        aria-labelledby="check-in-title"
       >
-        <DialogTitle id="manual-check-in-title">Manual check in</DialogTitle>
+        <DialogTitle id="check-in-title">Check in</DialogTitle>
 
         {done ? (
           <>
@@ -186,11 +226,9 @@ export default function ManualCheckIn() {
               <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
                 {selected.name}
               </Typography>
-              {selected.phone ? (
-                <Typography variant="body2" color="text.secondary">
-                  {selected.phone}
-                </Typography>
-              ) : null}
+              <Typography variant="body2" color="text.secondary">
+                {personDetails(selected)}
+              </Typography>
 
               <Box
                 sx={{
@@ -273,15 +311,27 @@ export default function ManualCheckIn() {
         ) : (
           <>
             <DialogContent>
+              <Typography variant="secondary" component="p" sx={{ mb: 3 }}>
+                Hold the climber&apos;s barcode up to the camera, or search below.
+              </Typography>
+              <BarcodeCamera onRead={scanned} />
+              {scanNote ? (
+                <Alert severity="error" sx={{ mt: 3 }} role="status">
+                  {scanNote}
+                </Alert>
+              ) : null}
               <TextField
                 autoFocus
                 fullWidth
                 type="search"
-                label="Search name or phone"
+                label="Search name, phone or V number"
                 placeholder="Typos are OK"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                sx={{ mt: 1 }}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setScanNote(null);
+                }}
+                sx={{ mt: 3 }}
               />
               {error ? (
                 <Alert severity="error" sx={{ mt: 4 }}>
@@ -304,7 +354,7 @@ export default function ManualCheckIn() {
                 <List aria-label="Matching climbers" sx={{ mt: 2 }}>
                   {results.map((c) => (
                     <ListItemButton key={c.id} onClick={() => setSelected(c)}>
-                      <ListItemText primary={c.name} secondary={c.phone} />
+                      <ListItemText primary={c.name} secondary={personDetails(c)} />
                       <WaiverBadge status={c.waiverStatus} />
                     </ListItemButton>
                   ))}
@@ -319,4 +369,11 @@ export default function ManualCheckIn() {
       </Dialog>
     </>
   );
+}
+
+// Student ID, phone and birthday, so two climbers with the same name can be told apart (#129, #38).
+function personDetails(c: CheckInCandidate): string {
+  return [c.studentId, c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 }

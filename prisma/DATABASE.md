@@ -132,6 +132,7 @@ Email and password live in Supabase Auth, not here.
 | `authUserId` | text | no | The login that manages this climber |
 | `createdByStaffId` | text | no | Who added them. Empty means they signed up themselves |
 | `onboardingComplete` | boolean | yes | `false` only while a demo customer must still choose the demo gym |
+| `studentId` | text | yes | `V` and 8 digits, like `V00946178`. The barcode holds it. Unique per gym |
 | `externalId` | text | no | Their id in Redpoint or Rock Gym Pro. Unique per gym |
 
 Searchable by phone, email and last name within a gym.

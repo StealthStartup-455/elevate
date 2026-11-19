@@ -26,6 +26,7 @@ test("signup identifies invalid fields and keeps non-secret profile values", asy
   await expect(page.getByText("Enter a valid phone number, including area code.")).toBeVisible();
   await expect(page.getByText("Enter a valid email address.")).toBeVisible();
   await expect(page.getByText("Enter a date of birth.")).toBeVisible();
+  await expect(page.getByText("Enter your student ID.")).toBeVisible();
   await expect(page.getByText("Enter a password.")).toBeVisible();
   await expect(page.getByLabel("First name")).toHaveValue("Alex");
 });

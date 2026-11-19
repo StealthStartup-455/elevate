@@ -25,7 +25,7 @@ export async function ensureDemoExamples(
       const externalId = `demo-attendance-${example}`;
       const lastName = ["Employee", "Day pass", "Expired waiver"][i];
       await tx.climber.createMany({
-        data: [{ gymId: gym.id, externalId, firstName: "Demo", lastName, dateOfBirth: new Date("1995-01-01") }],
+        data: [{ gymId: gym.id, externalId, studentId: `V9990000${i}`, firstName: "Demo", lastName, dateOfBirth: new Date("1995-01-01") }],
         skipDuplicates: true,
       });
       const climber = await tx.climber.findUniqueOrThrow({

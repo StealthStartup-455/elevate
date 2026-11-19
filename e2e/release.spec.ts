@@ -112,9 +112,9 @@ test("release check: a new climber joins, signs, logs back in, buys a pass and c
     await expect(toast).toContainText("No membership, day pass or punch card", { timeout: 20_000 });
     // The no-charge day pass is the stopgap until the POS (#53, PR #119); it
     // lives in Manual check in now that the scan popup is a toast.
-    await desk.getByRole("button", { name: /manual check in/i }).click();
+    await desk.getByRole("button", { name: "Check in", exact: true }).click();
     const dialog = desk.getByRole("dialog");
-    await dialog.getByLabel("Search name or phone").fill(name);
+    await dialog.getByLabel("Search name, phone or V number").fill(name);
     await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
     await dialog.getByRole("button", { name: "Give free day pass" }).click();
     await expect(dialog.getByRole("button", { name: "Manually check in" })).toBeEnabled();

@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-day-pass";
 const auth = vi.hoisted(() => ({ staff: true, gymId: "" }));
@@ -70,7 +71,7 @@ async function cleanUp() {
 // A new sign-up: optionally with a signed waiver, and nothing else.
 async function newClimber(withWaiver = true): Promise<string> {
   const { id } = await db.climber.create({
-    data: {
+    data: { studentId: randomStudentId(),
       gymId,
       firstName: "New",
       lastName: "Climber",
@@ -153,7 +154,7 @@ describe("giveDayPass", () => {
       data: { name: "Other gym", slug: "test-day-pass-other" },
     });
     const { id } = await db.climber.create({
-      data: {
+      data: { studentId: randomStudentId(),
         gymId: otherGym.id,
         firstName: "Other",
         lastName: "Climber",

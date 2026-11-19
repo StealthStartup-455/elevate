@@ -10,6 +10,7 @@ function form(values: Record<string, string>): FormData {
 const valid = {
   firstName: "Alex",
   lastName: "Climber",
+  studentId: "V00123456",
   phone: "250-555-0100",
   email: "ALEX@example.com",
   password: "password1",
@@ -26,6 +27,7 @@ describe("customer sign-up validation", () => {
         profile: {
           firstName: "Alex",
           lastName: "Climber",
+          studentId: "V00123456",
           phone: "+12505550100",
           email: "alex@example.com",
           dateOfBirth: "1998-06-15",
