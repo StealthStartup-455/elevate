@@ -229,7 +229,8 @@ const components: ThemeOptions["components"] = {
         color: theme.vars.palette.text.secondary,
         transition: ease("background-color", "color"),
         "&:hover": { backgroundColor: theme.vars.palette.action.hover, color: theme.vars.palette.text.primary },
-        [touch]: { padding: 10 },
+        // A finger needs 44px, even for a ✕ or ‹ glyph (the desk on a phone or iPad).
+        [touch]: { padding: 10, minWidth: 44, minHeight: 44 },
       }),
     },
   },
@@ -446,6 +447,8 @@ const components: ThemeOptions["components"] = {
         borderColor: theme.vars.palette.divider,
         fontSize: px(13),
         lineHeight: 1.5,
+        // Names and Edit links in a row are easier to hit with a finger when taller.
+        [touch]: { "& a": { display: "inline-block", padding: "10px 4px" } },
       }),
       head: { ...textStyle(textStyles.label), whiteSpace: "nowrap" },
       sizeSmall: { padding: `${space.rowY}px 8px` },
