@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 import { timed } from "@/lib/timing";
 import type { ClimberInput } from "@/features/climbers/types";
+import { parseClimberInput } from "@/features/climbers/validate";
+import { verifyDemoDeskSession } from "./demo-credentials";
 import { getActiveClimberId, getDemoClimberId } from "./session";
 
 // Not in session.ts on purpose: proxy.ts imports that file, and the proxy
@@ -19,6 +21,7 @@ export type CurrentUser = {
 };
 
 export type DemoStaffAccount = {
+  id: string;
   gymId: string;
   demoPasswordHash: string;
 };
@@ -26,22 +29,22 @@ export type DemoStaffAccount = {
 export async function findDemoStaffAccount(email: string): Promise<DemoStaffAccount | null> {
   return db.staff.findFirst({
     where: { demoEmail: email, active: true },
-    select: { gymId: true, demoPasswordHash: true },
+    select: { id: true, gymId: true, demoPasswordHash: true },
   }).then((staff) =>
     staff?.demoPasswordHash
-      ? { gymId: staff.gymId, demoPasswordHash: staff.demoPasswordHash }
+      ? { id: staff.id, gymId: staff.gymId, demoPasswordHash: staff.demoPasswordHash }
       : null,
   );
 }
 
-export async function hasLegacyDemoGym(): Promise<boolean> {
-  return !!(await db.staff.findFirst({
-    where: {
-      demoEmail: null,
-      authUserId: { startsWith: "demo-owner-" },
-    },
-    select: { id: true },
-  }));
+export async function findDemoStaffSession(token: string | undefined) {
+  if (!token || !token.includes(".")) return null;
+  const staff = await db.staff.findFirst({
+    where: { id: token.split(".")[0], active: true, demoPasswordHash: { not: null } },
+    select: { id: true, gymId: true, role: true, demoPasswordHash: true },
+  });
+  if (!staff?.demoPasswordHash || !verifyDemoDeskSession(token, staff.demoPasswordHash)) return null;
+  return { id: staff.id, gymId: staff.gymId, role: staff.role };
 }
 
 function customerProfile(metadata: Record<string, unknown>): ClimberInput | undefined {
@@ -59,7 +62,12 @@ function customerProfile(metadata: Record<string, unknown>): ClimberInput | unde
   ) {
     return undefined;
   }
-  return { firstName, lastName, phone, email, dateOfBirth };
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ firstName, lastName, phone, email, dateOfBirth })) {
+    form.set(key, value);
+  }
+  const parsed = parseClimberInput(form);
+  return parsed.ok ? parsed.value : undefined;
 }
 
 // The staff row and climbers behind a Supabase login. The login action already
@@ -94,7 +102,22 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   } = await timed("perf_auth", { where: "page" }, () => supabase.auth.getUser());
   if (!user) return null;
   const username = user.user_metadata.username;
-  const profile = customerProfile(user.user_metadata);
+  let profile = customerProfile(user.user_metadata);
+  if (!profile) {
+    const climber = await db.climber.findFirst({
+      where: { authUserId: user.id },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { firstName: true, lastName: true, phone: true, email: true, dateOfBirth: true },
+    });
+    if (climber) {
+      profile = customerProfile({
+        ...climber,
+        phone: climber.phone ?? "",
+        email: climber.email ?? "",
+        dateOfBirth: climber.dateOfBirth.toISOString().slice(0, 10),
+      });
+    }
+  }
   return {
     ...(await findAccount(user.id)),
     username: typeof username === "string" ? username : undefined,

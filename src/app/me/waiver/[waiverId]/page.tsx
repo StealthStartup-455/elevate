@@ -3,7 +3,7 @@ import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import LinkArrow from "@/components/ui/LinkArrow";
-import { getGym } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import SignedWaiverDetails from "@/features/waivers/components/SignedWaiverDetails";
 import { getSignedWaiver } from "@/features/waivers/queries";
 
@@ -23,10 +23,10 @@ export default function SignedWaiverPage({ params }: PageProps<"/me/waiver/[waiv
 // a parent's login that manages them, or staff can open it (getSignedWaiver).
 async function SignedWaiver({ params }: Pick<PageProps<"/me/waiver/[waiverId]">, "params">) {
   const { waiverId } = await params;
-  // getSignedWaiver first: it calls connection(), and getGym() reads the clock.
   const waiver = await getSignedWaiver(waiverId);
   if (!waiver) notFound();
-  const gym = await getGym();
+  const gym = await getGymById(waiver.gymId);
+  if (!gym) notFound();
   return (
     <>
       <div className="flex flex-col items-start">

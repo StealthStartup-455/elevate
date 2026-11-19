@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { isDemoMode } from "./demo-mode";
+import { signDemoDeskSession } from "./demo-credentials";
 
 // The demo session: a cookie holding the signed-in climber's id. It is not
 // real auth, so it is only read and written in demo mode (demo-mode.ts).
@@ -41,9 +42,9 @@ export async function setActiveClimberSession(climberId: string): Promise<void> 
   (await cookies()).set(ACTIVE_CLIMBER_COOKIE, climberId, COOKIE_OPTIONS);
 }
 
-export async function setDeskSession(gymId?: string): Promise<void> {
+export async function setDeskSession(owner?: { id: string; demoPasswordHash: string }): Promise<void> {
   if (!isDemoMode()) return;
-  (await cookies()).set(MOCK_DESK_COOKIE, gymId ?? "1", COOKIE_OPTIONS);
+  (await cookies()).set(MOCK_DESK_COOKIE, owner ? signDemoDeskSession(owner) : "1", COOKIE_OPTIONS);
 }
 
 export async function clearSession(): Promise<void> {
@@ -58,13 +59,12 @@ export async function clearSession(): Promise<void> {
 // the real login.
 export async function hasDemoDeskSession(): Promise<boolean> {
   if (!isDemoMode()) return false;
-  return (await cookies()).has(MOCK_DESK_COOKIE);
+  return (await cookies()).get(MOCK_DESK_COOKIE)?.value === "1";
 }
 
-export async function getDemoDeskGymId(): Promise<string | undefined> {
+export async function getDemoDeskSession(): Promise<string | undefined> {
   if (!isDemoMode()) return undefined;
-  const value = (await cookies()).get(MOCK_DESK_COOKIE)?.value;
-  return value && value !== "1" ? value : undefined;
+  return (await cookies()).get(MOCK_DESK_COOKIE)?.value;
 }
 
 // Use getSessionClimberId (queries.ts) instead,

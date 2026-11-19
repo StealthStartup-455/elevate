@@ -8,7 +8,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import StatusPill from "@/components/ui/StatusPill";
 import { joinGym, openJoinedGym, searchGyms } from "../actions";
 import type { GymSearchResult } from "../queries";
@@ -16,9 +16,14 @@ import type { GymSearchResult } from "../queries";
 export default function GymSearch({ initialGyms }: { initialGyms: GymSearchResult[] }) {
   const [gyms, setGyms] = useState(initialGyms);
   const [pending, startTransition] = useTransition();
+  const latestSearch = useRef(0);
 
   function updateSearch(value: string) {
-    startTransition(async () => setGyms(await searchGyms(value)));
+    const request = ++latestSearch.current;
+    startTransition(async () => {
+      const results = await searchGyms(value);
+      if (request === latestSearch.current) setGyms(results);
+    });
   }
 
   return (

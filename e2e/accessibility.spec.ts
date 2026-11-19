@@ -7,10 +7,10 @@ import { expect, test, type Page } from "@playwright/test";
 // still done by hand. Needs DEMO_MODE and seeded data, like smoke.spec.ts.
 
 const screens: { user?: string; paths: string[]; phone: boolean }[] = [
-  { paths: ["/login", "/join"], phone: true },
+  { paths: ["/login", "/join", "/gym/signup"], phone: true },
   {
     user: "demo-valid-active",
-    paths: ["/me", "/me/check-in", "/me/membership", "/me/classes", "/me/classes?view=events", "/me/classes?view=calendar", "/me/stats", "/staff-only"],
+    paths: ["/me", "/me/explore", "/me/register", "/me/profile", "/me/check-in", "/me/membership", "/me/classes", "/me/classes?view=events", "/me/classes?view=calendar", "/me/stats", "/staff-only"],
     phone: true,
   },
   // No membership: the Before you climb card and the Membership section.

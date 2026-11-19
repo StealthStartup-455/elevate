@@ -39,7 +39,7 @@ async function SignWaiver({
   const climber = await getClimber(climberId);
   if (!climber) notFound();
   const [template, status] = await Promise.all([
-    getCurrentWaiverTemplate(),
+    getCurrentWaiverTemplate(climber.id),
     getWaiverStatus(climber.id),
   ]);
   const back = `/desk/customers/${climber.id}`;

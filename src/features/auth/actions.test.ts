@@ -10,6 +10,7 @@ const fake = vi.hoisted(() => ({
   findAccount: vi.fn(),
   clearSession: vi.fn(),
   setActiveClimberSession: vi.fn(),
+  provisionGym: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 vi.mock("./queries", () => ({ findAccount: fake.findAccount }));
+vi.mock("@/features/gyms/provision", () => ({ provisionGym: fake.provisionGym }));
 vi.mock("./session", () => ({
   clearSession: fake.clearSession,
   setActiveClimberSession: fake.setActiveClimberSession,
@@ -85,6 +87,20 @@ describe("login", () => {
   it("sends a login with no staff row or climber to gym discovery", async () => {
     fake.findAccount.mockResolvedValue(account(false, []));
     await expect(login({}, form("stranger@elevate.test", "pw"))).rejects.toThrow("redirect /me/explore");
+  });
+
+  it("retries a confirmed owner's pending gym setup on login", async () => {
+    fake.findAccount.mockResolvedValue(account(false, []));
+    fake.signInWithPassword.mockResolvedValue({
+      data: { user: {
+        id: "u1", email_confirmed_at: "confirmed",
+        user_metadata: { pendingGym: { gymName: "New Gym", ownerName: "Owner" } },
+      } },
+      error: null,
+    });
+    fake.provisionGym.mockResolvedValue({ gymId: "new-gym" });
+    await expect(login({}, form("owner@example.test", "pw"))).rejects.toThrow("redirect /desk");
+    expect(fake.provisionGym).toHaveBeenCalledWith("u1", expect.objectContaining({ gymName: "New Gym" }));
   });
 
   it("doesn't call Supabase when a field is empty", async () => {

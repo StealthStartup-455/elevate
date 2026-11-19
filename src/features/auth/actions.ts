@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
@@ -8,8 +9,13 @@ import { logEvent } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "./demo-mode";
 import { verifyDemoPassword } from "./demo-credentials";
-import { findAccount, findDemoStaffAccount, hasLegacyDemoGym } from "./queries";
-import { parseCustomerSignup, type CustomerSignup } from "./signup";
+import { findAccount, findDemoStaffAccount, getCurrentUser } from "./queries";
+import { parseCustomerSignup, type CustomerSignup, type SignupFieldErrors } from "./signup";
+import { pendingGymInput } from "@/features/gyms/validate";
+import { provisionGym } from "@/features/gyms/provision";
+import { parseClimberInput } from "@/features/climbers/validate";
+import type { FormState } from "@/features/climbers/types";
+import { toStoredPhone } from "@/features/climbers/phone";
 import {
   clearSession,
   setActiveClimberSession,
@@ -18,7 +24,12 @@ import {
 } from "./session";
 
 export type LoginState = { error?: string };
-export type SignupState = { error?: string; success?: string };
+export type SignupState = {
+  error?: string;
+  success?: string;
+  errors?: SignupFieldErrors;
+  values?: Partial<Record<keyof SignupFieldErrors, string>>;
+};
 
 // Same message for a wrong email and a wrong password, so nobody can use the
 // form to find out who has an account.
@@ -42,7 +53,7 @@ export async function login(
         return { error: LOGIN_ERROR };
       }
       await clearSession();
-      await setDeskSession(demoStaff.gymId);
+      await setDeskSession(demoStaff);
       logEvent("login_succeeded", { role: "desk", gymId: demoStaff.gymId, source: "demo_owner" });
       redirect("/desk");
     }
@@ -57,12 +68,6 @@ export async function login(
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     logEvent("login_failed", { reason: error.code ?? "supabase_error" });
-    if (isDemoMode() && (await hasLegacyDemoGym())) {
-      return {
-        error:
-          "To restore a gym made before owner logins, choose I manage a gym and submit its existing name with the email and password you want to use.",
-      };
-    }
     return { error: LOGIN_ERROR };
   }
 
@@ -72,6 +77,12 @@ export async function login(
 
   if (account.staff) {
     logEvent("login_succeeded", { role: "desk", staffId: account.staff.id });
+    redirect("/desk");
+  }
+  const pendingGym = pendingGymInput(data.user.user_metadata?.pendingGym);
+  if (pendingGym && data.user.email_confirmed_at) {
+    const result = await provisionGym(data.user.id, pendingGym);
+    if ("error" in result) return result;
     redirect("/desk");
   }
   if (account.climberIds.length === 0) {
@@ -87,12 +98,15 @@ export async function signUpCustomer(
   _prev: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
-  const signup = parseCustomerSignup(formData);
-  if (!signup) {
+  const parsed = parseCustomerSignup(formData);
+  if (!parsed.ok) {
     return {
-      error: "Complete every field.",
+      error: "Check the highlighted fields.",
+      errors: parsed.errors,
+      values: parsed.values,
     };
   }
+  const signup = parsed.value;
   if (isDemoMode()) return demoCustomerSignup(signup);
 
   const supabase = await createClient();
@@ -111,7 +125,10 @@ export async function signUpCustomer(
   });
   if (error || !data.user) {
     logEvent("signup_failed", { kind: "customer", reason: error?.code ?? "supabase_error" });
-    return { error: "We couldn't create your account. Try a different email address." };
+    return { error: "We couldn't create your account. Try a different email address.", values: signup.profile };
+  }
+  if (data.user.identities?.length === 0) {
+    return { error: "An account with that email already exists. Log in instead.", values: signup.profile };
   }
   // A prior demo login otherwise wins over the new Supabase session in
   // getSessionClimberId(), sending the person back to the demo gym.
@@ -128,9 +145,10 @@ async function demoCustomerSignup(signup: CustomerSignup): Promise<SignupState> 
   const climber = await db.climber.create({
     data: {
       gymId: gym.id,
+      authUserId: `demo-customer-${randomUUID()}`,
       firstName: signup.profile.firstName,
       lastName: signup.profile.lastName,
-      phone: signup.profile.phone,
+      phone: toStoredPhone(signup.profile.phone),
       email: signup.email,
       dateOfBirth: new Date(`${signup.profile.dateOfBirth}T00:00:00Z`),
       onboardingComplete: false,
@@ -140,6 +158,25 @@ async function demoCustomerSignup(signup: CustomerSignup): Promise<SignupState> 
   await clearSession();
   await setSession(climber.id);
   logEvent("signup_succeeded", { kind: "customer", source: "demo", climberId: climber.id });
+  redirect("/me/explore");
+}
+
+export async function completeCustomerProfile(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const parsed = parseClimberInput(formData);
+  if (!parsed.ok) {
+    return { status: "error", message: "Check the highlighted fields.", errors: parsed.errors, values: parsed.values };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: parsed.value });
+  if (error) {
+    logEvent("customer_profile_failed", { reason: error.code ?? "supabase_error" });
+    return { status: "error", message: "We couldn't save your profile. Try again.", values: parsed.value };
+  }
   redirect("/me/explore");
 }
 

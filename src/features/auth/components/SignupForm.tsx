@@ -11,9 +11,17 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useActionState } from "react";
 import { signUpCustomer, type SignupState } from "../actions";
+import DisabledReason from "@/components/ui/DisabledReason";
 
 export default function SignupForm() {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(signUpCustomer, {});
+  const errors = state.errors ?? {};
+  const values = state.values ?? {};
+  const submitButton = (
+    <Button type="submit" variant="contained" size="large" disabled={pending}>
+      {pending ? "Creating account…" : "Create account"}
+    </Button>
+  );
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 420, borderRadius: 3 }}>
@@ -22,7 +30,7 @@ export default function SignupForm() {
         <Typography variant="secondary" sx={{ mt: 1, mb: 4 }}>
           Create your Elevate account, then find the gyms you want to join.
         </Typography>
-        <Box component="form" action={formAction} noValidate>
+        <Box component="form" action={formAction} noValidate key={JSON.stringify(values)}>
           <Stack spacing={3}>
             <Stack spacing={3} direction={{ xs: "column", sm: "row" }}>
               <TextField
@@ -31,6 +39,9 @@ export default function SignupForm() {
                 required
                 fullWidth
                 autoComplete="given-name"
+                defaultValue={values.firstName}
+                error={Boolean(errors.firstName)}
+                helperText={errors.firstName}
               />
               <TextField
                 name="lastName"
@@ -38,6 +49,9 @@ export default function SignupForm() {
                 required
                 fullWidth
                 autoComplete="family-name"
+                defaultValue={values.lastName}
+                error={Boolean(errors.lastName)}
+                helperText={errors.lastName}
               />
             </Stack>
             <TextField
@@ -47,6 +61,9 @@ export default function SignupForm() {
               required
               fullWidth
               autoComplete="tel"
+              defaultValue={values.phone}
+              error={Boolean(errors.phone)}
+              helperText={errors.phone}
               slotProps={{ htmlInput: { inputMode: "tel" } }}
             />
             <TextField
@@ -56,6 +73,9 @@ export default function SignupForm() {
               required
               fullWidth
               autoComplete="email"
+              defaultValue={values.email}
+              error={Boolean(errors.email)}
+              helperText={errors.email}
               slotProps={{ htmlInput: { autoCapitalize: "none", spellCheck: false } }}
             />
             <TextField
@@ -65,6 +85,9 @@ export default function SignupForm() {
               required
               fullWidth
               autoComplete="bday"
+              defaultValue={values.dateOfBirth}
+              error={Boolean(errors.dateOfBirth)}
+              helperText={errors.dateOfBirth}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
@@ -74,12 +97,12 @@ export default function SignupForm() {
               required
               fullWidth
               autoComplete="new-password"
+              error={Boolean(errors.password)}
+              helperText={errors.password}
             />
             {state.error ? <Alert severity="error">{state.error}</Alert> : null}
             {state.success ? <Alert severity="success">{state.success}</Alert> : null}
-            <Button type="submit" variant="contained" size="large" disabled={pending}>
-              {pending ? "Creating account…" : "Create account"}
-            </Button>
+            {pending ? <DisabledReason reason="Creating your account.">{submitButton}</DisabledReason> : submitButton}
             <Button component={Link} href="/login" variant="outlined" size="large">
               Log in instead
             </Button>

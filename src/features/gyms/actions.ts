@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { type SignupState } from "@/features/auth/actions";
 import { isDemoMode } from "@/features/auth/demo-mode";
 import { hashDemoPassword } from "@/features/auth/demo-credentials";
@@ -21,60 +22,55 @@ import { forgetGym } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import { findGymBySlug, listGymsForCustomer, type GymSearchResult } from "./queries";
-import { parseGymInput, slugFromGymName, type GymInput } from "./validate";
+import { parseGymSignup, slugFromGymName, type GymInput } from "./validate";
+import { provisionGym } from "./provision";
 
 export async function signUpGym(
   _prev: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
-  const gym = parseGymInput(formData);
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
-  if (!gym || !email || !password) {
-    return { error: "Complete every field." };
+  const { gym, email, password, errors, values } = parseGymSignup(formData);
+  if (!gym || Object.keys(errors).length > 0) {
+    return { error: "Check the highlighted fields.", errors, values };
   }
-  if (isDemoMode()) return demoGymSignup(gym, email, password);
-
-  const slug = slugFromGymName(gym.gymName);
-  if (await findGymBySlug(slug)) {
-    return { error: "A gym with that name already exists. Use a more specific name." };
-  }
+  if (isDemoMode()) return { ...await demoGymSignup(gym, email, password), values };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error || !data.user) {
-    logEvent("gym_signup_failed", { reason: error?.code ?? "supabase_error" });
-    return { error: "We couldn't create your account. Try a different email address." };
+  const { data: current } = await supabase.auth.getUser();
+  let owner = current.user;
+  if (owner && owner.email?.toLowerCase() !== email) {
+    return { error: "You're already logged in with a different email. Log out before creating another account.", values };
   }
-  if (data.user.identities?.length === 0) {
-    logEvent("gym_signup_failed", { reason: "existing_account" });
-    return { error: "An account with that email already exists. Log in instead." };
+  if (!owner) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { pendingGym: gym } },
+    });
+    if (error || !data.user) {
+      logEvent("gym_signup_failed", { reason: error?.code ?? "supabase_error" });
+      return { error: "We couldn't create your account. Try a different email address.", values };
+    }
+    if (data.user.identities?.length === 0) {
+      logEvent("gym_signup_failed", { reason: "existing_account" });
+      return { error: "An account with that email already exists. Log in instead.", values };
+    }
+    owner = data.session ? data.user : null;
   }
-  const authUser = data.user;
   await clearSession();
-
-  const created = await db.$transaction(async (tx) => {
-    const newGym = await tx.gym.create({
-      data: { name: gym.gymName, slug, timeZone: gym.timeZone },
-      select: { id: true },
-    });
-    await tx.staff.create({
-      data: {
-        gymId: newGym.id,
-        authUserId: authUser.id,
-        name: gym.ownerName,
-        role: "OWNER",
-      },
-    });
-    return newGym;
-  });
-  forgetGym();
-  revalidatePath("/me/explore");
-  logEvent("gym_created", { gymId: created.id, source: "self_service" });
-
-  if (!data.session) {
+  if (!owner?.email_confirmed_at) {
     return { success: "Check your email to confirm your account, then log in to set up your gym." };
   }
+  if (current.user) {
+    const { error } = await supabase.auth.updateUser({ data: { pendingGym: gym } });
+    if (error) {
+      logEvent("gym_signup_failed", { reason: error.code ?? "supabase_error" });
+      return { error: "We couldn't save your gym setup. Try again.", values };
+    }
+  }
+  const result = await provisionGym(owner.id, gym);
+  if ("error" in result) return { ...result, values };
+  revalidatePath("/me/explore");
   redirect("/desk");
 }
 
@@ -94,54 +90,39 @@ async function demoGymSignup(
   if (existingOwner) {
     return { error: "An account with that email already exists. Log in instead." };
   }
-  const passwordHash = await hashDemoPassword(password);
   if (existingGym) {
-    const legacyOwner = await db.staff.findFirst({
-      where: {
-        gymId: existingGym.id,
-        demoEmail: null,
-        authUserId: { startsWith: "demo-owner-" },
-      },
-      select: { id: true },
-    });
-    if (!legacyOwner) {
-      return { error: "A gym with that name already exists. Use a more specific name." };
-    }
-    await db.staff.update({
-      where: { id: legacyOwner.id },
-      data: {
-        demoEmail: email,
-        demoPasswordHash: passwordHash,
-        name: gym.ownerName,
-      },
-    });
-    await clearSession();
-    await setDeskSession(existingGym.id);
-    logEvent("gym_owner_reclaimed", { gymId: existingGym.id, source: "demo_self_service" });
-    redirect("/desk");
+    return { error: "A gym with that name already exists. Use a more specific name." };
   }
-  const created = await db.$transaction(async (tx) => {
-    const newGym = await tx.gym.create({
-      data: { name: gym.gymName, slug, timeZone: gym.timeZone },
-      select: { id: true },
+  const passwordHash = await hashDemoPassword(password);
+  let owner;
+  try {
+    owner = await db.$transaction(async (tx) => {
+      const newGym = await tx.gym.create({
+        data: { name: gym.gymName, slug, timeZone: gym.timeZone },
+        select: { id: true },
+      });
+      return tx.staff.create({
+        data: {
+          gymId: newGym.id,
+          authUserId: `demo-owner-${randomUUID()}`,
+          demoEmail: email,
+          demoPasswordHash: passwordHash,
+          name: gym.ownerName,
+          role: "OWNER",
+        },
+        select: { id: true, gymId: true },
+      });
     });
-    await tx.staff.create({
-      data: {
-        gymId: newGym.id,
-        authUserId: `demo-owner-${randomUUID()}`,
-        demoEmail: email,
-        demoPasswordHash: passwordHash,
-        name: gym.ownerName,
-        role: "OWNER",
-      },
-    });
-    return newGym;
-  });
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    logEvent("gym_signup_failed", { reason: "duplicate_gym_or_email" });
+    return { error: "That gym name or email is already in use. Log in or choose another." };
+  }
   forgetGym();
   await clearSession();
-  await setDeskSession(created.id);
+  await setDeskSession({ id: owner.id, demoPasswordHash: passwordHash });
   revalidatePath("/me/explore");
-  logEvent("gym_created", { gymId: created.id, source: "demo_self_service" });
+  logEvent("gym_created", { gymId: owner.gymId, source: "demo_self_service" });
   redirect("/desk");
 }
 
@@ -165,19 +146,37 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
         phone: true,
         email: true,
         dateOfBirth: true,
+        authUserId: true,
       },
     });
     if (!source) redirect("/me/explore");
-    const climber =
-      source.gymId === gym.id
-        ? await db.climber.update({
-            where: { id: source.id },
-            data: { onboardingComplete: true },
+    const authUserId = source.authUserId ?? `demo-customer-${source.id}`;
+    const rememberedIds = await getDemoClimberIds();
+    const climber = await db.$transaction(async (tx) => {
+      // Serialize joins to this gym without a uniqueness rule that would
+      // prevent a parent's login from managing multiple children.
+      await tx.$queryRaw`SELECT "id" FROM "Gym" WHERE "id" = ${gym.id} FOR UPDATE`;
+      if (!source.authUserId) {
+        await tx.climber.update({ where: { id: source.id }, data: { authUserId } });
+      }
+      const existing = await tx.climber.findFirst({
+        where: {
+          gymId: gym.id,
+          OR: [{ authUserId }, { id: { in: rememberedIds }, authUserId: null }],
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true },
+      });
+      return existing
+        ? tx.climber.update({
+            where: { id: existing.id },
+            data: { authUserId, onboardingComplete: true },
             select: { id: true },
           })
-        : await db.climber.create({
+        : tx.climber.create({
             data: {
               gymId: gym.id,
+              authUserId,
               firstName: source.firstName,
               lastName: source.lastName,
               phone: source.phone,
@@ -186,6 +185,7 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
             },
             select: { id: true },
           });
+    });
     await setSession(climber.id);
     revalidatePath("/me", "layout");
     logEvent("gym_joined", { gymId: gym.id, climberId: climber.id, source: "demo" });
@@ -194,26 +194,30 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
 
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.customerProfile) redirect("/me/explore");
-
-  const existing = await db.climber.findFirst({
-    where: { gymId: gym.id, authUserId: user.authUserId },
-    select: { id: true },
-  });
-  const climber =
-    existing ??
-    (await db.climber.create({
+  const profile = user.customerProfile;
+  const climber = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Gym" WHERE "id" = ${gym.id} FOR UPDATE`;
+    const existing = await tx.climber.findFirst({
+      where: { gymId: gym.id, authUserId: user.authUserId },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true },
+    });
+    if (existing) return existing;
+    if (!profile) return null;
+    return tx.climber.create({
       data: {
         gymId: gym.id,
         authUserId: user.authUserId,
-        firstName: user.customerProfile.firstName,
-        lastName: user.customerProfile.lastName,
-        phone: toStoredPhone(user.customerProfile.phone),
-        email: user.customerProfile.email || null,
-        dateOfBirth: new Date(`${user.customerProfile.dateOfBirth}T00:00:00Z`),
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: toStoredPhone(profile.phone),
+        email: profile.email || null,
+        dateOfBirth: new Date(`${profile.dateOfBirth}T00:00:00Z`),
       },
       select: { id: true },
-    }));
+    });
+  });
+  if (!climber) redirect("/me/profile");
 
   await setActiveClimberSession(climber.id);
   revalidatePath("/me", "layout");

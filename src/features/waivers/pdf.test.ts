@@ -9,6 +9,7 @@ const GYM = { name: "Elevate Demo Gym", timeZone: "America/Vancouver" };
 
 const WAIVER: SignedWaiverView = {
   id: "0b7a1d4e-6f0c-4c39-9a57-2f2b8f4f9d10",
+  gymId: "test-gym",
   climberId: "5a3f2b1c-0d4e-4f6a-8b7c-9d0e1f2a3b4c",
   climberName: "Zoë Tremblay",
   version: "v1",

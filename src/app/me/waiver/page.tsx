@@ -41,7 +41,7 @@ async function WaiverDetails({ searchParams }: Pick<PageProps<"/me/waiver">, "se
   if (!climberId) redirect("/");
   const [climber, template, status] = await Promise.all([
     getClimber(climberId),
-    getCurrentWaiverTemplate(),
+    getCurrentWaiverTemplate(climberId),
     getWaiverStatus(climberId),
   ]);
   if (!climber) redirect("/");

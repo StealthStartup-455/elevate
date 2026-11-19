@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/features/auth/queries";
 import { getStaffContext } from "@/features/auth/staff";
 import { db } from "@/lib/db";
-import { forgetGym, getGym, getGymById } from "@/lib/gym";
+import { forgetGym, getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { canActForClimber, canEditWaiver } from "./access";
 import { hashWaiver } from "./hash";
@@ -70,20 +70,18 @@ export async function submitWaiver(
     return { status: "error", message: "Log in to sign the waiver." };
   }
 
-  const gym = await getGym();
-  const [climber, template] = await Promise.all([
-    db.climber.findFirst({
-      where: { id: climberId, gymId: gym.id },
-      select: { firstName: true, lastName: true, dateOfBirth: true },
-    }),
-    gym.waiverVersion
-      ? db.waiverTemplate.findUnique({
+  const climber = await db.climber.findUnique({
+    where: { id: climberId },
+    select: { gymId: true, firstName: true, lastName: true, dateOfBirth: true },
+  });
+  if (!climber) return { status: "error", message: "Climber not found." };
+  const gym = await getGymById(climber.gymId);
+  const template = gym?.waiverVersion
+      ? await db.waiverTemplate.findUnique({
           where: { gymId_version: { gymId: gym.id, version: gym.waiverVersion } },
         })
-      : null,
-  ]);
-  if (!climber) return { status: "error", message: "Climber not found." };
-  if (!template) {
+      : null;
+  if (!gym || !template) {
     return { status: "error", message: "The gym hasn't set up its waiver yet. Ask at the desk." };
   }
   // The gym published new wording while they were reading: they must read it.

@@ -80,7 +80,6 @@ model Climber {
   gymId            String
   firstName        String
   lastName         String
-  accountUsername  String? // chosen on Elevate account creation; unique within a gym when set
   email            String? // saved lowercased
   phone            String? // saved like +12505551234
   dateOfBirth      DateTime @db.Date
@@ -104,7 +103,6 @@ model Climber {
   @@unique([id, gymId])
   @@unique([gymId, externalId])
   @@index([gymId, phone])
-  @@index([gymId, accountUsername])
   @@index([gymId, email])
   @@index([gymId, lastName])
   @@index([authUserId])
