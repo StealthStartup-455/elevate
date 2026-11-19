@@ -53,7 +53,7 @@ async function studentIdTaken(
   return {
     status: "error",
     message: "Please fix the highlighted fields.",
-    errors: { studentId: "Someone already has this student ID. Check it, or ask the front desk." },
+    errors: { studentId: "Another climber already has this student ID. Check it and try again." },
     values: parsed.value,
   };
 }

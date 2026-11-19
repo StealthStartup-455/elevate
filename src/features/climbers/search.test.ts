@@ -25,6 +25,19 @@ describe("climber search", () => {
     expect(bestMatches(rows, "V99999999", 8)).toEqual([]);
   });
 
+  it("puts the exact V number first, ahead of near misses, even when the list is capped", () => {
+    // Like the migration's placeholders: V90000001, V90000002, ... so many
+    // climbers are one digit away from each other.
+    const many = Array.from({ length: 60 }, (_, i) => ({
+      id: String(i + 1),
+      name: `Climber ${i + 1}`,
+      phone: "",
+      studentId: `V${90000000 + i + 1}`,
+    })).reverse();
+    expect(bestMatches(many, "V90000001", 8)[0]?.studentId).toBe("V90000001");
+    expect(bestMatches(many, "90000012", 8)[0]?.studentId).toBe("V90000012");
+  });
+
   it("returns nothing for an empty search and caps the results", () => {
     expect(bestMatches(rows, "  ", 8)).toEqual([]);
     expect(bestMatches(rows, "jamie", 1)).toHaveLength(1);

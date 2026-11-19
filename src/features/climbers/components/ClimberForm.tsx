@@ -93,7 +93,7 @@ export default function ClimberForm({
             fullWidth
             defaultValue={values.studentId}
             error={Boolean(errors.studentId)}
-            helperText={errors.studentId ?? "A V and 8 digits, like V00123456. Your check-in barcode is made from it."}
+            helperText={errors.studentId ?? "A V and 8 digits, like V00123456. The check-in barcode is made from it."}
             slotProps={{ htmlInput: { autoComplete: "off", autoCapitalize: "characters", maxLength: 12 } }}
           />
           <TextField

@@ -40,7 +40,14 @@ export function searchScore(
   if (!idTerms.every((n) => n === "" || nearDigits(student, n))) return 0;
   if (!numbers.every((n) => n === "" || phone.includes(n) || nearDigits(student, n))) return 0;
   const nameScore = words.length ? fuzzyScore(row.name, words.join(" ")) : 1;
-  return nameScore === 0 ? 0 : nameScore + (numbers.length + idTerms.length) * 5;
+  if (nameScore === 0) return 0;
+  // A number found as typed ranks above one only found with a typo, so a
+  // scanned V number puts its climber first, ahead of the near misses, and
+  // the result cap can't drop them (#38).
+  const exact = [...idTerms, ...numbers].filter(
+    (n) => n !== "" && (student.includes(n) || phone.includes(n)),
+  ).length;
+  return nameScore + (numbers.length + idTerms.length) * 5 + exact * 5;
 }
 
 // The best `limit` matches for `query`, best first. Rows that don't match are
