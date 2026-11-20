@@ -89,4 +89,6 @@ export type CheckInCandidate = {
   membershipRecurring?: boolean;
   hasDayPass: boolean;
   punchesLeft: number;
+  /** Whether this gym sells in Elevate, so the dialog can offer POS. */
+  posEnabled: boolean;
 };

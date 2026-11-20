@@ -17,8 +17,8 @@ export default function LinkButton({
   children: React.ReactNode;
   variant?: "contained" | "outlined" | "text";
   size?: "small" | "medium" | "large";
-  /** Only for a renew link (warning); leave out for the usual action color. */
-  color?: "warning";
+  /** warning: a renew link. error: a button staff must notice (POS in the Check in dialog). */
+  color?: "warning" | "error";
   fullWidth?: boolean;
 }) {
   return (
