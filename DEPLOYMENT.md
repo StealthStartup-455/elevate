@@ -180,16 +180,22 @@ When one of these is replaced, change the matching step in `e2e/release.spec.ts`
 
 ### Reset before a demo
 
-Testing leaves climbers, sales and check-ins behind (for example several copies of the same test climber). Reset staging the morning of a demo and before each class feedback session (#138):
+Testing leaves climbers, sales and check-ins behind (for example several copies of the same test climber). Reset staging the morning of a demo and before each class feedback session (#138).
+
+**From any browser (#232):** on GitHub, open **Actions**, then **Reset staging**, then **Run workflow**. Leave the branch on `dev`, type `reset` in the box and run it. It uses `STAGING_DIRECT_URL` from the staging environment, so it needs no computer, Node or database password. It stops if the staging database is missing migrations (run **Deploy staging** first) and never runs at the same time as a deploy. The run summary shows what was removed and created.
+
+**From a computer:**
 
 ```bash
 npm run staging:reset          # Windows PowerShell: npm.cmd run staging:reset
 ```
 
-It asks for the staging **session pooler** URL (Supabase, Connect, password filled in), or reads `STAGING_SESSION_URL`, and runs the seed against it. The seed deletes every climber in the demo gym, with their passes, waivers, sales, sale lines, check-ins and scans, then creates the seeded climbers again, all in one transaction. It prints how many climbers it removed and how many of those were added since the last seed.
+It asks for the staging **session pooler** URL (Supabase, Connect, password filled in), or reads `STAGING_SESSION_URL`, and runs the seed against it.
+
+Both do the same thing. The seed deletes every climber in the demo gym, with their passes, waivers, sales, sale lines, check-ins and scans, then creates the seeded climbers again, all in one transaction. It prints how many climbers it removed and how many of those were added since the last seed.
 
 - **Kept:** the gym and its settings, the waiver wording, products (by name, so their ids stay), staff, and the Supabase logins.
-- **`climber@elevate.test`** points at a seeded climber, so it is linked again only when you also set `STAGING_SUPABASE_URL`, `STAGING_SECRET_KEY` and `SEED_LOGIN_PASSWORD` (the staging project's values, see "Real logins on a hosted project"). Otherwise the script blanks the Supabase values from your `.env`, so local keys never make logins against staging data, and only the demo usernames sign in as climbers.
+- **`climber@elevate.test`** points at a seeded climber, so it is linked again only when you also set `STAGING_SUPABASE_URL`, `STAGING_SECRET_KEY` and `SEED_LOGIN_PASSWORD` (the staging project's values, see "Real logins on a hosted project"). Otherwise the script blanks the Supabase values from your `.env`, so local keys never make logins against staging data, and only the demo usernames sign in as climbers. The Actions button never relinks it.
 - **New ids:** seeded climbers are created again, so anyone signed in as a climber is sent back to log in. Log in again with the demo usernames.
 - **Refused** with `APP_ENV=production`: both the script and the seed stop, because the seed deletes every climber in the gym.
 - **Check:** on the desk, Manual check in finds none of the test climbers (search one by name), and POS "Checked in today" and "Today's sales" are empty.
