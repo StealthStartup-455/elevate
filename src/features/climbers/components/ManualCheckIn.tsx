@@ -15,11 +15,13 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
+import DisabledReason from "@/components/ui/DisabledReason";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
 import { isStudentId, normalizeStudentId } from "../student-id";
 import type { CheckInCandidate, MembershipStatus } from "../types";
+import LinkButton from "./LinkButton";
 import WaiverBadge from "./WaiverBadge";
 
 const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
@@ -294,6 +296,17 @@ export default function ManualCheckIn() {
               >
                 Back to search
               </Button>
+              {selected.posEnabled ? (
+                <LinkButton href={`/desk/pos?climber=${selected.id}`} variant="outlined" color="error">
+                  POS
+                </LinkButton>
+              ) : (
+                <DisabledReason reason="This gym doesn't sell passes in Elevate.">
+                  <Button variant="outlined" color="error" disabled>
+                    POS
+                  </Button>
+                </DisabledReason>
+              )}
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
                   Give free day pass
