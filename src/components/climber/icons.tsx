@@ -50,6 +50,13 @@ export const CalendarIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const CompassIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
+  </Svg>
+);
+
 export const CheckIcon = (p: IconProps) => (
   <Svg strokeWidth={3} {...p}>
     <path d="M5 12l5 5L19 7" />

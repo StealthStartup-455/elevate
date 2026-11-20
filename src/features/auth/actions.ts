@@ -1,14 +1,36 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
+import { db } from "@/lib/db";
+import { getGym } from "@/lib/gym";
 import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
 import { logEvent } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "./demo-mode";
-import { findAccount } from "./queries";
-import { clearSession, setDeskSession, setSession } from "./session";
+import { verifyDemoPassword } from "./demo-credentials";
+import { findAccount, findDemoStaffAccount, getCurrentUser } from "./queries";
+import { parseCustomerSignup, type CustomerSignup, type SignupFieldErrors } from "./signup";
+import { pendingGymInput } from "@/features/gyms/validate";
+import { provisionGym } from "@/features/gyms/provision";
+import { parseClimberInput } from "@/features/climbers/validate";
+import type { FormState } from "@/features/climbers/types";
+import { toStoredPhone } from "@/features/climbers/phone";
+import {
+  clearSession,
+  setActiveClimberSession,
+  setDeskSession,
+  setSession,
+} from "./session";
 
 export type LoginState = { error?: string };
+export type SignupState = {
+  error?: string;
+  success?: string;
+  errors?: SignupFieldErrors;
+  values?: Partial<Record<keyof SignupFieldErrors, string>>;
+};
 
 // Same message for a wrong email and a wrong password, so nobody can use the
 // form to find out who has an account.
@@ -24,6 +46,19 @@ export async function login(
 
   // Demo usernames have no "@".
   if (isDemoMode() && !email.includes("@")) return demoLogin(email, password);
+  if (isDemoMode()) {
+    const demoStaff = await findDemoStaffAccount(email);
+    if (demoStaff) {
+      if (!(await verifyDemoPassword(password, demoStaff.demoPasswordHash))) {
+        logEvent("login_failed", { reason: "wrong_password" });
+        return { error: LOGIN_ERROR };
+      }
+      await clearSession();
+      await setDeskSession(demoStaff);
+      logEvent("login_succeeded", { role: "desk", gymId: demoStaff.gymId, source: "demo_owner" });
+      redirect("/desk");
+    }
+  }
 
   if (!email || !password) {
     logEvent("login_failed", { reason: "missing_fields" });
@@ -38,12 +73,6 @@ export async function login(
   }
 
   const account = await findAccount(data.user.id);
-  if (!account.staff && account.climberIds.length === 0) {
-    logEvent("login_failed", { reason: "no_account" });
-    await supabase.auth.signOut();
-    return { error: "This login isn't set up for the gym yet." };
-  }
-
   // A leftover demo cookie would win over the real login (getSessionClimberId).
   await clearSession();
 
@@ -51,8 +80,118 @@ export async function login(
     logEvent("login_succeeded", { role: "desk", staffId: account.staff.id });
     redirect("/desk");
   }
+  const pendingGym = pendingGymInput(data.user.user_metadata?.pendingGym);
+  if (pendingGym && data.user.email_confirmed_at) {
+    const result = await provisionGym(data.user.id, pendingGym);
+    if ("error" in result) return result;
+    redirect("/desk");
+  }
+  if (account.climberIds.length === 0) {
+    logEvent("login_succeeded", { role: "customer_without_gym" });
+    redirect("/me/explore");
+  }
+  await setActiveClimberSession(account.climberIds[0]);
   logEvent("login_succeeded", { role: "climber", climberId: account.climberIds[0] });
   redirect("/me");
+}
+
+export async function signUpCustomer(
+  _prev: SignupState,
+  formData: FormData,
+): Promise<SignupState> {
+  const parsed = parseCustomerSignup(formData);
+  if (!parsed.ok) {
+    return {
+      error: "Check the highlighted fields.",
+      errors: parsed.errors,
+      values: parsed.values,
+    };
+  }
+  const signup = parsed.value;
+  if (isDemoMode()) return demoCustomerSignup(signup);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: signup.email,
+    password: signup.password,
+    options: {
+      data: {
+        firstName: signup.profile.firstName,
+        lastName: signup.profile.lastName,
+        studentId: signup.profile.studentId,
+        phone: signup.profile.phone,
+        email: signup.profile.email,
+        dateOfBirth: signup.profile.dateOfBirth,
+      },
+    },
+  });
+  if (error || !data.user) {
+    logEvent("signup_failed", { kind: "customer", reason: error?.code ?? "supabase_error" });
+    return { error: "We couldn't create your account. Try a different email address.", values: signup.profile };
+  }
+  if (data.user.identities?.length === 0) {
+    return { error: "An account with that email already exists. Log in instead.", values: signup.profile };
+  }
+  // A prior demo login otherwise wins over the new Supabase session in
+  // getSessionClimberId(), sending the person back to the demo gym.
+  await clearSession();
+  if (!data.session) {
+    return { success: "Check your email to confirm your account, then log in to find your gym." };
+  }
+  logEvent("signup_succeeded", { kind: "customer" });
+  redirect("/me/explore");
+}
+
+async function demoCustomerSignup(signup: CustomerSignup): Promise<SignupState> {
+  const gym = await getGym();
+  const climber = await db.climber.create({
+    data: {
+      gymId: gym.id,
+      authUserId: `demo-customer-${randomUUID()}`,
+      firstName: signup.profile.firstName,
+      lastName: signup.profile.lastName,
+      studentId: signup.profile.studentId,
+      phone: toStoredPhone(signup.profile.phone),
+      email: signup.email,
+      dateOfBirth: new Date(`${signup.profile.dateOfBirth}T00:00:00Z`),
+      onboardingComplete: false,
+    },
+    select: { id: true },
+  }).catch((error: unknown) => {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    logEvent("signup_failed", { kind: "customer", reason: "student_id_taken" });
+    return null;
+  });
+  if (!climber) {
+    return {
+      error: "Check the highlighted fields.",
+      errors: { studentId: "Another climber already has this student ID. Check it or ask the front desk." },
+      values: signup.profile,
+    };
+  }
+  await clearSession();
+  await setSession(climber.id);
+  logEvent("signup_succeeded", { kind: "customer", source: "demo", climberId: climber.id });
+  redirect("/me/explore");
+}
+
+export async function completeCustomerProfile(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const parsed = parseClimberInput(formData);
+  if (!parsed.ok) {
+    return { status: "error", message: "Check the highlighted fields.", errors: parsed.errors, values: parsed.values };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: parsed.value });
+  if (error) {
+    logEvent("customer_profile_failed", { reason: error.code ?? "supabase_error" });
+    return { status: "error", message: "We couldn't save your profile. Try again.", values: parsed.value };
+  }
+  redirect("/me/explore");
 }
 
 // Static demo login, no real auth: the password must equal the username.

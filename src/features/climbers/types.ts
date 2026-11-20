@@ -10,6 +10,9 @@ export type MembershipStatus = "none" | "active" | "paused" | "expired";
 export type Climber = {
   /** The database id (a UUID). Stable, so URLs built from it keep working. */
   id: string;
+  /** The gym this record belongs to. */
+  gymId: string;
+  gymSlug?: string;
   firstName: string;
   lastName: string;
   /** Shown like 250-555-0101. */

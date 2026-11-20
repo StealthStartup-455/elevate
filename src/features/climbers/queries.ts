@@ -18,6 +18,8 @@ import type { Climber, MembershipStatus, PossibleDuplicate, WaiverStatus } from 
 
 export type Membership = {
   climberId: string;
+  gymId: string;
+  gymSlug: string;
   firstName: string;
   lastName: string;
   plan: string;
@@ -81,7 +83,7 @@ type Row = Awaited<ReturnType<typeof findRows>>[number];
 
 function toClimber(
   row: Row,
-  gym: { waiverVersion: string | null; timeZone: string },
+  gym: { waiverVersion: string | null; timeZone: string; slug?: string },
   now: Date,
 ): Climber {
   const waiver = summarizeWaiver(row.waivers[0], gym.waiverVersion, now, gym.timeZone);
@@ -93,6 +95,8 @@ function toClimber(
   );
   return {
     id: row.id,
+    gymId: row.gymId,
+    ...(gym.slug ? { gymSlug: gym.slug } : {}),
     firstName: row.firstName,
     lastName: row.lastName,
     phone: row.phone ? formatPhone(row.phone) : "",
@@ -121,7 +125,7 @@ export async function getMyMembership(): Promise<Membership> {
   await connection();
   const id = await getSessionClimberId();
   // Staff with no climber of their own belong on the desk, not at log in.
-  if (!id) redirect((await isStaff()) ? "/desk" : "/");
+  if (!id) redirect((await isStaff()) ? "/desk" : "/me/explore");
   const climber = await getClimber(id);
   // A session for a climber that no longer exists (for example after the
   // database was reseeded): back to log in.
@@ -129,6 +133,8 @@ export async function getMyMembership(): Promise<Membership> {
 
   return {
     climberId: climber.id,
+    gymId: climber.gymId,
+    gymSlug: climber.gymSlug ?? "",
     firstName: climber.firstName,
     lastName: climber.lastName,
     // The product they bought (#132); a membership from before the POS has
@@ -287,7 +293,7 @@ export async function searchClimbers(query: string, limit: number): Promise<Clim
 // Visits saved in the CheckIn table inside the active window, newest first.
 // Only front desk check-ins are saved so far (see checkInClimber).
 // No staff check: the busyness count on /me reads this too.
-export async function getSavedCheckIns(since: Date, until: Date = new Date()): Promise<
+export async function getSavedCheckIns(since: Date, until: Date = new Date(), expectedGymId?: string): Promise<
   {
     id: string;
     climberId: string;
@@ -302,19 +308,12 @@ export async function getSavedCheckIns(since: Date, until: Date = new Date()): P
   const staff = await getStaffContext();
   let gymId = staff?.gymId ?? null;
   if (!gymId) {
-    const user = await getCurrentUser();
-    const demoClimberId = await getDemoClimberId();
-    gymId =
-      (user?.climberIds[0]
-        ? (await db.climber.findFirst({ where: { id: user.climberIds[0] }, select: { gymId: true } }))
-            ?.gymId ?? null
-        : null) ??
-      (demoClimberId
-        ? (await db.climber.findUnique({ where: { id: demoClimberId }, select: { gymId: true } }))
-            ?.gymId ?? null
-        : null);
+    const climberId = await getSessionClimberId();
+    gymId = climberId
+      ? (await db.climber.findUnique({ where: { id: climberId }, select: { gymId: true } }))?.gymId ?? null
+      : null;
   }
-  if (!gymId) return [];
+  if (!gymId || (expectedGymId && gymId !== expectedGymId)) return [];
   const gym = await getGymById(gymId);
   if (!gym) return [];
   const now = until;

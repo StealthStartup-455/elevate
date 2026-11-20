@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { randomStudentId } from "../src/features/climbers/student-id";
+import { signUpDemoCustomer } from "./climber";
 
 // Possible duplicate climbers: Add climber warns before a second record, and
 // Manual check in shows a birthday so same-name climbers can be told apart.
@@ -67,29 +68,15 @@ test("adding the same person twice warns, and staff can open them or add anyway"
   await expect(results.getByText(/Born Apr 4, 1992/)).toHaveCount(2);
 });
 
-test("/join warns a returning climber without naming anyone", async ({ page }) => {
+test("/join redirects to account signup before choosing a gym", async ({ page }) => {
   const unique = Date.now().toString().slice(-6);
   const last = `Again${unique}`;
   const phone = `250558${unique.slice(-4)}`;
 
-  async function join() {
-    await page.goto("/join");
-    await page.getByRole("textbox", { name: "First name" }).fill("Jordan");
-    await page.getByRole("textbox", { name: "Last name" }).fill(last);
-    await page.getByRole("textbox", { name: "Phone number" }).fill(phone);
-    await page.getByLabel("Student ID").fill(randomStudentId());
-    await page.getByLabel("Date of birth").fill("1994-02-02");
-    await page.getByRole("button", { name: "Create account" }).click();
-  }
-
-  await join();
-  await expect(page.getByText("You're registered.", { exact: false })).toBeVisible();
-
-  await page.context().clearCookies();
-  await join();
-  await expect(page.getByText(/You may already have an account here/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open", exact: true })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Create a new account anyway" }).click();
-  await expect(page.getByText("You're registered.", { exact: false })).toBeVisible();
+  await page.goto("/join");
+  await expect(page).toHaveURL(/\/signup$/);
+  await signUpDemoCustomer(page, {
+    firstName: "Jordan", lastName: last, phone, dateOfBirth: "1994-02-02",
+  });
+  await expect(page.getByRole("heading", { name: "You're registered" })).toBeVisible();
 });

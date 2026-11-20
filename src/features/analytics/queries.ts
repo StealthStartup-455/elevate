@@ -25,7 +25,7 @@ export async function getActiveCheckIns(
   now: Date,
 ): Promise<ActiveCheckIn[]> {
   const since = activeWindowStart(now, ACTIVE_WINDOW_MINUTES);
-  const saved = await getSavedCheckIns(since, now);
+  const saved = await getSavedCheckIns(since, now, gymId);
   const live: ActiveCheckIn[] = saved.map((c) => ({
     id: c.id,
     climberId: c.climberId,

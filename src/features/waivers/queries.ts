@@ -3,7 +3,7 @@ import { getStaffContext } from "@/features/auth/staff";
 import { formatPhone } from "@/features/climbers/phone";
 import { summarizeWaiver, type WaiverSummary } from "@/features/climbers/status";
 import { db } from "@/lib/db";
-import { getGym, getGymById } from "@/lib/gym";
+import { getGymById } from "@/lib/gym";
 import { canActForClimber } from "./access";
 import { hashWaiver } from "./hash";
 
@@ -30,10 +30,12 @@ function paragraphsOf(body: string): string[] {
 }
 
 /** The wording climbers must sign now, or null if the gym hasn't set one up. */
-export async function getCurrentWaiverTemplate(): Promise<WaiverTemplateView | null> {
+export async function getCurrentWaiverTemplate(climberId: string): Promise<WaiverTemplateView | null> {
   await connection();
-  const gym = await getGym();
-  if (!gym.waiverVersion) return null;
+  if (!UUID.test(climberId) || !(await canActForClimber(climberId))) return null;
+  const climber = await db.climber.findUnique({ where: { id: climberId }, select: { gymId: true } });
+  const gym = climber ? await getGymById(climber.gymId) : null;
+  if (!gym?.waiverVersion) return null;
   const template = await db.waiverTemplate.findUnique({
     where: { gymId_version: { gymId: gym.id, version: gym.waiverVersion } },
   });
@@ -58,7 +60,9 @@ export async function getWaiverStatus(
 ): Promise<WaiverSummary & { waiverId?: string }> {
   await connection();
   if (!UUID.test(climberId)) return { status: "missing" };
-  const gym = await getGym();
+  const climber = await db.climber.findUnique({ where: { id: climberId }, select: { gymId: true } });
+  const gym = climber ? await getGymById(climber.gymId) : null;
+  if (!gym) return { status: "missing" };
   const latest = await db.waiver.findFirst({
     where: { gymId: gym.id, climberId },
     orderBy: { signedAt: "desc" },
@@ -70,6 +74,7 @@ export async function getWaiverStatus(
 
 export type SignedWaiverView = {
   id: string;
+  gymId: string;
   climberId: string;
   climberName: string;
   version: string;
@@ -90,8 +95,7 @@ export type SignedWaiverView = {
 /** One signed waiver, only for the climber, their parent's login, or staff. */
 export async function getSignedWaiver(id: string): Promise<SignedWaiverView | null> {
   await connection();
-  const gym = await getGym();
-  return findSignedWaiver(id, gym.id, canActForClimber);
+  return findSignedWaiver(id, undefined, canActForClimber);
 }
 
 /**
@@ -140,7 +144,7 @@ export async function getStaffWaiverPanel(climberId: string): Promise<StaffWaive
 
 async function findSignedWaiver(
   id: string,
-  gymId: string,
+  gymId: string | undefined,
   mayRead: (climberId: string) => Promise<boolean>,
 ): Promise<SignedWaiverView | null> {
   if (!UUID.test(id)) return null;
@@ -156,6 +160,7 @@ async function findSignedWaiver(
   const { template } = waiver;
   return {
     id: waiver.id,
+    gymId: waiver.gymId,
     climberId: waiver.climberId,
     climberName: `${waiver.climber.firstName} ${waiver.climber.lastName}`,
     version: waiver.version,

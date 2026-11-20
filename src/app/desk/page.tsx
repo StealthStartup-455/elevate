@@ -9,8 +9,9 @@ import AutoRefresh from "@/features/analytics/components/AutoRefresh";
 import BusynessHeatMap from "@/features/analytics/components/BusynessHeatMap";
 import BusynessLevelChip from "@/features/analytics/components/BusynessLevelChip";
 import { formatTime } from "@/features/analytics/components/format";
-import { DEMO_GYM_ID, DESK_BUSYNESS_REFRESH_MS } from "@/features/analytics/config";
+import { DESK_BUSYNESS_REFRESH_MS } from "@/features/analytics/config";
 import { getFrontDeskBusyness } from "@/features/analytics/queries";
+import { getStaffContext } from "@/features/auth/staff";
 import BusyTimesDialog from "@/features/check-ins/components/BusyTimesDialog";
 import ClimberPanelProvider, { ClimberPanelArea, ClimberPanelSync } from "@/features/check-ins/components/ClimberPanel";
 import DayNav from "@/features/check-ins/components/DayNav";
@@ -110,7 +111,10 @@ async function DayPicker({ searchParams }: { searchParams: SearchParams }) {
 }
 
 async function Busyness({ searchParams }: { searchParams: SearchParams }) {
-  const [{ desk, now }, busyness] = await Promise.all([load(searchParams), getFrontDeskBusyness(DEMO_GYM_ID)]);
+  await connection();
+  const [{ desk, now }, staff] = await Promise.all([load(searchParams), getStaffContext()]);
+  if (!staff) return null;
+  const busyness = await getFrontDeskBusyness(staff.gymId);
   const isToday = desk.day === desk.today;
   return (
     <div className="flex flex-col items-end gap-1">
@@ -125,7 +129,7 @@ async function Busyness({ searchParams }: { searchParams: SearchParams }) {
           </Typography>
         </div>
         <BusyTimesDialog>
-          <BusynessHeatMap gymId={DEMO_GYM_ID} />
+          <BusynessHeatMap gymId={staff.gymId} />
         </BusyTimesDialog>
       </div>
       {busyness.sampleCount > 0 && (

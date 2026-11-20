@@ -1,6 +1,7 @@
 import { getCurrentUser, getSessionClimberId } from "@/features/auth/queries";
 import { hasDemoDeskSession } from "@/features/auth/session";
-import { hasStaffRole, isStaff } from "@/features/auth/staff";
+import { getStaffContext, hasStaffRole } from "@/features/auth/staff";
+import { db } from "@/lib/db";
 
 /**
  * Whether the person signed in may sign or read waivers for this climber:
@@ -10,7 +11,11 @@ import { hasStaffRole, isStaff } from "@/features/auth/staff";
 export async function canActForClimber(climberId: string): Promise<boolean> {
   if (climberId === (await getSessionClimberId())) return true;
   if ((await getCurrentUser())?.climberIds.includes(climberId)) return true;
-  return isStaff();
+  const staff = await getStaffContext();
+  return !!staff && !!(await db.climber.findFirst({
+    where: { id: climberId, gymId: staff.gymId },
+    select: { id: true },
+  }));
 }
 
 /**

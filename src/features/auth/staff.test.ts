@@ -8,12 +8,17 @@ const signedIn = vi.hoisted(() => ({
   user: null as CurrentUser | null,
   demoDesk: false,
   demoClimberId: undefined as string | undefined,
+  demoOwner: null as { id: string; gymId: string; role: "OWNER" } | null,
 }));
 vi.mock("./queries", () => ({
   getCurrentUser: async () => signedIn.user,
+  findDemoStaffSession: async () => signedIn.demoOwner,
   getSessionClimberId: async () => signedIn.demoClimberId ?? signedIn.user?.climberIds[0],
 }));
-vi.mock("./session", () => ({ hasDemoDeskSession: async () => signedIn.demoDesk }));
+vi.mock("./session", () => ({
+  hasDemoDeskSession: async () => signedIn.demoDesk,
+  getDemoDeskSession: async () => undefined,
+}));
 vi.mock("@/lib/gym", () => ({ getGym: async () => ({ id: "demo-gym" }) }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -32,6 +37,7 @@ beforeEach(() => {
   signedIn.user = null;
   signedIn.demoDesk = false;
   signedIn.demoClimberId = undefined;
+  signedIn.demoOwner = null;
 });
 
 describe("requireStaff", () => {
@@ -44,6 +50,12 @@ describe("requireStaff", () => {
     signedIn.demoDesk = true;
     await expect(requireStaff()).resolves.toBeUndefined();
     await expect(getStaffContext()).resolves.toMatchObject({ gymId: "demo-gym", role: "DESK" });
+  });
+
+  it("uses a verified demo owner's gym and role", async () => {
+    signedIn.demoOwner = { id: "owner", gymId: "new-gym", role: "OWNER" };
+    await expect(getStaffContext()).resolves.toEqual(signedIn.demoOwner);
+    expect(await hasStaffRole("OWNER")).toBe(true);
   });
 
   it("sends a signed-in climber to the staff-only page, not to log in", async () => {

@@ -57,6 +57,8 @@ model Staff {
   id         String    @id @default(uuid())
   gymId      String
   authUserId String // their Supabase login
+  demoEmail  String?   @unique // local-demo owner login; never used outside demo mode
+  demoPasswordHash String? // local-demo owner password, stored only as a hash
   name       String
   role       StaffRole @default(DESK)
   active     Boolean   @default(true) // switch off when someone leaves
@@ -83,6 +85,7 @@ model Climber {
   dateOfBirth      DateTime @db.Date
   authUserId       String? // the login that manages this climber; one parent login can manage several kids
   createdByStaffId String? // empty means they signed themselves up
+  onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
   externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
   studentId        String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
   createdAt        DateTime @default(now())
