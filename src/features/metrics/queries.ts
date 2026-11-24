@@ -22,8 +22,10 @@ export async function canSeeMetrics(): Promise<boolean> {
 export type MetricsPageData = ValuePropMetrics & { since: Date; timeZone: string; gymName: string };
 
 /** The last METRICS_DAYS days of metrics for the staff member's gym, or null for anyone else. */
-export async function getValuePropMetrics(now = new Date()): Promise<MetricsPageData | null> {
+export async function getValuePropMetrics(at?: Date): Promise<MetricsPageData | null> {
+  // Request time only, and before reading the clock (Next.js prerendering).
   await connection();
+  const now = at ?? new Date();
   const staff = await getStaffContext();
   if (!staff || (staff.role !== "MANAGER" && staff.role !== "OWNER")) return null;
   const gym = await getGymById(staff.gymId);
