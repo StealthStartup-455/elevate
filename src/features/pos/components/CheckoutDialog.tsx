@@ -14,7 +14,7 @@ import Typography from "@mui/material/Typography";
 import { useState, useTransition } from "react";
 import { recordSale, type SaleResult } from "../actions";
 import { formatMoney, formatRate } from "../cart";
-import { cashRounding, cashTendered, quickBills, roundCash } from "../cash";
+import { addBill, cashRounding, cashTendered, QUICK_BILLS_CENTS, roundCash } from "../cash";
 import { parseDollars } from "../cashout";
 import { newKey } from "../key";
 import type { CartItem, PricedCart, Tender } from "../types";
@@ -27,6 +27,15 @@ const TENDER_LABEL: Record<Tender, string> = { CARD: "card", CASH: "cash", ONLIN
 /** −2 → "−$0.02", 3 → "+$0.03". */
 function signedMoney(cents: number): string {
   return `${cents < 0 ? "−" : "+"}${formatMoney(Math.abs(cents))}`;
+}
+
+/** The ✓ on the picked payment, so it doesn't rely on color alone. */
+function picked(on: boolean) {
+  return on ? (
+    <span className="pr-1" aria-hidden="true">
+      ✓
+    </span>
+  ) : null;
 }
 
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
@@ -119,7 +128,8 @@ export default function CheckoutDialog({
   const cash = tender === "CASH";
   const cashDueCents = roundCash(cart.totalCents);
   const roundingCents = cashRounding(cart.totalCents);
-  const tendered = cashTendered(received, parseDollars(received), cashDueCents);
+  const receivedCents = parseDollars(received);
+  const tendered = cashTendered(received, receivedCents, cashDueCents);
   // Cash can't be tendered until what was handed over covers the rounded total.
   const tenderBlocked =
     !cash || tendered.status === "paid"
@@ -188,12 +198,14 @@ export default function CheckoutDialog({
               </Typography>
               <ToggleButtonGroup
                 exclusive
+                fullWidth
+                size="large"
                 value={tender}
                 onChange={(_, v: Tender | null) => v && setTender(v)}
                 aria-labelledby="tender-label"
               >
-                <ToggleButton value="CARD">Card</ToggleButton>
-                <ToggleButton value="CASH">Cash</ToggleButton>
+                <ToggleButton value="CARD">{picked(tender === "CARD")}Card</ToggleButton>
+                <ToggleButton value="CASH">{picked(tender === "CASH")}Cash</ToggleButton>
               </ToggleButtonGroup>
             </div>
             {cash ? (
@@ -218,16 +230,21 @@ export default function CheckoutDialog({
                   >
                     Exact
                   </Button>
-                  {quickBills(cashDueCents).map((bill) => (
+                  {QUICK_BILLS_CENTS.map((bill) => (
                     <Button
                       key={bill}
                       size="small"
                       variant="outlined"
-                      onClick={() => setReceived((bill / 100).toFixed(2))}
+                      onClick={() => setReceived(addBill(receivedCents, bill))}
                     >
-                      {formatMoney(bill).replace(/\.00$/, "")}
+                      +{formatMoney(bill).replace(/\.00$/, "")}
                     </Button>
                   ))}
+                  {received ? (
+                    <Button size="small" variant="text" onClick={() => setReceived("")}>
+                      Clear
+                    </Button>
+                  ) : null}
                 </div>
                 {tendered.status === "paid" ? (
                   <Row label="Change owed" value={formatMoney(tendered.changeCents)} strong />

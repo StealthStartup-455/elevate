@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cashRounding, cashTendered, quickBills, roundCash } from "./cash";
+import { addBill, cashRounding, cashTendered, QUICK_BILLS_CENTS, roundCash } from "./cash";
 
 describe("roundCash", () => {
   it("rounds to the nearest 5 cents the Canadian way", () => {
@@ -22,11 +22,22 @@ describe("cashRounding", () => {
   });
 });
 
-describe("quickBills", () => {
-  it("offers only the bills that cover the total", () => {
-    expect(quickBills(1790)).toEqual([2000, 5000, 10000]);
-    expect(quickBills(3970)).toEqual([5000, 10000]);
-    expect(quickBills(10000)).toEqual([]);
+describe("addBill", () => {
+  it("offers a $5, $20, $50 and $100", () => {
+    expect(QUICK_BILLS_CENTS).toEqual([500, 2000, 5000, 10000]);
+  });
+
+  it("starts from nothing when the box is empty or isn't money", () => {
+    expect(addBill(null, 2000)).toBe("20.00");
+  });
+
+  it("adds up bills, so $20 + $20 is $40 and $20 + $5 is $25", () => {
+    expect(addBill(2000, 2000)).toBe("40.00");
+    expect(addBill(2000, 500)).toBe("25.00");
+  });
+
+  it("keeps the cents of a typed amount", () => {
+    expect(addBill(295, 500)).toBe("7.95");
   });
 });
 

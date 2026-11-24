@@ -44,7 +44,13 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
   await expect(checkout.getByRole("button", { name: "Tender" })).toBeDisabled();
   await checkout.getByLabel("Cash received").fill("30");
   await expect(checkout).toContainText("Still owed: $9.70");
-  await checkout.getByRole("button", { name: "$50" }).click();
+  await checkout.getByRole("button", { name: "Clear" }).click();
+  // Each bill adds to the cash received.
+  await checkout.getByRole("button", { name: "+$20", exact: true }).click();
+  await checkout.getByRole("button", { name: "+$5", exact: true }).click();
+  await expect(checkout).toContainText("Still owed: $14.70");
+  await checkout.getByRole("button", { name: "Clear" }).click();
+  await checkout.getByRole("button", { name: "+$50", exact: true }).click();
   await expect(checkout).toContainText("$10.30");
   await checkout.getByRole("button", { name: "Tender" }).click();
 

@@ -12,12 +12,12 @@ export function cashRounding(cents: number): number {
   return roundCash(cents) - cents;
 }
 
-/** Bills offered as one-press amounts for the cash received. */
-export const QUICK_BILLS_CENTS = [2000, 5000, 10000] as const;
+/** Bills with a button that adds them to the cash received. */
+export const QUICK_BILLS_CENTS = [500, 2000, 5000, 10000] as const;
 
-/** The bills worth offering for a cash total: only the ones that cover it. */
-export function quickBills(dueCents: number): number[] {
-  return QUICK_BILLS_CENTS.filter((bill) => bill > dueCents);
+/** The cash received after one more bill: a $20 then a $5 is 25.00. Not an amount yet counts as nothing. */
+export function addBill(receivedCents: number | null, billCents: number): string {
+  return (((receivedCents ?? 0) + billCents) / 100).toFixed(2);
 }
 
 export type CashTendered =
