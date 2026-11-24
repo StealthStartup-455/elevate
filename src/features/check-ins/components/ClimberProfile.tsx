@@ -200,7 +200,9 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
     });
   }
 
-  const checkIn = () => run(() => checkInClimber(c.id), "Couldn't check in. Try again.");
+  // Not timed: the panel opens from many places (#251 counts it by source only).
+  const checkIn = () =>
+    run(() => checkInClimber(c.id, { source: "CLIMBER_PAGE" }), "Couldn't check in. Try again.");
 
   // Checked in today comes first, whatever else is true: a problem that came
   // up since (an expired waiver) still shows below with its fix.

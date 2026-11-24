@@ -1,6 +1,6 @@
 import { DEMO_ACCOUNTS } from "@/features/climbers/demo-accounts";
 import { isDemoMode } from "./demo-mode";
-import { DESK_USERNAME } from "./mock-users";
+import { DESK_USERNAME, MANAGER_USERNAME } from "./mock-users";
 
 // The logins listed behind the "i" on the login card, by kind of user, each
 // with the username and password to type. Nothing here is a secret: the demo
@@ -32,6 +32,11 @@ export function getTestLogins(): TestLoginGroup[] {
           username: DESK_USERNAME,
           password: DESK_USERNAME,
           note: "Check-in, POS, climbers, waivers",
+        },
+        {
+          username: MANAGER_USERNAME,
+          password: MANAGER_USERNAME,
+          note: "The desk, plus the Metrics page",
         },
       ],
     },

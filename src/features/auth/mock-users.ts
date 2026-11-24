@@ -8,6 +8,8 @@ import { getGym } from "@/lib/gym";
 
 // Staff demo login for the front desk.
 export const DESK_USERNAME = "desk";
+// The same desk as a manager, who also sees the metrics page (#251).
+export const MANAGER_USERNAME = "manager";
 
 type NamedClimber = { firstName: string; lastName: string };
 
