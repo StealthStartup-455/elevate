@@ -20,8 +20,9 @@
   - Recording never fails a check in: `recordCheckInAttempt` catches and logs `check_in_attempt_not_saved`.
 - **Gotchas:**
   - "Back to search" clears the picked climber, so closing after it isn't counted as sent away. Only closing with a climber picked is.
+  - The page read the clock before `connection()`, which fails the build ("unstable value `new Date()` while prerendering"); read it after. Streamed text has a hidden copy outside `<main>` for a moment, so e2e looks inside `getByRole("main")`.
   - The dialog's picked view has no Cancel button; the e2e closes it with Escape after clicking the title (focus is lost once the result list goes).
   - Overlaps open PR #238 (POS button in `ManualCheckIn.tsx`); different lines, so a merge should be clean.
   - This session couldn't download Prisma's engines, so `prisma generate`, `tsc`, the build, database tests and e2e weren't run locally. The migration SQL was applied to a local Postgres 16 with all earlier migrations (it applies cleanly); CI's `migrate diff` checks it matches the schema.
 - **Open follow-ups:** The staff rating after a shift and server errors or downtime aren't on the page yet (it says so). Setting `createdByStaffId` and `Sale.staffId` from the real staff login would sharpen two metrics.
-- **Verification:** `npm run lint` clean. `npm test`: the 4 new unit files pass (19 tests), and `staff.test.ts` with the manager case; the 15 files that need the generated Prisma client couldn't load here. New `metrics.db.test.ts` and `e2e/metrics.spec.ts` run in CI.
+- **Verification:** `npm run lint` clean. `npm test`: the 4 new unit files pass (19 tests), and `staff.test.ts` with the manager case; the 15 files that need the generated Prisma client couldn't load here. CI on 5240602 passes: check (tsc, 52 unit files with 452 tests, database tests, build) and e2e (91 tests, including `metrics.spec.ts` and the metrics page in both colour modes in `accessibility.spec.ts`).
