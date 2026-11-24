@@ -2,7 +2,7 @@
 
 - **Developer:** @guerrerj
 - **AI tool / model:** Claude Code (claude-opus-5-5)
-- **Issue / PR:** StealthStartup-455/elevate#251 / PR pending
+- **Issue / PR:** StealthStartup-455/elevate#251 / #252
 - **Branch:** `feature/251-value-prop-metrics`
 - **What the agent did:**
   - New `CheckInAttempt` table (migration `20261124200000_check_in_attempts`): one row per try at the desk, with how the climber was found (`CAMERA`, `SEARCH`, `CLIMBER_PAGE`), the outcome (`CHECKED_IN`, `REFUSED`, `GAVE_UP`), a reason code, whether they were blocked when picked, and the time from opening the Check in dialog.
