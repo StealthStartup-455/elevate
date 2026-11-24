@@ -16,7 +16,8 @@ test("desk staff don't get the metrics page", async ({ page }) => {
   await logIn(page, "desk");
   await expect(page.getByRole("navigation").getByRole("link", { name: "Metrics", exact: true })).toHaveCount(0);
   await page.goto("/desk/metrics");
-  await expect(page.getByText("Only managers and owners can see metrics.")).toBeVisible();
+  // In the page: while it streams in, React briefly keeps a hidden copy outside it.
+  await expect(page.getByRole("main").getByText("Only managers and owners can see metrics.")).toBeVisible();
 });
 
 test("a blocked climber sent away at the desk shows on the manager's metrics", async ({ page }) => {
@@ -43,5 +44,5 @@ test("a blocked climber sent away at the desk shows on the manager's metrics", a
     await expect(desk).toContainText("Blocked and not checked in");
   }).toPass({ timeout: 15_000 });
   await expect(page.getByRole("table", { name: "Front desk day by day" })).toBeVisible();
-  await expect(page.getByText("Demo data.")).toBeVisible();
+  await expect(page.getByRole("main").getByText(/^Demo data\./)).toBeVisible();
 });
