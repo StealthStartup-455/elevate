@@ -33,9 +33,17 @@ describe("cashOutSummary", () => {
     ]);
 
     expect(summary.byTender).toEqual([
-      { tender: "CARD", count: 2, subtotalCents: 3500, gstCents: 175, pstCents: 70, totalCents: 3745 },
-      { tender: "CASH", count: 1, subtotalCents: 3500, gstCents: 175, pstCents: 0, totalCents: 3675 },
-      { tender: "ONLINE", count: 1, subtotalCents: 10000, gstCents: 500, pstCents: 0, totalCents: 10500 },
+      { tender: "CARD", count: 2, subtotalCents: 3500, gstCents: 175, pstCents: 70, totalCents: 3745, roundingCents: 0 },
+      { tender: "CASH", count: 1, subtotalCents: 3500, gstCents: 175, pstCents: 0, totalCents: 3675, roundingCents: 0 },
+      {
+        tender: "ONLINE",
+        count: 1,
+        subtotalCents: 10000,
+        gstCents: 500,
+        pstCents: 0,
+        totalCents: 10500,
+        roundingCents: 0,
+      },
     ]);
     expect(summary.paid).toEqual({
       count: 4,
@@ -43,7 +51,21 @@ describe("cashOutSummary", () => {
       gstCents: 850,
       pstCents: 70,
       totalCents: 17920,
+      roundingCents: 0,
     });
+  });
+
+  it("rounds each cash sale to 5 cents but never card sales", () => {
+    const summary = cashOutSummary([
+      // 17.92 → 17.90 and 39.69 → 39.70 in cash: 57.60 in the till, rounding −0.01.
+      sale("CASH", 1707, 85, 0),
+      sale("CASH", 3700, 185, 84),
+      // 17.92 on card stays 17.92.
+      sale("CARD", 1707, 85, 0),
+    ]);
+    expect(summary.byTender[1]).toMatchObject({ tender: "CASH", count: 2, totalCents: 5760, roundingCents: -1 });
+    expect(summary.byTender[0]).toMatchObject({ tender: "CARD", totalCents: 1792, roundingCents: 0 });
+    expect(summary.paid).toMatchObject({ totalCents: 7552, roundingCents: -1 });
   });
 
   it("leaves voided sales out of the totals but counts them", () => {

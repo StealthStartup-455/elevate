@@ -39,11 +39,18 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
   await expect(checkout).toContainText("$0.84");
   await expect(checkout).toContainText("$39.69");
   await checkout.getByRole("button", { name: "Cash" }).click();
-  await expect(checkout).toContainText("Take $39.69 in cash");
+  // No pennies: $39.69 in cash rounds to $39.70 (#250).
+  await expect(checkout).toContainText("Take $39.70 in cash");
+  await expect(checkout.getByRole("button", { name: "Tender" })).toBeDisabled();
+  await checkout.getByLabel("Cash received").fill("30");
+  await expect(checkout).toContainText("Still owed: $9.70");
+  await checkout.getByRole("button", { name: "$50" }).click();
+  await expect(checkout).toContainText("$10.30");
   await checkout.getByRole("button", { name: "Tender" }).click();
 
   const done = page.getByRole("dialog", { name: "Sale saved" });
-  await expect(done).toContainText("$39.69 paid by cash for Nevin Gill");
+  await expect(done).toContainText("$39.70 paid by cash for Nevin Gill");
+  await expect(done).toContainText("Give back $10.30 in change");
   await expect(done).toContainText("Day pass: today");
   // Check-in isn't offered after a sale (#215).
   await expect(done.getByRole("button", { name: "Check in now" })).toHaveCount(0);

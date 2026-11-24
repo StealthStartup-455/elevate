@@ -12,9 +12,10 @@ The desk POS tab (`/desk/pos`, elevate-docs#56): staff pick a climber, add passe
 4. **Tender:** `recordSale` re-reads prices from the database, saves the `Sale` and its `SaleLine`s and creates the passes in one transaction. The popup's key makes a double press or a retry return the first sale.
 5. **Void:** any desk staff member, with a reason. The sale stays, marked voided, and its passes end now. The refund itself happens on the card machine or from the till.
 6. **Revoke membership:** on the picked climber's card, when their membership is active or paused. Every membership pass that hasn't ended stops now (a renewal bought early too) and stops renewing. The sales stay paid; to refund, void the sale.
-7. **Cash out:** the **Cash out** button on Today's sales opens the end of day summary (`cashout.ts`): paid sales today by payment type (Card, Cash, Online) with count, subtotal, GST, PST and total, a grand total, and the voided sales left out. Staff type the cash counted in the till (without the float) and see whether it matches, or is over or short. Nothing is saved: it reads the same sales as the table.
-8. **EFT on file:** the climber card says whether the climber has a mock EFT bank account on file for monthly payments, with Add bank account, Change and Remove (`DeskBankAccount`), and Renewals due rows add "· EFT on file" (`features/eft`, #179). Nothing is debited, so the desk still rings up the month.
-9. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
+7. **Cash out:** the **Cash out** button on Today's sales opens the end of day summary (`cashout.ts`): paid sales today by payment type (Card, Cash, Online) with count, subtotal, GST, PST and total, a grand total, and the voided sales left out. The Cash total is each cash sale rounded to 5 cents (what is in the till), with the day's rounding shown below the table; card and online stay exact. Staff type the cash counted in the till (without the float) and see whether it matches, or is over or short. Nothing is saved: it reads the same sales as the table.
+8. **Cash and change (#250):** paying by cash rounds the total to the nearest 5 cents (`cash.ts`, Canada has no pennies: 1, 2, 6, 7 round down; 3, 4, 8, 9 up). Staff type the **Cash received** or press Exact, $20, $50 or $100, and the popup shows the change owed. Tender stays disabled until the cash covers the rounded total. The sale keeps its exact total; the rounded amount is worked out from it, so nothing new is saved.
+9. **EFT on file:** the climber card says whether the climber has a mock EFT bank account on file for monthly payments, with Add bank account, Change and Remove (`DeskBankAccount`), and Renewals due rows add "· EFT on file" (`features/eft`, #179). Nothing is debited, so the desk still rings up the month.
+10. **Open in POS:** the desk's climber page (`/desk/customers/[id]`) has an **Open in POS** link to `/desk/pos?climber=<id>`. The page reads the id with `getPosClimber`, so an id that is not a climber of the staff member's gym opens the POS with nobody picked.
 
 ## Passes a sale gives (`passes.ts`)
 
@@ -34,6 +35,7 @@ features/pos/
 ├── sale.ts        # saveSale: the one place a sale is saved, shared with features/purchase
 ├── queries.ts     # getPosData, isPosEnabled, getStaffGym
 ├── cart.ts        # cart rules and totals, shared by the screen and the server
+├── cash.ts        # cash rounding to 5 cents and change owed
 ├── cashout.ts     # end of day totals by payment type
 ├── passes.ts      # what each product gives the climber
 ├── day.ts         # start of the gym's day

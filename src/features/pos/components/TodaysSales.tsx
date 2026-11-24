@@ -21,7 +21,7 @@ import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill from "@/components/ui/StatusPill";
 import { voidSale } from "../actions";
 import { formatMoney } from "../cart";
-import { TENDER_LABEL } from "../cashout";
+import { TENDER_LABEL, cashOutSummary } from "../cashout";
 import type { SaleSummary } from "../types";
 import CashOutDialog from "./CashOutDialog";
 import { useBackdropClose } from "@/components/ui/useBackdropClose";
@@ -39,10 +39,8 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
   const [pending, startTransition] = useTransition();
 
   const paid = sales.filter((s) => s.status === "PAID");
-  const totals = (["CARD", "CASH", "ONLINE"] as const).map((t) => ({
-    tender: t,
-    cents: paid.filter((s) => s.tender === t).reduce((sum, s) => sum + s.totalCents, 0),
-  }));
+  // Same totals as the cash out, so cash is rounded to 5 cents (#250).
+  const totals = cashOutSummary(sales).byTender.map((t) => ({ tender: t.tender, cents: t.totalCents }));
 
   function close() {
     if (pending) return;

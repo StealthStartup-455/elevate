@@ -29,7 +29,8 @@ const TENDER_WHERE = {
 } as const;
 
 // End of day cash out: today's paid sales added up by payment type, with the
-// taxes, and a count of the till against the cash sales.
+// taxes, and a count of the till against the cash sales. Cash and card are kept
+// apart, and cash is rounded to 5 cents per sale like the checkout (#250).
 export default function CashOutDialog({
   open,
   onClose,
@@ -129,6 +130,14 @@ export default function CashOutDialog({
             </TableBody>
           </Table>
         </TableContainer>
+
+        {cash.roundingCents !== 0 ? (
+          <Typography variant="secondary">
+            Cash rounding today: {cash.roundingCents < 0 ? "−" : "+"}
+            {formatMoney(Math.abs(cash.roundingCents))}. Each cash sale is rounded to 5 cents, so the Cash total is
+            what should be in the till.
+          </Typography>
+        ) : null}
 
         {summary.voided.count > 0 ? (
           <Typography variant="secondary">
