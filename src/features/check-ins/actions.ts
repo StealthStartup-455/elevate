@@ -6,7 +6,7 @@ import { formatTime } from "@/features/analytics/components/format";
 import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
-import { getClimberLabels } from "@/features/labels/queries";
+import { getClimberLabels, getLabelsForClimbers } from "@/features/labels/queries";
 import type { LabelView } from "@/features/labels/types";
 import { isPosEnabled } from "@/features/pos/queries";
 import { getMembershipRevoke } from "@/features/pos/revoke";
@@ -39,6 +39,8 @@ export type ScannedClimber = {
    * so another check-in would be refused (a repeat scan). Absent otherwise.
    */
   checkedInAt?: string;
+  /** Their staff labels (#157), A to Z. Only ever sent to the desk. */
+  labels: LabelView[];
 };
 
 async function getGymForClimberId(climberId: string): Promise<string | null> {
@@ -88,21 +90,24 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
   const now = new Date();
   const gym = await getGymById(staff.gymId);
   if (!gym) return [];
-  const [climbers, recent] = await Promise.all([
+  const climberIds = scans.map((s) => s.climberId);
+  const [climbers, recent, labels] = await Promise.all([
     // Every waiting climber in one query, not one per scan: this runs every
     // 2.5 seconds on every open desk.
-    getClimberStatuses(gym, scans.map((s) => s.climberId), now),
+    getClimberStatuses(gym, climberIds, now),
     // Who is already in: checkInClimber refuses them for this long, so a
     // repeat scan has nothing to do (#225).
     db.checkIn.findMany({
       where: {
         gymId: staff.gymId,
-        climberId: { in: scans.map((s) => s.climberId) },
+        climberId: { in: climberIds },
         checkedInAt: { gt: new Date(now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000) },
       },
       orderBy: { checkedInAt: "desc" },
       select: { climberId: true, checkedInAt: true },
     }),
+    // Every waiting climber's labels in one query too (#157).
+    getLabelsForClimbers(gym.id, climberIds),
   ]);
   const latestCheckIn = new Map<string, Date>();
   for (const c of recent) if (!latestCheckIn.has(c.climberId)) latestCheckIn.set(c.climberId, c.checkedInAt);
@@ -130,6 +135,7 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
         hasDayPass: climber.hasDayPass,
         punchesLeft: climber.punchesLeft,
         checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym.timeZone),
+        labels: labels.get(climber.id) ?? [],
       },
     });
   }
