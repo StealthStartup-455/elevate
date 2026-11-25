@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { getPosClimber } from "../actions";
 import { addToCart, cartWarnings, priceCart, setQuantity } from "../cart";
@@ -9,23 +10,36 @@ import CheckoutDialog from "./CheckoutDialog";
 import ClimberPanel from "./ClimberPanel";
 import ProductPanel from "./ProductPanel";
 
-// The POS tab: pick a climber, add products to their cart, check out. The
-// cart lives only in this page until Tender saves the sale; prices and totals
-// are worked out again on the server.
-export default function PointOfSale({
-  initialClimber = null,
-  checkedInToday,
-  renewalsDue,
-  products,
-  taxRates,
-}: {
+type Props = {
   /** Already picked, when opened from a climber's page (?climber=, #148). */
   initialClimber?: PosClimber | null;
   checkedInToday: RecentCheckIn[];
   renewalsDue: RenewalDue[];
   products: Product[];
   taxRates: TaxRates;
-}) {
+};
+
+// Next.js keeps this page alive while staff are on another tab
+// (cacheComponents), so POS opened again for the same climber, from Check-in
+// or their page, showed whoever was picked there last, or nobody. Opening it
+// for someone (a link or button to ?climber=) starts fresh with them; the
+// browser's back and forward still restore the sale in progress.
+export default function PointOfSale(props: Props) {
+  const { bfcacheId } = useRouter();
+  const key = props.initialClimber ? `${props.initialClimber.id}:${bfcacheId}` : "nobody";
+  return <Pos key={key} {...props} />;
+}
+
+// The POS tab: pick a climber, add products to their cart, check out. The
+// cart lives only in this page until Tender saves the sale; prices and totals
+// are worked out again on the server.
+function Pos({
+  initialClimber = null,
+  checkedInToday,
+  renewalsDue,
+  products,
+  taxRates,
+}: Props) {
   const [selected, setSelected] = useState<PosClimber | null>(initialClimber);
   // Picked from a list that only has their name, while their passes load.
   const [loading, setLoading] = useState<{ id: string; name: string } | null>(null);
