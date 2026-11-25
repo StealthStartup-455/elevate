@@ -22,7 +22,7 @@ vi.mock("@/features/auth/staff", () => ({
 }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 
-const { createLabel, setClimberLabel } = await import("./actions");
+const { createLabel, labelsToPick, setClimberLabel } = await import("./actions");
 const { getClimberLabels, getLabelsForClimbers, listGymLabels } = await import("./queries");
 const { logEvent } = await import("@/lib/log");
 
@@ -188,6 +188,7 @@ describe("setClimberLabel", () => {
     auth.staff = false;
     await expect(setClimberLabel(climberA, id, true)).rejects.toThrow("redirect /login");
     await expect(createLabel("New")).rejects.toThrow("redirect /login");
+    await expect(labelsToPick()).rejects.toThrow("redirect /login");
   });
 });
 
