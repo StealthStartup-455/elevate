@@ -64,7 +64,8 @@ test("staff sell a day pass and rentals, tender cash, then void the sale", async
 
   const sales = page.getByRole("table", { name: "Today's sales" });
   const row = sales.getByRole("row").filter({ hasText: "Nevin Gill" }).first();
-  await expect(row).toContainText("$39.69");
+  // The row shows what went in the till: $39.70, not $39.69 (#250).
+  await expect(row).toContainText("$39.70");
   await row.getByRole("button", { name: /^Void/ }).click();
   const voiding = page.getByRole("dialog", { name: "Void sale" });
   await voiding.getByLabel("Reason").fill("Test sale");

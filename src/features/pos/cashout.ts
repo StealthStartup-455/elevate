@@ -29,7 +29,7 @@ export const TENDER_LABEL = { CARD: "Card", CASH: "Cash", ONLINE: "Online" } as 
 export const TENDERS = ["CARD", "CASH", "ONLINE"] as const satisfies readonly Tender[];
 
 /** What a sale brought in: cash rounded to 5 cents, card and online exact. */
-function takenCents(s: SaleSummary): number {
+export function takenCents(s: SaleSummary): number {
   return s.tender === "CASH" ? roundCash(s.totalCents) : s.totalCents;
 }
 
@@ -59,7 +59,7 @@ export function cashOutSummary(sales: SaleSummary[]): CashOutSummary {
   return {
     byTender: TENDERS.map((tender) => ({ tender, ...add(paid.filter((s) => s.tender === tender)) })),
     paid: add(paid),
-    voided: { count: voided.length, totalCents: voided.reduce((sum, s) => sum + s.totalCents, 0) },
+    voided: { count: voided.length, totalCents: voided.reduce((sum, s) => sum + takenCents(s), 0) },
   };
 }
 

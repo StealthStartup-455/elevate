@@ -78,6 +78,8 @@ export default function CheckoutDialog({
   useDeskDialogOpen(open);
   const [tender, setTender] = useState<Tender>("CARD");
   const [received, setReceived] = useState("");
+  // The change worked out when Tender was pressed, so later edits can't change it.
+  const [changeGiven, setChangeGiven] = useState<number | null>(null);
   const [key, setKey] = useState(newKey);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Extract<SaleResult, { ok: true }> | null>(null);
@@ -85,6 +87,7 @@ export default function CheckoutDialog({
 
   function reset() {
     setTender("CARD");
+    setChangeGiven(null);
     setReceived("");
     setKey(newKey());
     setError(null);
@@ -107,6 +110,7 @@ export default function CheckoutDialog({
 
   function tenderSale() {
     setError(null);
+    setChangeGiven(cash && tendered.status === "paid" ? tendered.changeCents : null);
     startTransition(async () => {
       try {
         const result = await recordSale({ climberId: climber.id, items, tender, idempotencyKey: key });
@@ -148,8 +152,8 @@ export default function CheckoutDialog({
           <DialogContent className="flex flex-col gap-3">
             <Alert severity="success">
               {formatMoney(doneCents)} paid by {TENDER_LABEL[done.tender]} for {climber.name}.
-              {done.tender === "CASH" && tendered.status === "paid" && tendered.changeCents > 0
-                ? ` Give back ${formatMoney(tendered.changeCents)} in change.`
+              {done.tender === "CASH" && changeGiven !== null && changeGiven > 0
+                ? ` Give back ${formatMoney(changeGiven)} in change.`
                 : ""}
             </Alert>
             <div>
@@ -201,6 +205,7 @@ export default function CheckoutDialog({
                 fullWidth
                 size="large"
                 value={tender}
+                disabled={pending}
                 onChange={(_, v: Tender | null) => v && setTender(v)}
                 aria-labelledby="tender-label"
               >
@@ -217,6 +222,7 @@ export default function CheckoutDialog({
                   label="Cash received"
                   placeholder={formatMoney(cashDueCents)}
                   value={received}
+                  disabled={pending}
                   onChange={(e) => setReceived(e.target.value)}
                   error={tendered.status === "invalid"}
                   helperText={tendered.status === "invalid" ? "Enter an amount, like 20 or 17.90." : undefined}
@@ -226,6 +232,7 @@ export default function CheckoutDialog({
                   <Button
                     size="small"
                     variant="outlined"
+                    disabled={pending}
                     onClick={() => setReceived((cashDueCents / 100).toFixed(2))}
                   >
                     Exact
@@ -235,13 +242,14 @@ export default function CheckoutDialog({
                       key={bill}
                       size="small"
                       variant="outlined"
+                      disabled={pending}
                       onClick={() => setReceived(addBill(receivedCents, bill))}
                     >
                       +{formatMoney(bill).replace(/\.00$/, "")}
                     </Button>
                   ))}
                   {received ? (
-                    <Button size="small" variant="text" onClick={() => setReceived("")}>
+                    <Button size="small" variant="text" disabled={pending} onClick={() => setReceived("")}>
                       Clear
                     </Button>
                   ) : null}

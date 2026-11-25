@@ -21,7 +21,7 @@ import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill from "@/components/ui/StatusPill";
 import { voidSale } from "../actions";
 import { formatMoney } from "../cart";
-import { TENDER_LABEL, cashOutSummary } from "../cashout";
+import { TENDER_LABEL, cashOutSummary, takenCents } from "../cashout";
 import type { SaleSummary } from "../types";
 import CashOutDialog from "./CashOutDialog";
 import { useBackdropClose } from "@/components/ui/useBackdropClose";
@@ -107,7 +107,7 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
                     <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
                       {TENDER_LABEL[s.tender]}
                     </TableCell>
-                    <TableCell align="right">{formatMoney(s.totalCents)}</TableCell>
+                    <TableCell align="right">{formatMoney(takenCents(s))}</TableCell>
                     <TableCell>
                       {s.status === "PAID" ? (
                         <StatusPill status="ok" label="Paid" />
@@ -123,7 +123,7 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
                         <Button
                           variant="outlined"
                           size="small"
-                          aria-label={`Void ${s.climberName}'s sale of ${formatMoney(s.totalCents)}`}
+                          aria-label={`Void ${s.climberName}'s sale of ${formatMoney(takenCents(s))}`}
                           onClick={() => setVoiding(s)}
                         >
                           Void
@@ -146,7 +146,7 @@ export default function TodaysSales({ sales }: { sales: SaleSummary[] }) {
           <>
             <DialogContent className="flex flex-col gap-3">
               <Typography variant="body">
-                Void {voiding.climberName}&apos;s sale of {formatMoney(voiding.totalCents)} ({voiding.items})?
+                Void {voiding.climberName}&apos;s sale of {formatMoney(takenCents(voiding))} ({voiding.items})?
               </Typography>
               <Typography variant="secondary">
                 Passes from this sale stop working now. Give the money back on the card machine or from the till.

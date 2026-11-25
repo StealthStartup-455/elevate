@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cashOutSummary, parseDollars } from "./cashout";
+import { cashOutSummary, parseDollars, takenCents } from "./cashout";
 import type { SaleSummary } from "./types";
 
 let n = 0;
@@ -83,6 +83,17 @@ describe("cashOutSummary", () => {
       ["ONLINE", 0, 0],
     ]);
     expect(summary.voided).toEqual({ count: 0, totalCents: 0 });
+  });
+});
+
+describe("takenCents", () => {
+  it("is the rounded amount for cash and the exact total for card", () => {
+    expect(takenCents(sale("CASH", 1707, 85, 0))).toBe(1790);
+    expect(takenCents(sale("CARD", 1707, 85, 0))).toBe(1792);
+  });
+
+  it("refunds a voided cash sale at what was collected", () => {
+    expect(cashOutSummary([sale("CASH", 1707, 85, 0, "VOIDED")]).voided).toEqual({ count: 1, totalCents: 1790 });
   });
 });
 
