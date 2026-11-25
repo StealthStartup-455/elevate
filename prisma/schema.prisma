@@ -88,7 +88,7 @@ model Climber {
   createdByStaffId String? // empty means they signed themselves up
   onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
   externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
-  studentId        String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
+  studentId        String? // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38). Empty for a climber who isn't a student (#245)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

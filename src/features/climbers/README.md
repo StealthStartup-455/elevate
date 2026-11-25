@@ -22,7 +22,7 @@ The Check in tab (`/me/check-in`, `features/check-ins/components/CheckInCard.tsx
 
 - A customer may have one `Climber` record per gym. The active one is selected through the `elevate_active_climber` cookie only after `getSessionClimberId()` confirms it belongs to the authenticated user. `/me/explore` is where customers find and join another Elevate gym.
 - `ClimberBarcode` draws the climber's student ID (`V` and 8 digits, #38) as a Code 128 barcode. It replaced the QR code. It is the same in every mode and never changes. The bars come from `code128.ts` (`jsbarcode`); the desk's Check in dialog reads it with the camera (`BarcodeCamera` in features/check-ins, `@zxing/browser`), or finds it by typing a V number, name or phone number. Check-in on the phone still goes through "Simulate scan".
-- Every climber has a `studentId`, unique per gym. It is a required field on customer signup and in the desk's add and edit forms (`student-id.ts` holds the format). Climbers from before it existed got `V9xxxxxxx` placeholders in the migration; staff can correct them on the climber's page.
+- A climber may have a `studentId`, unique per gym when set (#245). It is an optional field on customer signup and in the desk's add and edit forms; a filled one must be a V and 8 digits (`student-id.ts` holds the format). No ID is stored as `null`: no barcode on the climber's Check in tab, and the desk finds them by name or phone. The seed has one such climber, Riley Outsider. Climbers from before it existed got `V9xxxxxxx` placeholders in the migration; staff can correct them on the climber's page.
 
 ## Possible duplicate climbers (#129)
 

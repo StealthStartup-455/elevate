@@ -113,7 +113,7 @@ async function ClimberCard({
             details={{
               firstName: climber.firstName,
               lastName: climber.lastName,
-              studentId: climber.studentId,
+              studentId: climber.studentId ?? "",
               phone: climber.phone,
               email: climber.email,
               dateOfBirth: climber.dateOfBirth,

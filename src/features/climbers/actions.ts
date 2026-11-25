@@ -10,6 +10,7 @@ import { getGym, getGymById } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
+import { storedStudentId } from "./student-id";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
 import type { CheckInCandidate, ClimberInput, FormState } from "./types";
@@ -44,6 +45,7 @@ async function studentIdTaken(
   parsed: Extract<ParsedClimberInput, { ok: true }>,
   exceptClimberId?: string,
 ): Promise<FormState | null> {
+  if (!parsed.value.studentId) return null;
   const other = await db.climber.findFirst({
     where: { gymId, studentId: parsed.value.studentId, id: exceptClimberId ? { not: exceptClimberId } : undefined },
     select: { id: true },
@@ -118,7 +120,7 @@ function toColumns(input: ClimberInput) {
   return {
     firstName: input.firstName,
     lastName: input.lastName,
-    studentId: input.studentId,
+    studentId: storedStudentId(input.studentId),
     phone: toStoredPhone(input.phone),
     email: input.email || null,
     dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00Z`),
