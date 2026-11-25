@@ -312,6 +312,35 @@ const components: ThemeOptions["components"] = {
           fontWeight: 600,
           backgroundColor: p.background.subtle,
           color: p.text.primary,
+          // A customer label you can take off (#157, ClimberLabels): the ✕ is a
+          // real button inside the label, so it has its own name and focus ring
+          // while the chip itself stays a plain, unclickable tag. The label lets
+          // it overflow so its bigger touch area isn't clipped; the name inside
+          // truncates instead.
+          "&:has([data-chip-remove]) .MuiChip-label": {
+            display: "inline-flex",
+            alignItems: "center",
+            minWidth: 0,
+            overflow: "visible",
+            paddingRight: 4,
+          },
+          "& [data-chip-remove]": {
+            position: "relative",
+            flexShrink: 0,
+            width: 16,
+            height: 16,
+            marginLeft: 4,
+            borderRadius: radius.full,
+            color: p.text.secondary,
+            fontSize: px(10),
+            lineHeight: 1,
+            transition: ease("background-color", "color"),
+            "&:hover": { backgroundColor: p.action.hover, color: p.text.primary },
+            "&.Mui-disabled": { color: p.text.disabled },
+            // A finger needs about 44px; the glyph stays small.
+            "&::after": { content: '""', position: "absolute", inset: -6 },
+            [touch]: { "&::after": { inset: -14 } },
+          },
           variants: [
             { props: { size: "small" }, style: { height: 20 } },
             ...(["primary", "secondary", "info", "success", "warning", "error"] as const).map((color) => ({

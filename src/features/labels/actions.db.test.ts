@@ -137,7 +137,8 @@ describe("setClimberLabel", () => {
   it("won't put gym B's label on a gym A climber", async () => {
     const bLabel = await newLabel(gym.B, "Ask for ID");
     expect(await setClimberLabel(climberA, bLabel, true)).toEqual({ ok: false, message: "Label not found." });
-    expect(await db.climberLabel.count()).toBe(0);
+    // Only this test's gyms: a dev database has other gyms' labels in it.
+    expect(await db.climberLabel.count({ where: { gymId: { in: [gym.A, gym.B] } } })).toBe(0);
   });
 
   it("won't label a gym B climber", async () => {
@@ -205,10 +206,12 @@ describe("createLabel", () => {
   });
 
   it("refuses '  ask FOR id ' where 'Ask for ID' exists, but another gym may have it", async () => {
-    await newLabel(gym.A, "Ask for ID");
+    const existing = await newLabel(gym.A, "Ask for ID");
+    // The existing label's id comes back, so the screen can add that one instead.
     expect(await createLabel("  ask FOR id ")).toEqual({
       ok: false,
       message: `There's already a label called "Ask for ID".`,
+      labelId: existing,
     });
     as("B");
     expect((await createLabel("  ask FOR id ")).ok).toBe(true);
@@ -245,7 +248,10 @@ describe("createLabel", () => {
   it("when two desks create the same name at once, one wins and the other is told", async () => {
     const results = await Promise.all([createLabel("Ask for ID"), createLabel("ask for ID")]);
     expect(results.filter((r) => r.ok)).toHaveLength(1);
-    expect(results.find((r) => !r.ok)?.message).toMatch(/^There's already a label called/);
+    const loser = results.find((r) => !r.ok);
+    expect(loser?.message).toMatch(/^There's already a label called/);
+    // The loser is told which label won, so it can still put it on the climber.
+    expect(loser?.labelId).toBe(results.find((r) => r.ok)?.labelId);
     expect(await db.gymLabel.count({ where: { gymId: gym.A } })).toBe(1);
   });
 });

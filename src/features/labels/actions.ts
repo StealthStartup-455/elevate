@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 import { logEvent } from "@/lib/log";
-import type { LabelResult } from "./types";
+import { listGymLabels } from "./queries";
+import type { LabelResult, LabelView } from "./types";
 import { MAX_GYM_LABELS, normalizeLabelName } from "./validate";
 
 // Changing customer labels at the desk (#157). Server actions are public POST
@@ -29,8 +30,19 @@ function refreshLabelPages(climberId?: string) {
   if (climberId) revalidatePath(`/desk/customers/${climberId}`);
 }
 
-function taken(name: string): LabelResult {
-  return { ok: false, message: `There's already a label called "${name}".` };
+// labelId is the existing label, so a screen that wanted it on a climber can
+// add that one instead (another desk may have just created it).
+function taken(label: { id: string; name: string }): LabelResult {
+  return { ok: false, message: `There's already a label called "${label.name}".`, labelId: label.id };
+}
+
+/**
+ * The gym's labels for the "Add label" picker, read when it opens so a label
+ * another desk just made is there. Staff only (listGymLabels checks), and only
+ * the staff member's gym.
+ */
+export async function labelsToPick(): Promise<LabelView[]> {
+  return listGymLabels();
 }
 
 /**
@@ -50,7 +62,7 @@ export async function createLabel(rawName: string): Promise<LabelResult> {
     where: { gymId_key: { gymId, key: parsed.key } },
     select: { id: true, name: true, active: true },
   });
-  if (existing?.active) return taken(existing.name);
+  if (existing?.active) return taken(existing);
 
   const count = await db.gymLabel.count({ where: { gymId, active: true } });
   if (count >= MAX_GYM_LABELS) {
@@ -77,9 +89,9 @@ export async function createLabel(rawName: string): Promise<LabelResult> {
   if (!label) {
     const winner = await db.gymLabel.findUnique({
       where: { gymId_key: { gymId, key: parsed.key } },
-      select: { name: true },
+      select: { id: true, name: true },
     });
-    return winner ? taken(winner.name) : { ok: false, message: "Something went wrong. Please try again." };
+    return winner ? taken(winner) : { ok: false, message: "Something went wrong. Please try again." };
   }
   logEvent("label_created", { gymId, labelId: label.id });
   refreshLabelPages();

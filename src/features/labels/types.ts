@@ -9,6 +9,9 @@ export type LabelView = {
 export type LabelResult = {
   ok: boolean;
   message?: string;
-  /** createLabel only: the new (or switched back on) label, so the screen can put it on a climber. */
+  /**
+   * createLabel only: the new (or switched back on) label, or when refused as
+   * a duplicate the existing one, so the screen can put it on a climber.
+   */
   labelId?: string;
 };
