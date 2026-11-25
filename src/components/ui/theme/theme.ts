@@ -341,6 +341,13 @@ const components: ThemeOptions["components"] = {
             "&::after": { content: '""', position: "absolute", inset: -6 },
             [touch]: { "&::after": { inset: -14 } },
           },
+          // "+3 more" after a few labels (LabelChips): a quiet count with a thin
+          // outline, so it doesn't read as one more label.
+          "&[data-chip-more]": {
+            backgroundColor: "transparent",
+            border: `1px solid ${p.divider}`,
+            color: p.text.secondary,
+          },
           variants: [
             { props: { size: "small" }, style: { height: 20 } },
             ...(["primary", "secondary", "info", "success", "warning", "error"] as const).map((color) => ({

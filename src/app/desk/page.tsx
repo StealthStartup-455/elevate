@@ -154,6 +154,7 @@ async function DayTable({ searchParams }: { searchParams: SearchParams }) {
     waiver: r.waiver,
     waiverStatus: r.waiverStatus,
     message: r.message,
+    labels: r.labels,
   }));
   const count = checkIns(desk.total);
 
