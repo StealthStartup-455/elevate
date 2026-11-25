@@ -197,6 +197,7 @@ MUI breakpoints match Tailwind's: `sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280
 | Text button | Tint appears behind it | n/a |
 | Link (`<Link>`, `<LinkArrow>`) | Underline appears; the arrow nudges right | Opens the page |
 | Segmented control, select | Tint deepens | Selected option fills slate blue |
+| Large segmented control (`size="large"`): separate bordered options with a gap, for a choice that must not be misread, like Card or Cash | Tint appears, border turns slate blue | Selected option fills slate blue, with a ✓ |
 | Help icon (`<HelpTip>`) | Fills slate blue; the tooltip appears after 250ms | Tooltip also opens on keyboard focus |
 | Table row that opens something (`<TableRow hover>`) | Subtle grey fill | The main cell is a link |
 | Field | Border darkens | Focused border is slate blue |
