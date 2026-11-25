@@ -38,10 +38,13 @@ function taken(label: { id: string; name: string }): LabelResult {
 
 /**
  * The gym's labels for the "Add label" picker, read when it opens so a label
- * another desk just made is there. Staff only (listGymLabels checks), and only
- * the staff member's gym.
+ * another desk just made is there. Staff only, and only the staff member's
+ * gym. Checks the caller itself, like every action here, rather than trusting
+ * listGymLabels to.
  */
 export async function labelsToPick(): Promise<LabelView[]> {
+  await requireStaff();
+  if (!(await getStaffContext())) return [];
   return listGymLabels();
 }
 

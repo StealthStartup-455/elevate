@@ -22,7 +22,7 @@ export function labelKey(name: string): string {
 
 /**
  * A label name as staff typed it, tidied: spaces trimmed from the ends and
- * runs of spaces made one. Refuses an empty name, one over MAX_LABEL_LENGTH
+ * runs of any kind of space made one plain space. Refuses an empty name, one over MAX_LABEL_LENGTH
  * characters, and control characters.
  */
 export function normalizeLabelName(raw: unknown): ParsedLabelName {
@@ -32,7 +32,10 @@ export function normalizeLabelName(raw: unknown): ParsedLabelName {
   if (CONTROL.test(trimmed)) {
     return { ok: false, message: "A label can't have tabs or line breaks in it." };
   }
-  const name = trimmed.replace(/ {2,}/g, " ");
+  // Any run of spaces, including a pasted non-breaking space, becomes one plain
+  // space, so a look-alike name can't slip past the duplicate check. (Tabs and
+  // line breaks were refused above.)
+  const name = trimmed.replace(/\s+/g, " ");
   // Counted by character, so an emoji is one, not two.
   if ([...name].length > MAX_LABEL_LENGTH) {
     return { ok: false, message: `Keep labels to ${MAX_LABEL_LENGTH} characters or fewer.` };

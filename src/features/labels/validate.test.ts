@@ -33,6 +33,15 @@ describe("normalizeLabelName", () => {
     });
   });
 
+  it("makes a pasted non-breaking or wide space a plain one, so it matches", () => {
+    const plain = normalizeLabelName("Ask for ID");
+    for (const raw of ["Ask for ID", "Ask for ID", "Ask   for ID"]) {
+      const pasted = normalizeLabelName(raw);
+      expect(pasted).toMatchObject({ ok: true, name: "Ask for ID" });
+      expect(pasted.ok && plain.ok && pasted.key === plain.key).toBe(true);
+    }
+  });
+
   it("counts the length after tidying spaces", () => {
     // 31 characters as typed, 29 once the double spaces are one.
     expect(normalizeLabelName(`${"a".repeat(14)}   ${"b".repeat(14)}`).ok).toBe(true);
