@@ -484,6 +484,7 @@ model GymLabel {
   name        String // as staff typed it, tidied: "Must retest belay"
   key         String // the name in lower case, so "ask for id" finds "Ask for ID"
   createdById String? // who first typed it; empty for the shared demo desk login
+  active      Boolean  @default(true) // switched off instead of deleted; an inactive label can't be added and doesn't show
   createdAt   DateTime @default(now())
 
   gym           Gym            @relation(fields: [gymId], references: [id])
@@ -494,9 +495,10 @@ model GymLabel {
   @@unique([gymId, key])
 }
 
-// One label on one customer, from when staff added it until they took it off.
-// Taking it off sets removedAt; adding it again is a new row, so the history
-// of who added and removed it stays.
+// One label on one customer. Taking it off sets removedAt (nothing is
+// deleted); putting it back clears removedAt on the same row, so only the
+// latest add and removal are remembered. One row per customer and label, so
+// two desks pressing at once can't make a duplicate.
 model ClimberLabel {
   id          String    @id @default(uuid())
   gymId       String
@@ -513,6 +515,7 @@ model ClimberLabel {
   addedBy   Staff?   @relation("LabelAddedBy", fields: [addedById, gymId], references: [id, gymId], onDelete: Restrict)
   removedBy Staff?   @relation("LabelRemovedBy", fields: [removedById, gymId], references: [id, gymId], onDelete: Restrict)
 
+  @@unique([climberId, labelId])
   @@index([gymId, climberId, removedAt])
 }
 
