@@ -9,3 +9,9 @@
 - **Decisions:** the #255 e2e now picks another climber in place of Change climber; same bug covered. No new styles.
 - **Open follow-ups:** none.
 - **Verification:** lint and `tsc` clean; Playwright pos, release-fixes, revoke-membership: 11 passed (production build, fresh seed). Full suite not run; light/dark not checked by eye.
+
+## Update (same branch)
+
+- The search moved into the page header beside "Point of sale" (`ClimberSearch.tsx`): a larger bar whose dropdown holds fuzzy results, renewals due and today's check-ins. While it is open, only the sale area below is blurred (not the nav); picking someone closes it and shows them unblurred. The picked climber's card has a placeholder avatar (`ClimberPanel.tsx`).
+- Also in this PR, a different bug: "New customer" from the Check-in tab links to `/desk/customers/new?from=check-in`, so its back link reads "← Check-in" and goes to `/desk`; from Customers it stays "← Customers".
+- Verification: lint, `tsc` clean; Playwright pos, release-fixes, eft, demo-fixes, revoke-membership, desk-add-climber: 17+ passed (production build). Full suite not run.

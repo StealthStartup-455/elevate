@@ -1,7 +1,7 @@
 "use client";
 
 import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -9,26 +9,19 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import { useBackdropClose } from "@/components/ui/useBackdropClose";
-import { formatDate, membershipDateLine, revokedLine } from "@/features/climbers/format";
+import { membershipDateLine, revokedLine } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
-import { findPosClimbers, revokeMembership } from "../actions";
-import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
+import { revokeMembership } from "../actions";
+import type { PosClimber } from "../types";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
-
-// Wait for a pause in typing before searching, as Manual check in does.
-const SEARCH_DELAY_MS = 200;
 
 const WAIVER: Record<WaiverStatus, { status: Status; label: string }> = {
   valid: { status: "ok", label: "Waiver valid" },
@@ -55,121 +48,49 @@ function passDetail(c: PosClimber): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
-// Left column of the POS: find the climber the sale is for. Shows today's
-// check-ins and renewals due until staff search (on the server, #85); once
-// picked, a summary with their waiver and passes.
+// Left column of the POS: the picked climber, with a placeholder photo, their
+// waiver and passes. The search that picks them is in the page header
+// (`ClimberSearch`, #240).
 export default function ClimberPanel({
-  checkedInToday,
-  renewalsDue,
   selected,
   loadingName,
   loadError,
-  onSelect,
-  onRenew,
   onUpdated,
 }: {
-  checkedInToday: RecentCheckIn[];
-  renewalsDue: RenewalDue[];
   selected: PosClimber | null;
   /** A climber picked from a list, while their passes load. */
   loadingName: string | null;
   loadError: string | null;
-  onSelect: (climber: PosClimber | { id: string; name: string }) => void;
-  onRenew: (renewal: RenewalDue) => void;
   /** Their passes changed here (a revoke): load them again. */
   onUpdated: () => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PosClimber[]>([]);
-  // The query the current results are for, so "No climbers match" only shows
-  // once the search for what was typed has answered.
-  const [resultsFor, setResultsFor] = useState("");
-  const [searchError, setSearchError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const q = query.trim();
-    if (q === "") return;
-    let current = true;
-    const timer = setTimeout(async () => {
-      try {
-        const found = await findPosClimbers(q);
-        if (current) {
-          setResults(found);
-          setResultsFor(q);
-          setSearchError(null);
-        }
-      } catch {
-        if (current) setSearchError("Couldn't search. Try again.");
-      }
-    }, SEARCH_DELAY_MS);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
-
-  const searched = query.trim() !== "" && resultsFor === query.trim();
-
-  function pick(climber: PosClimber | { id: string; name: string }) {
-    setQuery("");
-    setResults([]);
-    setResultsFor("");
-    onSelect(climber);
-  }
-
   const waiver = selected ? WAIVER[selected.waiverStatus] : null;
   const membership = selected ? MEMBERSHIP[selected.membershipStatus] : null;
   const detail = selected ? passDetail(selected) : null;
 
-  // The search is always there (#240): picking someone else replaces the
-  // climber below, so there's no "Change climber" step.
   return (
     <Card>
       <CardContent className="flex flex-col gap-2">
         <Typography variant="cardTitle">Climber</Typography>
-        <TextField
-          fullWidth
-          size="small"
-          type="search"
-          label="Search name or phone"
-          placeholder="Typos are OK"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-
         {loadError ? <Alert severity="warning">{loadError}</Alert> : null}
-        {searchError ? <Alert severity="error">{searchError}</Alert> : null}
-
-        {query.trim() !== "" ? (
-          !searched ? (
-            <Typography variant="secondary">Searching…</Typography>
-          ) : results.length === 0 ? (
-            <Typography variant="secondary">No climbers match.</Typography>
-          ) : (
-            <List dense disablePadding aria-label="Matching climbers">
-              {results.map((c) => (
-                <ListItem key={c.id} disablePadding>
-                  <ListItemButton onClick={() => pick(c)}>
-                    <ListItemText primary={c.name} secondary={c.phone} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )
-        ) : loadingName ? (
+        {loadingName ? (
           <Typography variant="secondary">Loading {loadingName}…</Typography>
         ) : selected && waiver && membership ? (
-          <Box
-            aria-label="Selected climber"
-            role="group"
-            sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 3 }}
-            className="flex flex-col gap-2"
-          >
-            <div>
-              <Typography variant="body" sx={{ fontWeight: 600 }}>
-                {selected.name}
-              </Typography>
-              {selected.phone ? <Typography variant="secondary">{selected.phone}</Typography> : null}
+          <div className="flex flex-col gap-2" role="group" aria-label="Selected climber">
+            <div className="flex items-center gap-3">
+              {/* A placeholder until climbers have photos. */}
+              <Avatar aria-hidden sx={{ width: 56, height: 56, bgcolor: "action.selected", color: "text.secondary" }}>
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8z" />
+                </svg>
+              </Avatar>
+              <div>
+                <Typography variant="body" sx={{ fontWeight: 600 }}>
+                  {selected.name}
+                </Typography>
+                {selected.phone ? <Typography variant="secondary">{selected.phone}</Typography> : null}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <StatusPill status={waiver.status} label={waiver.label} />
@@ -201,55 +122,9 @@ export default function ClimberPanel({
             <div className="flex justify-end">
               <LinkArrow href={`/desk/customers/${selected.id}`}>Open account</LinkArrow>
             </div>
-          </Box>
+          </div>
         ) : (
-          <>
-            {renewalsDue.length ? (
-              <>
-                <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
-                  Renewals due
-                </Typography>
-                <List dense disablePadding aria-label="Renewals due">
-                  {renewalsDue.map((renewal) => (
-                    <ListItem key={renewal.climberId} disablePadding>
-                      <ListItemButton
-                        onClick={() => onRenew(renewal)}
-                        sx={{ bgcolor: "warning.soft", "&:hover": { bgcolor: "warning.softHover" } }}
-                      >
-                        <ListItemText
-                          primary={renewal.name}
-                          secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}${renewal.hasBankAccount ? " · EFT on file" : ""}`}
-                        />
-                        <StatusPill status="warn" label={renewal.overdue ? "Overdue" : "Due"} />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
-                </List>
-              </>
-            ) : null}
-
-            <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
-              Checked in today
-            </Typography>
-            {checkedInToday.length === 0 ? (
-              <Typography variant="secondary">
-                Nobody has checked in yet today. Search to find a climber.
-              </Typography>
-            ) : (
-              <List dense disablePadding aria-label="Checked in today" className="max-h-96 overflow-y-auto">
-                {checkedInToday.map((c) => (
-                  <ListItem key={c.climberId} disablePadding>
-                    <ListItemButton onClick={() => pick({ id: c.climberId, name: c.name })}>
-                      <ListItemText primary={c.name} secondary={c.phone} />
-                      <Typography variant="secondary" component="span">
-                        {c.time}
-                      </Typography>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </>
+          <Typography variant="secondary">Nobody picked yet. Use Search climbers above.</Typography>
         )}
       </CardContent>
     </Card>

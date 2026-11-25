@@ -15,7 +15,7 @@ async function openPos(page: Page) {
 }
 
 async function pickClimber(page: Page, name: string) {
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill(name);
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill(name);
   await page.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
 }
 
@@ -120,9 +120,16 @@ test("POS from a climber's panel opens them again after picking someone else (#2
 test("the climber search is always there, and picking someone replaces the climber (#240)", async ({ page }) => {
   await openPos(page);
   await pickClimber(page, "Seth Miller");
-  const search = page.getByRole("searchbox", { name: "Search name or phone" });
+  const search = page.getByRole("searchbox", { name: "Search climbers" });
   await expect(search).toBeVisible();
   await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
+  // Searching again drops a list down and blurs the sale area, not the nav, and keeps the climber.
+  await search.click();
+  await expect(page.getByRole("list", { name: "Checked in today" })).toBeVisible();
+  await expect(page.getByRole("navigation")).toHaveCSS("filter", "none");
+  await expect(page.getByRole("heading", { name: "Add to cart" }).locator("xpath=ancestor::div[contains(@class,'grid')][1]")).toHaveCSS("filter", /blur/);
+  await search.press("Escape");
+  await expect(page.getByRole("list", { name: "Checked in today" })).toBeHidden();
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
   await pickClimber(page, "Nevin Gill");
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
