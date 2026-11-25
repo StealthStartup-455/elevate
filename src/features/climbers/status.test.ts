@@ -74,6 +74,14 @@ describe("summarizeMembership", () => {
     expect(summarizeMembership([pass("2026-01-01", null)], NOW)).toEqual({ status: "active" });
   });
 
+  it("dates the end on the gym's calendar, not UTC", () => {
+    // 03:30 UTC Nov 25 is the evening of Nov 24 in Los Angeles.
+    const ended = { startsAt: day("2026-10-01"), expiresAt: new Date("2026-11-25T03:30:00Z"), pausedAt: null };
+    const later = new Date("2026-11-26T00:00:00Z");
+    expect(summarizeMembership([ended], later).renewsOn).toBe("2026-11-25");
+    expect(summarizeMembership([ended], later, "America/Los_Angeles").renewsOn).toBe("2026-11-24");
+  });
+
   it("is expired after the end date", () => {
     expect(summarizeMembership([pass("2026-09-01", "2026-10-01")], NOW).status).toBe("expired");
   });

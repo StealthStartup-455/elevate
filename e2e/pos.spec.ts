@@ -93,3 +93,26 @@ test("a missing waiver is a warning, not a block", async ({ page }) => {
   await expect(page.getByText("No waiver on file")).toBeVisible();
   await expect(page.getByRole("button", { name: "Checkout" })).toBeEnabled();
 });
+
+test("POS from a climber's panel opens them again after Change climber", async ({ page }) => {
+  await openPos(page);
+  // Opened from the Check-in panel, staff move on to nobody, then open the
+  // same climber from the panel again. Next.js keeps the POS page alive in
+  // between, so this used to show the empty POS.
+  const openFromPanel = async () => {
+    await page.getByRole("link", { name: "Check-in", exact: true }).click();
+    await page.getByRole("combobox", { name: "Find climber" }).fill("Nevin Gill");
+    await page.getByRole("option", { name: /Nevin Gill/ }).click();
+    await page.getByRole("complementary").getByRole("link", { name: "POS" }).click();
+    await expect(page).toHaveURL(/\/desk\/pos\?climber=/);
+    await expect(page.getByRole("button", { name: "Change climber" })).toBeVisible();
+    await expect(page.getByText("Nevin Gill").first()).toBeVisible();
+  };
+  await openFromPanel();
+  await page.getByRole("button", { name: "Change climber" }).click();
+  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toBeVisible();
+  // The Check-in page keeps its own search too: clear it first.
+  await page.getByRole("link", { name: "Check-in", exact: true }).click();
+  await page.getByRole("combobox", { name: "Find climber" }).clear();
+  await openFromPanel();
+});

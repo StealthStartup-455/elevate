@@ -74,12 +74,19 @@ type MembershipPass = {
 export function summarizeMembership(
   passes: MembershipPass[],
   now: Date,
+  // The gym's, so a membership that ends (or is revoked) in the evening shows
+  // that day, not the next day in UTC. Without one, the UTC date.
+  timeZone?: string,
 ): MembershipSummary {
   const latest = passes
     .filter((p) => p.startsAt <= now)
     .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())[0];
   if (!latest) return { status: "none" };
-  const renewsOn = latest.expiresAt ? isoDay(latest.expiresAt) : undefined;
+  const renewsOn = latest.expiresAt
+    ? timeZone
+      ? isoDayIn(latest.expiresAt, timeZone)
+      : isoDay(latest.expiresAt)
+    : undefined;
   const about = { renewsOn, recurring: latest.renews, plan: latest.plan ?? undefined };
   if (latest.expiresAt && latest.expiresAt <= now) return { status: "expired", ...about };
   if (latest.pausedAt) return { status: "paused", ...about };

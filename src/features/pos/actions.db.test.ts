@@ -9,7 +9,8 @@ import { db } from "@/lib/db";
 import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-pos";
-const auth = vi.hoisted(() => ({ staff: true }));
+// staffId null is the shared demo desk login.
+const auth = vi.hoisted(() => ({ staff: true, staffId: null as string | null }));
 
 vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -20,7 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => auth.staff,
-  getStaffContext: async () => (auth.staff ? { id: null, gymId, role: "DESK" } : null),
+  getStaffContext: async () => (auth.staff ? { id: auth.staffId, gymId, role: "DESK" } : null),
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
@@ -63,6 +64,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   auth.staff = true;
+  auth.staffId = null;
 });
 
 afterAll(async () => {
@@ -81,6 +83,7 @@ async function cleanUp() {
   await db.product.deleteMany(where);
   await db.waiver.deleteMany(where);
   await db.climber.deleteMany(where);
+  await db.staff.deleteMany(where);
   await db.gym.delete({ where: { id: gym.id } });
 }
 
@@ -256,7 +259,7 @@ describe("revokeMembership", () => {
     if (!first.ok || !renewal.ok) throw new Error("sale failed");
     expect((await getClimber(id))?.membershipStatus).toBe("active");
 
-    expect(await revokeMembership(id)).toEqual({ ok: true });
+    expect(await revokeMembership(id, "Couldn't pay")).toEqual({ ok: true });
     expect((await getClimber(id))?.membershipStatus).not.toBe("active");
     expect((await checkInClimber(id)).ok).toBe(false);
     const passes = await db.pass.findMany({ where: { climberId: id, kind: "MEMBERSHIP" } });
@@ -265,22 +268,51 @@ describe("revokeMembership", () => {
     const sales = await db.sale.findMany({ where: { id: { in: [first.saleId, renewal.saleId] } } });
     expect(sales.every((s) => s.status === "PAID")).toBe(true);
 
-    // Twice is fine.
-    expect(await revokeMembership(id)).toEqual({ ok: true });
+    // The reason and when are saved on each pass; the demo desk login has no staff id.
+    expect(passes.every((p) => p.revokeReason === "Couldn't pay" && p.revokedAt && p.revokedById === null)).toBe(true);
+
+    // Twice is fine, and keeps the first reason.
+    expect(await revokeMembership(id, "Again")).toEqual({ ok: true });
+    const again = await db.pass.findMany({ where: { climberId: id, kind: "MEMBERSHIP" } });
+    expect(again.every((p) => p.revokeReason === "Couldn't pay")).toBe(true);
   });
 
   it("leaves day passes and punch cards alone", async () => {
     const id = await newClimber();
     const result = await sell(id, [["1 month membership", 1], ["10-punch card", 1]]);
     if (!result.ok) throw new Error(result.message);
-    await revokeMembership(id);
+    await revokeMembership(id, "Injured");
     expect((await getClimber(id))?.punchesLeft).toBe(10);
+  });
+
+  it("needs a reason, trimmed and under 200 characters", async () => {
+    const id = await newClimber();
+    const result = await sell(id, [["1 month membership", 1]]);
+    if (!result.ok) throw new Error(result.message);
+    expect((await revokeMembership(id, "   ")).ok).toBe(false);
+    expect((await revokeMembership(id, "x".repeat(201))).ok).toBe(false);
+    expect((await getClimber(id))?.membershipStatus).toBe("active");
+
+    expect((await revokeMembership(id, "  Moved away  ")).ok).toBe(true);
+    const pass = await db.pass.findFirstOrThrow({ where: { climberId: id, kind: "MEMBERSHIP" } });
+    expect(pass.revokeReason).toBe("Moved away");
+  });
+
+  it("records which staff member revoked it", async () => {
+    const id = await newClimber();
+    const result = await sell(id, [["1 month membership", 1]]);
+    if (!result.ok) throw new Error(result.message);
+    const staff = await db.staff.create({ data: { gymId, authUserId: crypto.randomUUID(), name: "Clinton" } });
+    auth.staffId = staff.id;
+    expect((await revokeMembership(id, "Couldn't pay")).ok).toBe(true);
+    const pass = await db.pass.findFirstOrThrow({ where: { climberId: id, kind: "MEMBERSHIP" } });
+    expect(pass.revokedById).toBe(staff.id);
   });
 
   it("is staff only", async () => {
     const id = await newClimber();
     auth.staff = false;
-    await expect(revokeMembership(id)).rejects.toThrow("redirect /login");
+    await expect(revokeMembership(id, "Couldn't pay")).rejects.toThrow("redirect /login");
   });
 });
 
