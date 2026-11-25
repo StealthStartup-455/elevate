@@ -16,6 +16,7 @@ import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import { formatDate, membershipDateLine, membershipPlanName } from "@/features/climbers/format";
 import type { Climber } from "@/features/climbers/types";
+import ClimberLabels from "@/features/labels/components/ClimberLabels";
 import type { DeskClimberPanel } from "../actions";
 import { badgeFor } from "../day";
 import { deskNextStep } from "../scan-messages";
@@ -108,6 +109,8 @@ export default function ClimberProfile({
           </Typography>
         </div>
         <StatusBox panel={panel} onChanged={onChanged} />
+        {/* Right under whether they can check in, so staff see them first (#157). */}
+        <ClimberLabels climberId={c.id} labels={panel.labels} onChanged={onChanged} />
         <Membership climber={c} />
         <PassesAndDetails climber={c} revoked={panel.revoked} onChanged={onChanged} />
         <Attributes panel={panel} />

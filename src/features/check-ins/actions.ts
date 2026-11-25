@@ -6,6 +6,8 @@ import { formatTime } from "@/features/analytics/components/format";
 import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
+import { getClimberLabels } from "@/features/labels/queries";
+import type { LabelView } from "@/features/labels/types";
 import { isPosEnabled } from "@/features/pos/queries";
 import { getMembershipRevoke } from "@/features/pos/revoke";
 import type { MembershipRevoke } from "@/features/pos/types";
@@ -182,6 +184,8 @@ export type DeskClimberPanel = {
    * Here and not on Climber, which the climber's own pages read too.
    */
   revoked: MembershipRevoke | null;
+  /** Staff labels (#157), A to Z. Here and not on Climber, which /me reads too. */
+  labels: LabelView[];
 };
 
 // The climber panel on the Check-in page (#169). Reads only what the desk
@@ -196,11 +200,12 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
   const [climber, gym] = await Promise.all([getClimber(climberId), getGymById(staff.gymId)]);
   if (!climber || !gym) return null;
   const now = new Date();
-  const [waiver, today, posEnabled, revoked] = await Promise.all([
+  const [waiver, today, posEnabled, revoked, labels] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getSavedCheckIns(startOfGymDay(now, gym.timeZone)),
     isPosEnabled(),
     getMembershipRevoke(gym, climber),
+    getClimberLabels(climber.id),
   ]);
   // Newest first, so this is their latest check-in today.
   const latest = today.find((c) => c.climberId === climber.id);
@@ -214,5 +219,7 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
     posEnabled,
     employee: !!latest && isDemoEmployeeCheckIn(latest.id),
     revoked,
+    // Null only for a climber outside the gym, and getClimber already ruled that out.
+    labels: labels ?? [],
   };
 }
