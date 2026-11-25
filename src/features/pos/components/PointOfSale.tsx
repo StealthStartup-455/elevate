@@ -110,7 +110,6 @@ function Pos({
         loadError={loadError}
         onSelect={selectClimber}
         onRenew={renew}
-        onChange={() => selectClimber(null)}
         onUpdated={refreshSelected}
       />
       <ProductPanel

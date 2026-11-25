@@ -1,6 +1,7 @@
 "use client";
 
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -65,7 +66,6 @@ export default function ClimberPanel({
   loadError,
   onSelect,
   onRenew,
-  onChange,
   onUpdated,
 }: {
   checkedInToday: RecentCheckIn[];
@@ -76,7 +76,6 @@ export default function ClimberPanel({
   loadError: string | null;
   onSelect: (climber: PosClimber | { id: string; name: string }) => void;
   onRenew: (renewal: RenewalDue) => void;
-  onChange: () => void;
   /** Their passes changed here (a revoke): load them again. */
   onUpdated: () => void;
 }) {
@@ -118,69 +117,12 @@ export default function ClimberPanel({
     onSelect(climber);
   }
 
-  if (loadingName) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col gap-2">
-          <Typography variant="cardTitle">Climber</Typography>
-          <Typography variant="secondary">Loading {loadingName}…</Typography>
-        </CardContent>
-      </Card>
-    );
-  }
+  const waiver = selected ? WAIVER[selected.waiverStatus] : null;
+  const membership = selected ? MEMBERSHIP[selected.membershipStatus] : null;
+  const detail = selected ? passDetail(selected) : null;
 
-  if (selected) {
-    const waiver = WAIVER[selected.waiverStatus];
-    const membership = MEMBERSHIP[selected.membershipStatus];
-    const detail = passDetail(selected);
-    return (
-      <Card>
-        <CardContent className="flex flex-col gap-2">
-          <Typography variant="cardTitle">Climber</Typography>
-          <div>
-            <Typography variant="body" sx={{ fontWeight: 600 }}>
-              {selected.name}
-            </Typography>
-            {selected.phone ? <Typography variant="secondary">{selected.phone}</Typography> : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusPill status={waiver.status} label={waiver.label} />
-            <StatusPill status={membership.status} label={membership.label} />
-          </div>
-          {selected.revoked ? (
-            // Revoked here or earlier: when and why, in place of "Ended" (#241).
-            <Typography variant="secondary" color="error">
-              {revokedLine(selected.revoked)}
-            </Typography>
-          ) : detail ? (
-            <Typography variant="secondary" color={selected.membershipStatus === "expired" ? "error" : undefined}>
-              {detail}
-            </Typography>
-          ) : null}
-          {selected.bankAccount !== undefined ? (
-            <DeskBankAccount
-              // Its own key: a sibling sharing RevokeMembership's key renders twice.
-              key={`bank-${selected.id}`}
-              climberId={selected.id}
-              climberName={selected.name}
-              account={selected.bankAccount}
-              onChanged={onUpdated}
-            />
-          ) : null}
-          {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
-            <RevokeMembership key={selected.id} climber={selected} onRevoked={onUpdated} />
-          ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button variant="outlined" size="small" onClick={onChange}>
-              Change climber
-            </Button>
-            <LinkArrow href={`/desk/customers/${selected.id}`}>Open account</LinkArrow>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // The search is always there (#240): picking someone else replaces the
+  // climber below, so there's no "Change climber" step.
   return (
     <Card>
       <CardContent className="flex flex-col gap-2">
@@ -214,6 +156,52 @@ export default function ClimberPanel({
               ))}
             </List>
           )
+        ) : loadingName ? (
+          <Typography variant="secondary">Loading {loadingName}…</Typography>
+        ) : selected && waiver && membership ? (
+          <Box
+            aria-label="Selected climber"
+            role="group"
+            sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 3 }}
+            className="flex flex-col gap-2"
+          >
+            <div>
+              <Typography variant="body" sx={{ fontWeight: 600 }}>
+                {selected.name}
+              </Typography>
+              {selected.phone ? <Typography variant="secondary">{selected.phone}</Typography> : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill status={waiver.status} label={waiver.label} />
+              <StatusPill status={membership.status} label={membership.label} />
+            </div>
+            {selected.revoked ? (
+              // Revoked here or earlier: when and why, in place of "Ended" (#241).
+              <Typography variant="secondary" color="error">
+                {revokedLine(selected.revoked)}
+              </Typography>
+            ) : detail ? (
+              <Typography variant="secondary" color={selected.membershipStatus === "expired" ? "error" : undefined}>
+                {detail}
+              </Typography>
+            ) : null}
+            {selected.bankAccount !== undefined ? (
+              <DeskBankAccount
+                // Its own key: a sibling sharing RevokeMembership's key renders twice.
+                key={`bank-${selected.id}`}
+                climberId={selected.id}
+                climberName={selected.name}
+                account={selected.bankAccount}
+                onChanged={onUpdated}
+              />
+            ) : null}
+            {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
+              <RevokeMembership key={selected.id} climber={selected} onRevoked={onUpdated} />
+            ) : null}
+            <div className="flex justify-end">
+              <LinkArrow href={`/desk/customers/${selected.id}`}>Open account</LinkArrow>
+            </div>
+          </Box>
         ) : (
           <>
             {renewalsDue.length ? (

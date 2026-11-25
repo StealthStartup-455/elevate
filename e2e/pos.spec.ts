@@ -95,25 +95,35 @@ test("a missing waiver is a warning, not a block", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Checkout" })).toBeEnabled();
 });
 
-test("POS from a climber's panel opens them again after Change climber", async ({ page }) => {
+test("POS from a climber's panel opens them again after picking someone else (#255, #240)", async ({ page }) => {
   await openPos(page);
-  // Opened from the Check-in panel, staff move on to nobody, then open the
-  // same climber from the panel again. Next.js keeps the POS page alive in
-  // between, so this used to show the empty POS.
+  // Opened from the Check-in panel, staff pick another climber in the POS, then
+  // open the first climber from the panel again. Next.js keeps the POS page
+  // alive in between, so this used to show the wrong climber.
   const openFromPanel = async () => {
     await page.getByRole("link", { name: "Check-in", exact: true }).click();
     await page.getByRole("combobox", { name: "Find climber" }).fill("Nevin Gill");
     await page.getByRole("option", { name: /Nevin Gill/ }).click();
     await page.getByRole("complementary").getByRole("link", { name: "POS" }).click();
     await expect(page).toHaveURL(/\/desk\/pos\?climber=/);
-    await expect(page.getByRole("button", { name: "Change climber" })).toBeVisible();
-    await expect(page.getByText("Nevin Gill").first()).toBeVisible();
+    await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
   };
   await openFromPanel();
-  await page.getByRole("button", { name: "Change climber" }).click();
-  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toBeVisible();
+  await pickClimber(page, "Seth Miller");
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
   // The Check-in page keeps its own search too: clear it first.
   await page.getByRole("link", { name: "Check-in", exact: true }).click();
   await page.getByRole("combobox", { name: "Find climber" }).clear();
   await openFromPanel();
+});
+
+test("the climber search is always there, and picking someone replaces the climber (#240)", async ({ page }) => {
+  await openPos(page);
+  await pickClimber(page, "Seth Miller");
+  const search = page.getByRole("searchbox", { name: "Search name or phone" });
+  await expect(search).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
+  await pickClimber(page, "Nevin Gill");
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
 });

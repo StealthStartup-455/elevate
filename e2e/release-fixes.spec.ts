@@ -86,8 +86,9 @@ test("the desk reads a climber's waiver from their page, and opens POS for them 
   await page.getByRole("link", { name: "Open in POS" }).click();
   await expect(page).toHaveURL(/\/desk\/pos\?climber=[0-9a-f-]+/);
   await expect(page.getByText("Demo Valid-Active", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Change climber" })).toBeVisible();
-  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toHaveCount(0);
+  // The search stays available, with no "Change climber" step (#240).
+  await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
+  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toBeVisible();
 });
 
 test("the POS opens with nobody picked for a bad or foreign climber id (#148)", async ({ page }) => {
