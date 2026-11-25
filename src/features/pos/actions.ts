@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
 import { logEvent } from "@/lib/log";
 import { voidedExpiry } from "./passes";
+import { getMembershipRevoke } from "./revoke";
 import { getStaffGym, toPosClimber } from "./queries";
 import { refreshSalePages, saveSale, type SaleInput, type SaleResult } from "./sale";
 import type { PosClimber, Tender } from "./types";
@@ -125,19 +126,28 @@ export async function voidSale(
  * Revokes a climber's membership: every membership pass that hasn't ended
  * stops now, including a renewal bought early, and stops renewing. The sales
  * stay as they are; to give money back, void the sale instead. Any desk
- * staff member can revoke.
+ * staff member can revoke. Staff must say why (#241): the reason, the time
+ * and who revoked it are saved on each pass, so there's a record if the
+ * member asks.
  */
-export async function revokeMembership(climberId: string): Promise<{ ok: boolean; message?: string }> {
+export async function revokeMembership(
+  climberId: string,
+  reason: string,
+): Promise<{ ok: boolean; message?: string }> {
   await requireStaff();
-  // TODO(auth): record which staff member revoked it.
   const refuse = (code: string, message: string) => {
     logEvent("membership_revoke_refused", { reason: code });
     return { ok: false, message };
   };
   if (!UUID.test(String(climberId))) return refuse("invalid_id", "Climber not found.");
+  const why = String(reason ?? "").trim();
+  if (why === "") return refuse("no_reason", "Say why the membership is being revoked.");
+  if (why.length > 200) return refuse("reason_too_long", "Keep the reason under 200 characters.");
 
-  const gym = await getStaffGym();
-  if (!gym) return refuse("no_staff_gym", "Log in again to revoke.");
+  // The signed-in staff member; a null id is the shared demo desk login.
+  const staff = await getStaffContext();
+  const gym = staff ? await getGymById(staff.gymId) : null;
+  if (!staff || !gym) return refuse("no_staff_gym", "Log in again to revoke.");
   const climber = await getClimber(climberId);
   if (!climber) return refuse("climber_not_found", "Climber not found.");
 
@@ -147,6 +157,9 @@ export async function revokeMembership(climberId: string): Promise<{ ok: boolean
       gymId: gym.id,
       climberId: climber.id,
       kind: "MEMBERSHIP",
+      // A revoked early renewal still ends in the future (where it starts),
+      // so skip revoked passes or a second revoke would replace the reason.
+      revokedAt: null,
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     select: { id: true, startsAt: true },
@@ -158,11 +171,18 @@ export async function revokeMembership(climberId: string): Promise<{ ok: boolean
     passes.map((pass) =>
       db.pass.update({
         where: { id: pass.id },
-        data: { expiresAt: voidedExpiry(pass.startsAt, now), renews: false },
+        data: {
+          expiresAt: voidedExpiry(pass.startsAt, now),
+          renews: false,
+          revokedAt: now,
+          revokeReason: why,
+          revokedById: staff.id,
+        },
       }),
     ),
   );
 
+  // The reason is typed by staff, so it stays out of the logs.
   logEvent("membership_revoked", { gymId: gym.id, climberId: climber.id, passes: passes.length });
   refreshSalePages(climber.id);
   return { ok: true };
@@ -184,6 +204,8 @@ export async function getPosClimber(climberId: string): Promise<PosClimber | nul
   if (!climber) return null;
   // getClimber has already limited the climber to the staff member's gym.
   const gym = await getStaffGym();
-  const bank = gym ? await getBankAccount(gym.id, climber.id) : null;
-  return { ...toPosClimber(climber), bankAccount: bank };
+  const [bank, revoked] = gym
+    ? await Promise.all([getBankAccount(gym.id, climber.id), getMembershipRevoke(gym, climber)])
+    : [null, null];
+  return { ...toPosClimber(climber), bankAccount: bank, revoked };
 }

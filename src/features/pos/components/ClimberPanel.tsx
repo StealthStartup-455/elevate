@@ -15,9 +15,11 @@ import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState, useTransition } from "react";
+import DisabledReason from "@/components/ui/DisabledReason";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
-import { formatDate, membershipDateLine } from "@/features/climbers/format";
+import { useBackdropClose } from "@/components/ui/useBackdropClose";
+import { formatDate, membershipDateLine, revokedLine } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
 import { findPosClimbers, revokeMembership } from "../actions";
 import type { PosClimber, RecentCheckIn, RenewalDue } from "../types";
@@ -145,7 +147,12 @@ export default function ClimberPanel({
             <StatusPill status={waiver.status} label={waiver.label} />
             <StatusPill status={membership.status} label={membership.label} />
           </div>
-          {detail ? (
+          {selected.revoked ? (
+            // Revoked here or earlier: when and why, in place of "Ended" (#241).
+            <Typography variant="secondary" color="error">
+              {revokedLine(selected.revoked)}
+            </Typography>
+          ) : detail ? (
             <Typography variant="secondary" color={selected.membershipStatus === "expired" ? "error" : undefined}>
               {detail}
             </Typography>
@@ -261,27 +268,34 @@ export default function ClimberPanel({
   );
 }
 
-// Ends the climber's membership now, after a confirm. No money moves: to
-// refund, staff void the sale under Today's sales.
+// Ends the climber's membership now, after a confirm with a reason (#241),
+// saved so there's a record if the member asks. No money moves: to refund,
+// staff void the sale under Today's sales.
 function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevoked: () => void }) {
   const [open, setOpen] = useState(false);
   // Hold the scan popup while revoking (#92, #127).
   useDeskDialogOpen(open);
+  const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function close() {
     if (pending) return;
     setOpen(false);
+    setReason("");
     setError(null);
   }
+
+  // Outside clicks close it too, but not the second click of a double-click (#134, #218).
+  const onClose = useBackdropClose(open, close);
 
   function confirm() {
     setError(null);
     startTransition(async () => {
-      const result = await revokeMembership(climber.id);
+      const result = await revokeMembership(climber.id, reason);
       if (result.ok) {
         setOpen(false);
+        setReason("");
         onRevoked();
       } else setError(result.message ?? "Couldn't revoke the membership. Try again.");
     });
@@ -294,7 +308,7 @@ function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevok
           Revoke membership
         </Button>
       </div>
-      <Dialog open={open} onClose={close} fullWidth maxWidth="xs" aria-labelledby="revoke-title">
+      <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" aria-labelledby="revoke-title">
         <DialogTitle id="revoke-title">Revoke membership</DialogTitle>
         <DialogContent className="flex flex-col gap-3">
           <Typography variant="body">Revoke {climber.name}&apos;s membership?</Typography>
@@ -302,15 +316,34 @@ function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevok
             It stops working now, along with any renewal already bought, and won&apos;t come up for renewal. No money
             is given back: to refund, void the sale under Today&apos;s sales.
           </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="Reason"
+            placeholder="Couldn't pay this month"
+            helperText="Saved on their file, so there's a record if they ask."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+          />
           {error ? <Alert severity="error">{error}</Alert> : null}
         </DialogContent>
         <DialogActions>
           <Button disabled={pending} onClick={close}>
             Keep membership
           </Button>
-          <Button variant="contained" color="error" disabled={pending} onClick={confirm}>
-            {pending ? "Revoking…" : "Revoke membership"}
-          </Button>
+          {reason.trim() === "" ? (
+            <DisabledReason reason="Give a reason first">
+              <Button variant="contained" color="error" disabled>
+                Revoke membership
+              </Button>
+            </DisabledReason>
+          ) : (
+            <Button variant="contained" color="error" disabled={pending} onClick={confirm}>
+              {pending ? "Revoking…" : "Revoke membership"}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

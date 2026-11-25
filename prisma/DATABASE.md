@@ -150,6 +150,9 @@ Searchable by phone, email and last name within a gym.
 | `renews` | boolean | yes | Monthly recurring membership. The POS lists it under "Renewals due" and the desk rings up the next month. A `BankAccount` on file is a mock and is never debited |
 | `saleLineId` | text | no | The POS sale line that paid for it. Empty for passes from before the POS, the #62 free day pass, or another system |
 | `externalId` | text | no | Its id in the gym's own system. Unique per gym |
+| `revokedAt` | timestamp | no | Memberships only. Set when staff revoke it on the POS (#241); `expiresAt` is moved to then too |
+| `revokeReason` | text | no | Why it was revoked, typed by staff (up to 200 characters), so there's a record if the member asks. Shown on the desk, never to the climber |
+| `revokedById` | text | no | The `Staff` member who revoked it. Empty for the shared demo desk login |
 
 ### BankAccount
 

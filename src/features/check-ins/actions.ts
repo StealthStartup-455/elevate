@@ -7,6 +7,8 @@ import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
 import { isPosEnabled } from "@/features/pos/queries";
+import { getMembershipRevoke } from "@/features/pos/revoke";
+import type { MembershipRevoke } from "@/features/pos/types";
 import { getStaffWaiverPanel, type StaffWaiverPanel } from "@/features/waivers/queries";
 import { ageOn } from "@/features/waivers/validate";
 import { db } from "@/lib/db";
@@ -175,6 +177,11 @@ export type DeskClimberPanel = {
   posEnabled: boolean;
   /** Came in on the demo's employee pass today: shown like the table, and nothing to sell. */
   employee: boolean;
+  /**
+   * Why staff revoked their membership (#241); null unless it ended that way.
+   * Here and not on Climber, which the climber's own pages read too.
+   */
+  revoked: MembershipRevoke | null;
 };
 
 // The climber panel on the Check-in page (#169). Reads only what the desk
@@ -189,10 +196,11 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
   const [climber, gym] = await Promise.all([getClimber(climberId), getGymById(staff.gymId)]);
   if (!climber || !gym) return null;
   const now = new Date();
-  const [waiver, today, posEnabled] = await Promise.all([
+  const [waiver, today, posEnabled, revoked] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getSavedCheckIns(startOfGymDay(now, gym.timeZone)),
     isPosEnabled(),
+    getMembershipRevoke(gym, climber),
   ]);
   // Newest first, so this is their latest check-in today.
   const latest = today.find((c) => c.climberId === climber.id);
@@ -205,5 +213,6 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
     checkedInRecently: !!latest && latest.timestamp.getTime() > now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000,
     posEnabled,
     employee: !!latest && isDemoEmployeeCheckIn(latest.id),
+    revoked,
   };
 }

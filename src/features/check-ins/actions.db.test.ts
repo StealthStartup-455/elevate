@@ -72,6 +72,7 @@ async function clearGym(id: string) {
   await db.pass.deleteMany(where);
   await db.waiver.deleteMany(where);
   await db.climber.deleteMany(where);
+  await db.staff.deleteMany(where);
 }
 
 async function cleanUp() {
@@ -156,5 +157,27 @@ describe("getDeskClimberPanel", () => {
     const id = await member();
     await checkIn(id, 10, `${DEMO_CHECK_IN_PREFIX}${gymId}:2026-11-04:example:employee`);
     expect(await getDeskClimberPanel(id)).toMatchObject({ employee: true });
+  });
+
+  it("says why a revoked membership ended, and who revoked it", async () => {
+    const id = await member();
+    expect(await getDeskClimberPanel(id)).toMatchObject({ revoked: null });
+
+    // Revoked at 03:00 UTC Nov 4: still Nov 3 on the gym's clock.
+    const revokedAt = new Date("2026-11-04T03:00:00Z");
+    const staff = await db.staff.create({ data: { gymId, authUserId: crypto.randomUUID(), name: "Clinton" } });
+    await db.pass.updateMany({
+      where: { climberId: id },
+      data: { expiresAt: revokedAt, revokedAt, revokeReason: "Couldn't pay", revokedById: staff.id },
+    });
+    expect(await getDeskClimberPanel(id)).toMatchObject({
+      revoked: { on: "2026-11-03", reason: "Couldn't pay", by: "Clinton" },
+    });
+
+    // A membership bought since makes them active again, so the old revoke is no longer shown.
+    await db.pass.create({
+      data: { gymId, climberId: id, kind: "MEMBERSHIP", startsAt: new Date(NOW.getTime() - MINUTE), expiresAt: new Date(NOW.getTime() + 30 * 1440 * MINUTE) },
+    });
+    expect(await getDeskClimberPanel(id)).toMatchObject({ revoked: null });
   });
 });
