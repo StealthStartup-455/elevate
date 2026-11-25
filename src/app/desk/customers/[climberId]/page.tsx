@@ -96,7 +96,7 @@ async function ClimberCard({
             </Typography>
           </div>
           {/* Straight to the POS with this climber picked (#148). */}
-          <LinkButton href={`/desk/pos?climber=${climber.id}`} variant="outlined">
+          <LinkButton href={`/desk/pos?climber=${climber.id}`} variant="outlined" color="error">
             Open in POS
           </LinkButton>
         </div>

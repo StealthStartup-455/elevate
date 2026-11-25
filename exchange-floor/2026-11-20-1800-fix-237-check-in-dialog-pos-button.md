@@ -9,3 +9,5 @@
 **Follow-ups:** None.
 
 **Verification:** see PR.
+
+**Update:** every button that opens the POS is red now: the Check in dialog, the Check-in panel (`ClimberProfile.tsx` `SellPass`, including its disabled form) and "Open in POS" on the climber page. The POS nav tab and "Back to POS" in checkout are unchanged.
