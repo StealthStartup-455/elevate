@@ -92,6 +92,7 @@ function toClimber(
       .filter((p) => p.kind === "MEMBERSHIP")
       .map((p) => ({ ...p, plan: p.saleLine?.name ?? null })),
     now,
+    gym.timeZone,
   );
   return {
     id: row.id,

@@ -33,3 +33,11 @@ export function membershipDateLine(
 export function membershipPlanName(plan: string | undefined, recurring: boolean | undefined): string {
   return plan ?? (recurring ? "Monthly" : "Membership");
 }
+
+/**
+ * A revoked membership for the desk (#241): "Revoked Nov 24: Couldn't pay
+ * (Clinton)". The name is left out for the shared demo desk login.
+ */
+export function revokedLine(revoke: { on: string; reason: string; by: string | null }): string {
+  return `Revoked ${formatDate(revoke.on)}: ${revoke.reason}${revoke.by ? ` (${revoke.by})` : ""}`;
+}
