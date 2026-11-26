@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/desk/climbers/:path*", destination: "/desk/customers/:path*", permanent: false },
-      { source: "/desk/events", destination: "/desk/events/hours", permanent: false },
+      { source: "/desk/events", destination: "/desk/events/calendar", permanent: false },
       { source: "/me/purchase", destination: "/me/membership", permanent: false },
       { source: "/me/events", destination: "/me/classes?view=events", permanent: false },
     ];
