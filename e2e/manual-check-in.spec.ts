@@ -46,6 +46,21 @@ test("Check in finds a climber by V number, even with a wrong digit (#38)", asyn
   await expect(dialog).toContainText("V00946178");
 });
 
+test("a picked climber in Check in has a POS button that opens them in POS (#237)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Check in" });
+  await dialog.getByLabel("Search name, phone or V number").fill("agam kamran");
+  await dialog.getByRole("list", { name: "Matching climbers" }).getByText("Agam Kamran").click();
+  await dialog.getByRole("link", { name: "POS" }).click();
+  await expect(page).toHaveURL(/\/desk\/pos\?climber=[0-9a-f-]+/);
+
+  // Back on the Check-in tab the dialog is closed, not still open on that climber.
+  await page.getByRole("link", { name: "Check-in", exact: true }).click();
+  await expect(page).toHaveURL(/\/desk$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
 test("a climber with no V number is found by name, and has no barcode (#245)", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
   await page.getByRole("button", { name: "Check in", exact: true }).click();
@@ -71,5 +86,5 @@ test("a sign-up with no V number is saved, and a malformed one is refused (#245)
   await page.getByLabel("Student ID").fill("");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);
-  await expect(page.getByText("None", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("No V number", { exact: true }).first()).toBeVisible();
 });

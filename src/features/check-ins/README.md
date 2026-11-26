@@ -25,7 +25,7 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 5. Dismissing a toast only hides it. The scan stays in the nav's **Arrivals (N)** list until staff check the climber in (anywhere: `checkInClimber` calls `finishScansForClimber`) or press **Clear** there (`finishDeskScan`). Either sets `takenAt` on that scan and any repeat taps by the same climber, on every desk.
 6. A scan nobody deals with expires after `SCAN_TTL_MS` (5 minutes).
 
-The free day pass stopgap (#62) is in Manual check in; the old scan popup that also offered it is gone.
+The Check in dialog also has a red **POS** button on a picked climber (#237) that opens `/desk/pos?climber=<id>`; it's disabled with a reason when the gym doesn't sell in Elevate. The free day pass stopgap (#62) is in Manual check in; the old scan popup that also offered it is gone.
 
 ## The desk's day of check-ins (#168)
 

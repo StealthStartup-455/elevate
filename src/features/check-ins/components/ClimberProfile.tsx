@@ -309,14 +309,14 @@ function SellPass({
   if (!posEnabled) {
     return (
       <DisabledReason reason="This gym doesn't sell passes in Elevate.">
-        <Button variant={variant} disabled>
+        <Button variant={variant} color="error" disabled>
           POS
         </Button>
       </DisabledReason>
     );
   }
   return (
-    <LinkButton href={posHref(climberId)} variant={variant}>
+    <LinkButton href={posHref(climberId)} variant={variant} color="error">
       POS
     </LinkButton>
   );

@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
+import { isPosEnabled } from "@/features/pos/queries";
 import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
 import { storedStudentId } from "./student-id";
 import { toStoredPhone } from "./phone";
@@ -381,7 +382,10 @@ export async function checkInClimber(
 const MAX_CANDIDATES = 8;
 
 export async function findClimbersToCheckIn(query: string): Promise<CheckInCandidate[]> {
-  const climbers = await searchClimbers(String(query ?? ""), MAX_CANDIDATES);
+  const [climbers, posEnabled] = await Promise.all([
+    searchClimbers(String(query ?? ""), MAX_CANDIDATES),
+    isPosEnabled(),
+  ]);
   return climbers.map((c) => ({
     id: c.id,
     name: `${c.firstName} ${c.lastName}`,
@@ -395,5 +399,6 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     membershipRecurring: c.membershipRecurring,
     hasDayPass: c.hasDayPass,
     punchesLeft: c.punchesLeft,
+    posEnabled,
   }));
 }

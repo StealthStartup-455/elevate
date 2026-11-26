@@ -12,17 +12,20 @@ export default function LinkButton({
   size,
   color,
   fullWidth,
+  onClick,
 }: {
   href: string;
   children: React.ReactNode;
   variant?: "contained" | "outlined" | "text";
   size?: "small" | "medium" | "large";
-  /** Only for a renew link (warning); leave out for the usual action color. */
-  color?: "warning";
+  /** warning: a renew link. error: a button staff must notice (POS in the Check in dialog). */
+  color?: "warning" | "error";
   fullWidth?: boolean;
+  /** Runs when the link is clicked, as well as navigating (e.g. to close a dialog). */
+  onClick?: () => void;
 }) {
   return (
-    <Button component={Link} href={href} variant={variant} size={size} color={color} fullWidth={fullWidth}>
+    <Button component={Link} href={href} variant={variant} size={size} color={color} fullWidth={fullWidth} onClick={onClick}>
       {children}
     </Button>
   );
