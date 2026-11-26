@@ -8,7 +8,8 @@ import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-calendar";
 const OTHER_SLUG = "test-calendar-other";
-const session = vi.hoisted(() => ({ climberId: null as string | null, staff: false }));
+// role: the staff member's, when staff is true (#254: hours, events and class types are for managers).
+const session = vi.hoisted(() => ({ climberId: null as string | null, staff: false, role: "MANAGER" as "DESK" | "MANAGER" }));
 
 vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -30,8 +31,9 @@ vi.mock("@/features/auth/staff", () => ({
   },
   getStaffContext: async () =>
     session.staff
-      ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: "DESK" }
+      ? { id: null, gymId: (await db.gym.findUniqueOrThrow({ where: { slug: SLUG } })).id, role: session.role }
       : null,
+  isManager: async () => session.staff && session.role === "MANAGER",
 }));
 vi.mock("@/lib/log", () => ({ logEvent: vi.fn() }));
 vi.mock("@/lib/gym", () => ({
@@ -70,6 +72,7 @@ beforeAll(async () => {
 beforeEach(() => {
   session.climberId = null;
   session.staff = false;
+  session.role = "MANAGER";
 });
 
 afterAll(async () => {
@@ -214,6 +217,40 @@ describe("staff keeping the calendar", () => {
   it("is staff only", async () => {
     await expect(actions.saveOpeningHours(week())).rejects.toThrow("redirect /login");
     await expect(actions.addEvent({ title: "Comp", startsAt: "2030-01-01T10:00" })).rejects.toThrow("redirect /login");
+  });
+
+  it("lets desk staff see the calendar but not change hours, events or class types", async () => {
+    session.staff = true;
+    session.role = "DESK";
+    const managersOnly = { ok: false, message: "Only managers and owners can change this." };
+    const start = new Date(Date.now() + 72 * HOUR).toISOString().slice(0, 16);
+    const day = new Date(Date.now() + 48 * HOUR).toISOString().slice(0, 10);
+    expect(await actions.saveOpeningHours(week())).toEqual(managersOnly);
+    expect(await actions.addSpecialHours({ date: day, closed: true })).toEqual(managersOnly);
+    expect(await actions.addEvent({ title: "Desk comp", startsAt: start })).toEqual(managersOnly);
+    expect(await actions.addClassType({ name: "Desk class", durationMinutes: "60", capacity: "8" })).toEqual(managersOnly);
+    expect(await db.openingHours.count({ where: { gymId } })).toBe(0);
+    expect(await db.gymEvent.count({ where: { gymId, title: "Desk comp" } })).toBe(0);
+    expect(await db.classType.count({ where: { gymId, name: "Desk class" } })).toBe(0);
+
+    // Made by a manager: desk staff can't cancel it, and still see it.
+    const event = await db.gymEvent.create({ data: { gymId, title: "Manager comp", startsAt: new Date(start) } });
+    const special = await db.specialHours.create({ data: { gymId, date: new Date(`${day}T00:00:00Z`), closed: true } });
+    const classType = await db.classType.create({ data: { gymId, name: "Manager class", durationMinutes: 60, capacity: 8 } });
+    expect(await actions.cancelCalendarItem("event", event.id)).toEqual(managersOnly);
+    expect(await actions.cancelCalendarItem("classType", classType.id)).toEqual(managersOnly);
+    expect(await actions.removeSpecialHours(special.id)).toEqual(managersOnly);
+    expect(await actions.updateClassType(classType.id, { name: "Renamed", durationMinutes: "60", capacity: "8" })).toEqual(
+      managersOnly,
+    );
+    expect((await db.gymEvent.findUniqueOrThrow({ where: { id: event.id } })).canceledAt).toBeNull();
+    expect((await db.classType.findUniqueOrThrow({ where: { id: classType.id } })).active).toBe(true);
+    expect((await db.specialHours.findUniqueOrThrow({ where: { id: special.id } })).removedAt).toBeNull();
+    expect((await queries.getDeskEvents()).map((e) => e.title)).toContain("Manager comp");
+
+    await db.gymEvent.delete({ where: { id: event.id } });
+    await db.specialHours.delete({ where: { id: special.id } });
+    await db.classType.delete({ where: { id: classType.id } });
   });
 
   it("saves the week, and climbers see it", async () => {

@@ -7,10 +7,11 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
-import { requireStaff } from "@/features/auth/staff";
+import { isManager, requireStaff } from "@/features/auth/staff";
 import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import DeskWaiverPanel from "@/features/climbers/components/DeskWaiverPanel";
 import LinkButton from "@/features/climbers/components/LinkButton";
+import RevokeMembership from "@/features/climbers/components/RevokeMembership";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
 import { membershipDateLine, revokedLine } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
@@ -62,11 +63,14 @@ async function ClimberCard({
   await requireStaff();
   const climber = await getClimber(climberId);
   if (!climber) notFound();
-  const [waiver, bankAccount, gym] = await Promise.all([
+  const [waiver, bankAccount, gym, manager] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getBankAccountForStaff(climber.id),
     getGymById(climber.gymId),
+    isManager(),
   ]);
+  // Revoking is for managers and owners (#254); desk staff don't see the button.
+  const canRevoke = manager && (climber.membershipStatus === "active" || climber.membershipStatus === "paused");
   // Why it was revoked, for staff only (#241); getClimber leaves it out because /me reads it too.
   const revoked = gym ? await getMembershipRevoke(gym, climber) : null;
   const membership = MEMBERSHIP[climber.membershipStatus];
@@ -134,6 +138,13 @@ async function ClimberCard({
                   </Typography>
                 ) : null}
               </div>
+              {canRevoke ? (
+                <RevokeMembership
+                  key={`revoke-${climber.id}`}
+                  climberId={climber.id}
+                  climberName={`${climber.firstName} ${climber.lastName}`}
+                />
+              ) : null}
               {/* EFT for a monthly membership, a mock (#179). */}
               <div className="flex flex-col gap-1">
                 <Typography variant="secondary">Monthly payments</Typography>

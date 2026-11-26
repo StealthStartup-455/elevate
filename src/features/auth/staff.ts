@@ -1,6 +1,7 @@
 import type { StaffRole } from "@/generated/prisma/client";
 import { redirect } from "next/navigation";
 import { getGym } from "@/lib/gym";
+import { isManagerRole } from "./roles";
 import { findDemoStaffSession, getCurrentUser, getSessionClimberId } from "./queries";
 import { getDemoDeskRole, getDemoDeskSession, hasDemoDeskSession } from "./session";
 
@@ -35,6 +36,12 @@ export async function hasStaffRole(...roles: StaffRole[]): Promise<boolean> {
 
 export async function requireStaffRole(...roles: StaffRole[]): Promise<void> {
   if (!(await hasStaffRole(...roles))) redirect("/login");
+}
+
+// A manager or owner (#254). Server actions are public URLs, so each
+// manager-only action checks this itself, not only the page that shows it.
+export async function isManager(): Promise<boolean> {
+  return isManagerRole((await getStaffContext())?.role);
 }
 
 export async function isStaff(): Promise<boolean> {

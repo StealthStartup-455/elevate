@@ -1,16 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { randomStudentId } from "../src/features/climbers/student-id";
 
-// Revoking a membership on the POS (#241): staff confirm and must give a
-// reason, and the POS card, their page under Customers and the Check-in panel
-// show it. Needs the demo login (DEMO_MODE) and the seeded products.
+// Revoking a membership (#241, #254): a manager does it from the climber's
+// page under Customers, confirms and must give a reason, and that page, the
+// POS card and the Check-in panel show it. Desk staff don't get the button.
+// Needs the demo logins (DEMO_MODE) and the seeded products.
 
-test("revoking a membership needs a reason, and the desk shows it", async ({ page }) => {
+async function logIn(page: Page, username: string) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("desk");
-  await page.getByLabel("Password").fill("desk");
+  await page.getByLabel("Email").fill(username);
+  await page.getByLabel("Password").fill(username);
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).toHaveURL(/\/desk/);
+}
+
+test("a manager revokes a membership from the climber's page, with a reason, and the desk shows it", async ({
+  page,
+}) => {
+  await logIn(page, "manager");
 
   // A new climber each run, so earlier runs' revokes don't show.
   const unique = Date.now().toString().slice(-6);
@@ -44,20 +51,25 @@ test("revoking a membership needs a reason, and the desk shows it", async ({ pag
   await checkout.getByRole("button", { name: "Tender" }).click();
   await page.getByRole("dialog", { name: "Sale saved" }).getByRole("button", { name: "Back to POS" }).click();
 
-  // Back to POS starts a new sale, so pick them again. Revoke: the confirm
-  // stays off until there's a reason.
+  // Back to POS starts a new sale, so pick them again: no Revoke on the POS any more.
   await pick();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText(`Casey ${last}`);
+  await expect(page.getByRole("button", { name: "Revoke membership" })).toHaveCount(0);
+
+  // Revoke from their page under Customers: the confirm stays off until there's a reason.
+  await page.goto(`/desk/customers/${climberId}`);
   await page.getByRole("button", { name: "Revoke membership" }).click();
   const revoking = page.getByRole("dialog", { name: "Revoke membership" });
   await expect(revoking.getByRole("button", { name: "Revoke membership" })).toBeDisabled();
   await revoking.getByLabel("Reason").fill("Couldn't pay this month");
   await revoking.getByRole("button", { name: "Revoke membership" }).click();
   await expect(revoking).toBeHidden();
-  // The POS card says so straight away, with why.
+  // The page says so straight away, with why, and the button is gone.
   await expect(page.getByText("Couldn't pay this month").first()).toContainText(/^Revoked /);
+  await expect(page.getByRole("button", { name: "Revoke membership" })).toHaveCount(0);
 
-  // So does their page under Customers.
-  await page.goto(`/desk/customers/${climberId}`);
+  // So does the POS card.
+  await page.goto(`/desk/pos?climber=${climberId}`);
   await expect(page.getByText("Couldn't pay this month").first()).toContainText(/^Revoked /);
 
   // The Check-in panel says it was revoked, and why.
@@ -65,4 +77,16 @@ test("revoking a membership needs a reason, and the desk shows it", async ({ pag
   const panel = page.getByRole("complementary");
   await expect(panel.getByText(/^Revoked /)).toBeVisible();
   await expect(panel.getByText("Couldn't pay this month")).toBeVisible();
+});
+
+test("desk staff don't get Revoke membership", async ({ page }) => {
+  await logIn(page, "desk");
+  // A seeded climber with an active membership, opened from the POS.
+  await page.getByRole("link", { name: "POS", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill("demo valid active");
+  await page.getByRole("list", { name: "Matching climbers" }).getByText("Demo Valid-Active").click();
+  await page.getByRole("link", { name: /Open account/ }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+$/);
+  await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Revoke membership" })).toHaveCount(0);
 });

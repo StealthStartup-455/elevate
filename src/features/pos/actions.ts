@@ -1,6 +1,6 @@
 "use server";
 
-import { getStaffContext, requireStaff } from "@/features/auth/staff";
+import { getStaffContext, isManager, requireStaff } from "@/features/auth/staff";
 import { getClimber, searchClimbers } from "@/features/climbers/queries";
 import { getBankAccount } from "@/features/eft/queries";
 import { db } from "@/lib/db";
@@ -125,10 +125,10 @@ export async function voidSale(
 /**
  * Revokes a climber's membership: every membership pass that hasn't ended
  * stops now, including a renewal bought early, and stops renewing. The sales
- * stay as they are; to give money back, void the sale instead. Any desk
- * staff member can revoke. Staff must say why (#241): the reason, the time
- * and who revoked it are saved on each pass, so there's a record if the
- * member asks.
+ * stay as they are; to give money back, void the sale instead. Only
+ * managers and owners can revoke (#254), from the climber's page under
+ * Customers. They must say why (#241): the reason, the time and who revoked
+ * it are saved on each pass, so there's a record if the member asks.
  */
 export async function revokeMembership(
   climberId: string,
@@ -139,6 +139,7 @@ export async function revokeMembership(
     logEvent("membership_revoke_refused", { reason: code });
     return { ok: false, message };
   };
+  if (!(await isManager())) return refuse("not_manager", "Only managers and owners can revoke a membership.");
   if (!UUID.test(String(climberId))) return refuse("invalid_id", "Climber not found.");
   const why = String(reason ?? "").trim();
   if (why === "") return refuse("no_reason", "Say why the membership is being revoked.");

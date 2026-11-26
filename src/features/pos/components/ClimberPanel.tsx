@@ -2,25 +2,14 @@
 
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useState, useTransition } from "react";
-import DisabledReason from "@/components/ui/DisabledReason";
 import LinkArrow from "@/components/ui/LinkArrow";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
-import { useBackdropClose } from "@/components/ui/useBackdropClose";
 import { membershipDateLine, revokedLine } from "@/features/climbers/format";
 import type { MembershipStatus, WaiverStatus } from "@/features/climbers/types";
-import { revokeMembership } from "../actions";
 import type { PosClimber } from "../types";
-import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
 
 const WAIVER: Record<WaiverStatus, { status: Status; label: string }> = {
@@ -61,7 +50,7 @@ export default function ClimberPanel({
   /** A climber picked from a list, while their passes load. */
   loadingName: string | null;
   loadError: string | null;
-  /** Their passes changed here (a revoke): load them again. */
+  /** Their account changed here (bank details): load them again. */
   onUpdated: () => void;
 }) {
   const waiver = selected ? WAIVER[selected.waiverStatus] : null;
@@ -108,16 +97,12 @@ export default function ClimberPanel({
             ) : null}
             {selected.bankAccount !== undefined ? (
               <DeskBankAccount
-                // Its own key: a sibling sharing RevokeMembership's key renders twice.
                 key={`bank-${selected.id}`}
                 climberId={selected.id}
                 climberName={selected.name}
                 account={selected.bankAccount}
                 onChanged={onUpdated}
               />
-            ) : null}
-            {selected.membershipStatus === "active" || selected.membershipStatus === "paused" ? (
-              <RevokeMembership key={selected.id} climber={selected} onRevoked={onUpdated} />
             ) : null}
             <div className="flex justify-end">
               <LinkArrow href={`/desk/customers/${selected.id}`}>Open account</LinkArrow>
@@ -128,87 +113,5 @@ export default function ClimberPanel({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-// Ends the climber's membership now, after a confirm with a reason (#241),
-// saved so there's a record if the member asks. No money moves: to refund,
-// staff void the sale under Today's sales.
-function RevokeMembership({ climber, onRevoked }: { climber: PosClimber; onRevoked: () => void }) {
-  const [open, setOpen] = useState(false);
-  // Hold the scan popup while revoking (#92, #127).
-  useDeskDialogOpen(open);
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function close() {
-    if (pending) return;
-    setOpen(false);
-    setReason("");
-    setError(null);
-  }
-
-  // Outside clicks close it too, but not the second click of a double-click (#134, #218).
-  const onClose = useBackdropClose(open, close);
-
-  function confirm() {
-    setError(null);
-    startTransition(async () => {
-      const result = await revokeMembership(climber.id, reason);
-      if (result.ok) {
-        setOpen(false);
-        setReason("");
-        onRevoked();
-      } else setError(result.message ?? "Couldn't revoke the membership. Try again.");
-    });
-  }
-
-  return (
-    <>
-      <div>
-        <Button variant="outlined" color="error" size="small" onClick={() => setOpen(true)}>
-          Revoke membership
-        </Button>
-      </div>
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" aria-labelledby="revoke-title">
-        <DialogTitle id="revoke-title">Revoke membership</DialogTitle>
-        <DialogContent className="flex flex-col gap-3">
-          <Typography variant="body">Revoke {climber.name}&apos;s membership?</Typography>
-          <Typography variant="secondary">
-            It stops working now, along with any renewal already bought, and won&apos;t come up for renewal. No money
-            is given back: to refund, void the sale under Today&apos;s sales.
-          </Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            size="small"
-            label="Reason"
-            placeholder="Couldn't pay this month"
-            helperText="Saved on their file, so there's a record if they ask."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: 200 } }}
-          />
-          {error ? <Alert severity="error">{error}</Alert> : null}
-        </DialogContent>
-        <DialogActions>
-          <Button disabled={pending} onClick={close}>
-            Keep membership
-          </Button>
-          {reason.trim() === "" ? (
-            <DisabledReason reason="Give a reason first">
-              <Button variant="contained" color="error" disabled>
-                Revoke membership
-              </Button>
-            </DisabledReason>
-          ) : (
-            <Button variant="contained" color="error" disabled={pending} onClick={confirm}>
-              {pending ? "Revoking…" : "Revoke membership"}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-    </>
   );
 }
