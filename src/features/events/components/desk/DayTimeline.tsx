@@ -3,7 +3,13 @@
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
-import { layoutDay, timelineHours, type DeskCalendarItem, type DeskCalendarKind } from "../../desk-calendar";
+import {
+  layoutDay,
+  MIN_BLOCK_MINUTES,
+  timelineHours,
+  type DeskCalendarItem,
+  type DeskCalendarKind,
+} from "../../desk-calendar";
 import { formatClock } from "../../time";
 
 // The chosen day as a timeline, like a calendar app (#249): an hour per row, each class, event
@@ -81,7 +87,8 @@ export default function DayTimeline({ items, open, nowMinutes }: Props) {
         </div>
         {/* Each block links to its details below. */}
         {layoutDay(timed).map(({ item, column, columns }) => {
-          const height = Math.max(top(Math.max(item.to, item.from + 30)) - top(item.from), 24);
+          // The same least size the layout used, less a little gap between blocks in one column.
+          const height = top(Math.max(item.to, item.from + MIN_BLOCK_MINUTES)) - top(item.from) - 2;
           return (
             <Box
               key={itemAnchor(item)}

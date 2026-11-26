@@ -63,6 +63,12 @@ export type Placed<T> = { item: T; column: number; columns: number };
 const POINT_MINUTES = 60;
 
 /**
+ * The least time a block takes on the timeline, so a short one is tall enough to read. Laying
+ * out and drawing both use it, so blocks that look like they overlap sit side by side.
+ */
+export const MIN_BLOCK_MINUTES = 30;
+
+/**
  * The day to open from the page's address, or `today` when it isn't a real date. Years outside
  * 2000 to 2100 count as not real, so nothing out there is queried.
  */
@@ -184,8 +190,8 @@ export function layoutDay<T extends { from: number; to: number }>(items: T[]): P
     columnEnds = [];
   };
   for (const item of sorted) {
-    // A point in time still takes up a little room, so its neighbours don't cover it.
-    const to = Math.max(item.to, item.from + 15);
+    // A short item still takes up its drawn room, so its neighbours don't cover it.
+    const to = Math.max(item.to, item.from + MIN_BLOCK_MINUTES);
     if (item.from >= groupEnd) close();
     let column = columnEnds.findIndex((end) => end <= item.from);
     if (column === -1) column = columnEnds.push(to) - 1;
@@ -205,7 +211,7 @@ export function layoutDay<T extends { from: number; to: number }>(items: T[]): P
  */
 export function timelineHours(open: { opensAt: number; closesAt: number } | null, items: { from: number; to: number }[]) {
   const froms = items.map((i) => i.from);
-  const tos = items.map((i) => Math.max(i.to, i.from + 15));
+  const tos = items.map((i) => Math.max(i.to, i.from + MIN_BLOCK_MINUTES));
   const first = Math.min(open?.opensAt ?? 8 * 60, ...froms);
   const last = Math.max(open?.closesAt ?? 20 * 60, ...tos);
   return { startHour: Math.floor(first / 60), endHour: Math.min(24, Math.ceil(last / 60)) };

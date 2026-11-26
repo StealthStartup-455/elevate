@@ -203,6 +203,19 @@ describe("the day's timeline", () => {
     expect(shape).toEqual({ a: [0, 2], b: [1, 2], c: [0, 2], d: [0, 1] });
   });
 
+  it("gives a short item its drawn height, so one 20 minutes later sits beside it", () => {
+    const placed = layoutDay([
+      { id: "a", from: 9 * 60, to: 9 * 60 + 10 },
+      { id: "b", from: 9 * 60 + 20, to: 9 * 60 + 25 },
+      { id: "c", from: 10 * 60, to: 10 * 60 + 5 },
+    ]);
+    expect(Object.fromEntries(placed.map((p) => [p.item.id, [p.column, p.columns]]))).toEqual({
+      a: [0, 2],
+      b: [1, 2],
+      c: [0, 1],
+    });
+  });
+
   it("covers the opening hours, stretched to fit what is on", () => {
     expect(timelineHours({ opensAt: 6 * 60, closesAt: 22 * 60 }, [])).toEqual({ startHour: 6, endHour: 22 });
     expect(timelineHours({ opensAt: 9 * 60, closesAt: 18 * 60 }, [{ from: 7 * 60 + 30, to: 19 * 60 + 10 }])).toEqual({

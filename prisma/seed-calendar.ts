@@ -21,6 +21,14 @@ const WEEK = [
   { opensAt: hour(9), closesAt: hour(18) },
 ];
 
+// Days that differ from the regular week, by days from today. The desk shifts follow them.
+const SPECIAL_DAYS: { days: number; closed: boolean; opensAt?: number; closesAt?: number; note: string }[] = [
+  { days: 4, closed: true, note: "Staff training day" },
+  { days: -8, closed: true, note: "Deep clean" },
+  { days: 15, closed: false, opensAt: hour(10), closesAt: hour(16), note: "Short day for the holiday" },
+  { days: 29, closed: false, opensAt: hour(12), closesAt: hour(22), note: "Late start after the comp" },
+];
+
 export async function resetCalendar(gymId: string): Promise<void> {
   const where = { where: { gymId } };
   // Shifts and bookings first: they reference classes, events, set changes and climbers.
@@ -45,14 +53,8 @@ export async function seedCalendar(gymId: string): Promise<void> {
   });
   // A closed day in the week ahead, so the dashboard shows one. Then more special days, past and
   // ahead, so the desk calendar (#249) has some to show.
-  const date = (days: number) => new Date(`${addDays(today, days)}T00:00:00Z`);
   await db.specialHours.createMany({
-    data: [
-      { gymId, date: date(4), closed: true, note: "Staff training day" },
-      { gymId, date: date(-8), closed: true, note: "Deep clean" },
-      { gymId, date: date(15), closed: false, opensAt: hour(10), closesAt: hour(16), note: "Short day for the holiday" },
-      { gymId, date: date(29), closed: false, opensAt: hour(12), closesAt: hour(22), note: "Late start after the comp" },
-    ],
+    data: SPECIAL_DAYS.map(({ days, ...d }) => ({ gymId, date: new Date(`${addDays(today, days)}T00:00:00Z`), ...d })),
   });
 
   const events = await db.gymEvent.createManyAndReturn({
@@ -200,7 +202,7 @@ export async function seedCalendar(gymId: string): Promise<void> {
     });
   }
 
-  const shiftCount = await seedShifts(gymId, gym.timeZone, today, { made, events, setChanges, closedDays: [4, -8] });
+  const shiftCount = await seedShifts(gymId, gym.timeZone, today, { made, events, setChanges });
 
   console.log(
     `Seeded the calendar: ${shiftCount} staff shifts, opening hours, 4 special days, 7 events, 6 set changes, ${Object.keys(TYPES).length} class types and ${classes.length} classes.`,
@@ -220,8 +222,6 @@ async function seedShifts(
     made: { id: string; instructor: string; startsAt: Date; durationMinutes: number; canceled: boolean }[];
     events: { id: string; startsAt: Date; endsAt: Date | null; canceledAt: Date | null }[];
     setChanges: { id: string; startsAt: Date; endsAt: Date }[];
-    /** Days from today the gym is closed: no desk shifts. */
-    closedDays: number[];
   },
 ): Promise<number> {
   const staffIds = {} as Record<StaffName, string>;
@@ -253,8 +253,13 @@ async function seedShifts(
 
   // The front desk: an opening and a closing shift every open day, three weeks back to a month ahead.
   for (let days = -21; days <= 30; days++) {
-    if (things.closedDays.includes(days)) continue;
-    const { opensAt, closesAt } = WEEK[weekdayOf(addDays(today, days))];
+    // A special day's hours win over the regular week; closed means no one on the desk.
+    const special = SPECIAL_DAYS.find((d) => d.days === days);
+    if (special?.closed) continue;
+    const { opensAt, closesAt } =
+      special?.opensAt !== undefined && special.closesAt !== undefined
+        ? { opensAt: special.opensAt, closesAt: special.closesAt }
+        : WEEK[weekdayOf(addDays(today, days))];
     const change = opensAt + Math.round((closesAt - opensAt) / 2 / 60) * 60;
     shifts.push(
       { staffId: staffIds.Riley, kind: "DESK", startsAt: at(days, opensAt), endsAt: at(days, change), note: "Opening" },
