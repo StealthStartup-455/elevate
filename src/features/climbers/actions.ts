@@ -11,7 +11,9 @@ import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { recordCheckInAttempt } from "@/features/metrics/record";
 import { parseCheckInTiming, type CheckInTiming } from "@/features/metrics/timing";
+import { isPosEnabled } from "@/features/pos/queries";
 import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
+import { storedStudentId } from "./student-id";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
 import type { CheckInCandidate, ClimberInput, FormState } from "./types";
@@ -46,6 +48,7 @@ async function studentIdTaken(
   parsed: Extract<ParsedClimberInput, { ok: true }>,
   exceptClimberId?: string,
 ): Promise<FormState | null> {
+  if (!parsed.value.studentId) return null;
   const other = await db.climber.findFirst({
     where: { gymId, studentId: parsed.value.studentId, id: exceptClimberId ? { not: exceptClimberId } : undefined },
     select: { id: true },
@@ -120,7 +123,7 @@ function toColumns(input: ClimberInput) {
   return {
     firstName: input.firstName,
     lastName: input.lastName,
-    studentId: input.studentId,
+    studentId: storedStudentId(input.studentId),
     phone: toStoredPhone(input.phone),
     email: input.email || null,
     dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00Z`),
@@ -390,7 +393,10 @@ export async function checkInClimber(
 const MAX_CANDIDATES = 8;
 
 export async function findClimbersToCheckIn(query: string): Promise<CheckInCandidate[]> {
-  const climbers = await searchClimbers(String(query ?? ""), MAX_CANDIDATES);
+  const [climbers, posEnabled] = await Promise.all([
+    searchClimbers(String(query ?? ""), MAX_CANDIDATES),
+    isPosEnabled(),
+  ]);
   return climbers.map((c) => ({
     id: c.id,
     name: `${c.firstName} ${c.lastName}`,
@@ -404,5 +410,6 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     membershipRecurring: c.membershipRecurring,
     hasDayPass: c.hasDayPass,
     punchesLeft: c.punchesLeft,
+    posEnabled,
   }));
 }

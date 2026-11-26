@@ -4,6 +4,12 @@ import type { BankAccountSummary } from "@/features/eft/types";
 
 export type { ProductKind, Tender };
 
+/**
+ * Staff revoked the climber's membership (#241): when (ISO date, the gym's
+ * calendar), why, and who (null for the shared demo desk login). Desk only.
+ */
+export type MembershipRevoke = { on: string; reason: string; by: string | null };
+
 // Something on the POS product tiles. Prices are before tax, in cents.
 export type Product = {
   id: string;
@@ -68,6 +74,8 @@ export type PosClimber = {
    * none on file.
    */
   bankAccount?: BankAccountSummary | null;
+  /** Why their membership was revoked; like bankAccount, only for one loaded climber (getPosClimber). */
+  revoked?: MembershipRevoke | null;
 };
 
 // One of today's sales, for the list under the POS.

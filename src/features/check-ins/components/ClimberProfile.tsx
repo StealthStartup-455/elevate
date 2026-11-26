@@ -104,12 +104,12 @@ export default function ClimberProfile({
             sx={{ fontFamily: "var(--font-mono)" }}
           >
             <span className="sr-only">Student ID </span>
-            {c.studentId}
+            {c.studentId ?? "No V number"}
           </Typography>
         </div>
         <StatusBox panel={panel} onChanged={onChanged} />
         <Membership climber={c} />
-        <PassesAndDetails climber={c} onChanged={onChanged} />
+        <PassesAndDetails climber={c} revoked={panel.revoked} onChanged={onChanged} />
         <Attributes panel={panel} />
       </div>
       {/* Staff on an employee pass don't buy passes, and someone with no pass
@@ -311,14 +311,14 @@ function SellPass({
   if (!posEnabled) {
     return (
       <DisabledReason reason="This gym doesn't sell passes in Elevate.">
-        <Button variant={variant} disabled>
+        <Button variant={variant} color="error" disabled>
           POS
         </Button>
       </DisabledReason>
     );
   }
   return (
-    <LinkButton href={posHref(climberId)} variant={variant}>
+    <LinkButton href={posHref(climberId)} variant={variant} color="error">
       POS
     </LinkButton>
   );
@@ -380,10 +380,19 @@ function gymAccess(c: Climber): { value: string; tone?: "error" } {
   }
 }
 
-function PassesAndDetails({ climber: c, onChanged }: { climber: Climber; onChanged: () => Promise<void> }) {
+function PassesAndDetails({
+  climber: c,
+  revoked,
+  onChanged,
+}: {
+  climber: Climber;
+  revoked: DeskClimberPanel["revoked"];
+  onChanged: () => Promise<void>;
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<"passes" | "details">("passes");
-  const access = gymAccess(c);
+  // A revoked membership says so, with why, so staff can answer the member (#241).
+  const access = revoked ? { value: `Revoked ${formatDate(revoked.on)}`, tone: "error" as const } : gymAccess(c);
   const punches = c.punchesLeft > 0 ? `${c.punchesLeft} visit${c.punchesLeft === 1 ? "" : "s"} left` : "None";
   return (
     <div className="flex flex-col">
@@ -399,6 +408,9 @@ function PassesAndDetails({ climber: c, onChanged }: { climber: Climber; onChang
         {tab === "passes" ? (
           <dl>
             <Row label="Gym access" value={access.value} tone={access.tone} />
+            {revoked ? (
+              <Row label="Why" value={revoked.by ? `${revoked.reason} (${revoked.by})` : revoked.reason} />
+            ) : null}
             <Row label="Punch card" value={punches} />
             <Row label="Day pass today" value={c.hasDayPass ? "Yes" : "No"} />
           </dl>
@@ -410,7 +422,7 @@ function PassesAndDetails({ climber: c, onChanged }: { climber: Climber; onChang
               details={{
                 firstName: c.firstName,
                 lastName: c.lastName,
-                studentId: c.studentId,
+                studentId: c.studentId ?? "",
                 phone: c.phone,
                 email: c.email,
                 dateOfBirth: c.dateOfBirth,

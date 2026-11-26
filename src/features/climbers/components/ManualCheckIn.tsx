@@ -17,11 +17,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
 import { recordCheckInGaveUp } from "@/features/metrics/actions";
 import { blockerCodes, type CheckInSourceName, type CheckInTiming } from "@/features/metrics/timing";
+import DisabledReason from "@/components/ui/DisabledReason";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
 import { isStudentId, normalizeStudentId } from "../student-id";
 import type { CheckInCandidate, MembershipStatus } from "../types";
+import LinkButton from "./LinkButton";
 import WaiverBadge from "./WaiverBadge";
 
 const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
@@ -173,6 +175,12 @@ export default function ManualCheckIn() {
   function close() {
     // Picked but not checked in: usually sent away by what blocked them.
     if (selected && !done) recordCheckInGaveUp(selected.id, timing()).catch(() => {});
+    closeQuietly();
+  }
+
+  // Closes without counting the climber as sent away: staff are going to sort
+  // them out somewhere else (the POS button sells them a pass).
+  function closeQuietly() {
     setOpen(false);
     // Reset after the closing animation so nothing flashes.
     setTimeout(() => {
@@ -327,6 +335,17 @@ export default function ManualCheckIn() {
               >
                 Back to search
               </Button>
+              {selected.posEnabled ? (
+                <LinkButton href={`/desk/pos?climber=${selected.id}`} variant="outlined" color="error" onClick={closeQuietly}>
+                  POS
+                </LinkButton>
+              ) : (
+                <DisabledReason reason="This gym doesn't sell passes in Elevate.">
+                  <Button variant="outlined" color="error" disabled>
+                    POS
+                  </Button>
+                </DisabledReason>
+              )}
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
                   Give free day pass
@@ -406,7 +425,7 @@ export default function ManualCheckIn() {
 
 // Student ID, phone and birthday, so two climbers with the same name can be told apart (#129, #38).
 function personDetails(c: CheckInCandidate): string {
-  return [c.studentId, c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
+  return [c.studentId ?? "", c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
     .filter(Boolean)
     .join(" · ");
 }

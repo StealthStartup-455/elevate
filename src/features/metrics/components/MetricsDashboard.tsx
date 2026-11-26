@@ -12,7 +12,8 @@ import type { ReactNode } from "react";
 import KpiTile from "@/components/ui/KpiTile";
 import { formatDateTime } from "@/features/analytics/components/format";
 import { formatDate } from "@/features/climbers/format";
-import { formatDuration, formatShare, reasonLabel } from "../format";
+import { isoDayIn } from "@/features/climbers/status";
+import { formatDuration, formatShare, plural, reasonLabel } from "../format";
 import type { MetricsPageData } from "../queries";
 
 // The value proposition metrics (#251): is Elevate making the front desk fast
@@ -67,7 +68,8 @@ export default function MetricsDashboard({ data, demo }: { data: MetricsPageData
         </Alert>
       )}
       <Typography variant="secondary">
-        {data.gymName}, the last 14 days, since {formatDateTime(data.since, data.timeZone)}.
+        {/* The date only: a time ends in "a.m." and doubled the full stop (Khanh's review). */}
+        {data.gymName}: the last 14 days, starting {formatDate(isoDayIn(data.since, data.timeZone))}.
       </Typography>
 
       <Section
@@ -98,12 +100,12 @@ export default function MetricsDashboard({ data, demo }: { data: MetricsPageData
         <KpiTile
           label="Arrival wait (typical)"
           value={formatDuration(desk.arrivalWait.median)}
-          detail={`${desk.arrivalWait.count} phone scans. Slowest 10%: ${formatDuration(desk.arrivalWait.p90)}`}
+          detail={`${plural(desk.arrivalWait.count, "phone scan", "phone scans")}. Slowest 10%: ${formatDuration(desk.arrivalWait.p90)}`}
         />
         <KpiTile
           label="Check ins"
           value={desk.checkIns}
-          detail={`${desk.attempts} tries at the desk were recorded`}
+          detail={`${plural(desk.attempts, "try", "tries")} at the desk recorded`}
         />
         <KpiTile
           label="Blocked"
@@ -113,7 +115,7 @@ export default function MetricsDashboard({ data, demo }: { data: MetricsPageData
         <KpiTile
           label="Sorting out a block (typical)"
           value={formatDuration(desk.sortOut.median)}
-          detail={`${desk.sortOut.count} blocked climbers were checked in`}
+          detail={`${plural(desk.sortOut.count, "blocked climber", "blocked climbers")} checked in`}
         />
         <KpiTile
           label="Sent away"
@@ -175,7 +177,7 @@ export default function MetricsDashboard({ data, demo }: { data: MetricsPageData
         <KpiTile
           label="Signed before arriving"
           value={formatShare(data.waivers.share)}
-          detail={`${data.waivers.signedBefore} of ${data.waivers.firstVisits} first visits`}
+          detail={`${data.waivers.signedBefore} of ${plural(data.waivers.firstVisits, "first visit", "first visits")}`}
         />
         <KpiTile label="Blocked by a waiver" value={data.waivers.blockedByWaiver} detail="Desk tries" />
       </Section>
@@ -190,12 +192,12 @@ export default function MetricsDashboard({ data, demo }: { data: MetricsPageData
         <KpiTile
           label="Signed up themselves"
           value={formatShare(data.selfService.signupShare)}
-          detail={`${data.selfService.ownLogin} of ${data.selfService.newClimbers} new climbers`}
+          detail={`${data.selfService.ownLogin} of ${plural(data.selfService.newClimbers, "new climber", "new climbers")}`}
         />
         <KpiTile
           label="Bought online"
           value={formatShare(data.selfService.onlineShare)}
-          detail={`${data.selfService.onlineSales} of ${data.selfService.sales} paid sales`}
+          detail={`${data.selfService.onlineSales} of ${plural(data.selfService.sales, "paid sale", "paid sales")}`}
         />
       </Section>
 

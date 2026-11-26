@@ -16,6 +16,7 @@ import { pendingGymInput } from "@/features/gyms/validate";
 import { provisionGym } from "@/features/gyms/provision";
 import { parseClimberInput } from "@/features/climbers/validate";
 import type { FormState } from "@/features/climbers/types";
+import { storedStudentId } from "@/features/climbers/student-id";
 import { toStoredPhone } from "@/features/climbers/phone";
 import {
   clearSession,
@@ -150,7 +151,7 @@ async function demoCustomerSignup(signup: CustomerSignup): Promise<SignupState> 
       authUserId: `demo-customer-${randomUUID()}`,
       firstName: signup.profile.firstName,
       lastName: signup.profile.lastName,
-      studentId: signup.profile.studentId,
+      studentId: storedStudentId(signup.profile.studentId),
       phone: toStoredPhone(signup.profile.phone),
       email: signup.email,
       dateOfBirth: new Date(`${signup.profile.dateOfBirth}T00:00:00Z`),

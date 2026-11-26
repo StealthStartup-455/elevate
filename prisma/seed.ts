@@ -56,6 +56,8 @@ type SeedClimber = {
   // Monthly recurring member whose month ends in this many days, so the POS
   // shows them under "Renewals due".
   renewsInDays?: number;
+  // Not a student, so no V number and no barcode (#245).
+  noStudentId?: boolean;
 };
 
 // Same people as before, now with a waiver and membership each so every
@@ -77,6 +79,8 @@ const CLIMBERS: SeedClimber[] = [
   { firstName: "Maya", lastName: "Patel", phone: "+12505550110", email: "maya.patel@example.test", dateOfBirth: "1998-03-09", waiver: "valid", membership: "none" },
   { firstName: "Liam", lastName: "Chen", phone: "+12505550111", email: "liam.chen@example.test", dateOfBirth: "2004-10-27", waiver: "valid", membership: "none" },
   { firstName: "Sofia", lastName: "Rossi", phone: "+12505550112", email: "sofia.rossi@example.test", dateOfBirth: "1995-07-18", waiver: "valid", membership: "expired" },
+  // Not a UVic student: no V number, so no barcode. Check in by name or phone (#245).
+  { firstName: "Riley", lastName: "Outsider", phone: "+12505550199", email: "riley.outsider@example.test", dateOfBirth: "1992-05-20", waiver: "valid", membership: "none", noStudentId: true },
   { firstName: "Noah", lastName: "Fraser", phone: "+12505550113", email: null, dateOfBirth: "1989-12-02", waiver: "valid", membership: "expired" },
   { firstName: "Ava", lastName: "Thompson", phone: "+12505550114", email: "ava.thompson@example.test", dateOfBirth: "2000-05-30", waiver: "missing", membership: "none" },
   { firstName: "Ethan", lastName: "Brooks", phone: "+12505550115", email: "ethan.brooks@example.test", dateOfBirth: "1993-01-14", waiver: "expired", membership: "expired" },
@@ -333,6 +337,7 @@ async function main() {
       };
       const used = new Set<string>([AGAM_STUDENT_ID]);
       const studentIdFor = (c: SeedClimber) => {
+        if (c.noStudentId) return null;
         if (c.firstName === "Agam" && c.lastName === "Kamran") return AGAM_STUDENT_ID;
         let id = randomStudentId(random);
         while (used.has(id)) id = randomStudentId(random);

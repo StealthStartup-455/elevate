@@ -70,6 +70,7 @@ model Staff {
   climbersCreated Climber[]
   checkIns        CheckIn[]
   sales           Sale[]
+  passesRevoked   Pass[]
 
   @@unique([id, gymId])
   @@unique([gymId, authUserId])
@@ -88,7 +89,7 @@ model Climber {
   createdByStaffId String? // empty means they signed themselves up
   onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
   externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
-  studentId        String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
+  studentId        String? // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38). Empty for a climber who isn't a student (#245)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -125,11 +126,16 @@ model Pass {
   renews     Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
   saleLineId String? // the POS sale that paid for it; empty for passes from before the POS or another system
   externalId String?
+  // Memberships only: staff revoked it, and why, so there's a record if the member asks (#241).
+  revokedAt    DateTime?
+  revokeReason String?
+  revokedById  String? // who revoked it; empty for the shared demo desk login
   createdAt  DateTime  @default(now())
 
-  gym      Gym       @relation(fields: [gymId], references: [id])
-  climber  Climber   @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
-  saleLine SaleLine? @relation(fields: [saleLineId, gymId], references: [id, gymId], onDelete: Restrict)
+  gym       Gym       @relation(fields: [gymId], references: [id])
+  climber   Climber   @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  saleLine  SaleLine? @relation(fields: [saleLineId, gymId], references: [id, gymId], onDelete: Restrict)
+  revokedBy Staff?    @relation(fields: [revokedById, gymId], references: [id, gymId], onDelete: Restrict)
 
   @@unique([gymId, externalId])
   @@index([gymId, climberId, expiresAt])

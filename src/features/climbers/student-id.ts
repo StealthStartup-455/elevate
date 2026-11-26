@@ -8,6 +8,11 @@ export function normalizeStudentId(raw: string): string {
   return raw.replace(/\s+/g, "").toUpperCase();
 }
 
+// "" (no V number) is stored as null, so the unique index ignores it (#245).
+export function storedStudentId(value: string): string | null {
+  return value === "" ? null : value;
+}
+
 export function isStudentId(value: string): boolean {
   return STUDENT_ID.test(value);
 }
