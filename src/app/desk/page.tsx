@@ -78,7 +78,7 @@ export default function DeskPage({ searchParams }: PageProps<"/desk">) {
             <Suspense fallback={null}>
               <ManualCheckInButton />
             </Suspense>
-            <LinkButton href="/desk/customers/new" variant="outlined">
+            <LinkButton href="/desk/customers/new?from=check-in" variant="outlined">
               New customer
             </LinkButton>
           </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { getPosClimber } from "../actions";
@@ -8,6 +10,7 @@ import type { CartItem, PosClimber, Product, RecentCheckIn, RenewalDue, TaxRates
 import CartPanel from "./CartPanel";
 import CheckoutDialog from "./CheckoutDialog";
 import ClimberPanel from "./ClimberPanel";
+import ClimberSearch from "./ClimberSearch";
 import ProductPanel from "./ProductPanel";
 
 type Props = {
@@ -45,6 +48,8 @@ function Pos({
   const [loading, setLoading] = useState<{ id: string; name: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  // The climber search dropdown is open: the sale area under it is blurred.
+  const [searching, setSearching] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   // The climber the last load was for, so a slow answer for someone staff
   // already moved on from is dropped.
@@ -101,16 +106,26 @@ function Pos({
   }
 
   return (
-    <div className="grid items-start gap-3 lg:grid-cols-3">
-      <ClimberPanel
+    <>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Typography variant="pageTitle">Point of sale</Typography>
+      <ClimberSearch
         checkedInToday={checkedInToday}
         renewalsDue={renewalsDue}
+        onSelect={selectClimber}
+        onRenew={renew}
+        onOpenChange={setSearching}
+      />
+    </div>
+    {/* Blurs just the sale area while the search is open; the nav and header stay sharp. */}
+    <Box
+      className="grid items-start gap-3 lg:grid-cols-3"
+      sx={searching ? { filter: "blur(4px)", pointerEvents: "none", userSelect: "none" } : undefined}
+    >
+      <ClimberPanel
         selected={selected}
         loadingName={loading?.name ?? null}
         loadError={loadError}
-        onSelect={selectClimber}
-        onRenew={renew}
-        onChange={() => selectClimber(null)}
         onUpdated={refreshSelected}
       />
       <ProductPanel
@@ -141,6 +156,7 @@ function Pos({
           onFinished={() => selectClimber(null)}
         />
       ) : null}
-    </div>
+    </Box>
+    </>
   );
 }
