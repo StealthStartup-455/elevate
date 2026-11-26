@@ -1,0 +1,46 @@
+# 2026-11-25 20:05 UTC: Custom labels on customer accounts
+
+- **Developer:** @TylerLeHere
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#157 / not opened yet
+- **Branch:** `feature/157-customer-labels`
+- **What the agent did:**
+  - Two tables, `GymLabel` (the gym's labels) and `ClimberLabel` (one per customer and label), in two migrations with Row Level Security turned on.
+  - `features/labels/`: staff-only reads (`listGymLabels`, `getClimberLabels`, `getLabelsForClimbers`) and actions (`createLabel`, `setClimberLabel`, `labelsToPick`).
+  - Staff add and take off labels on the Check-in climber panel and the customer page (`ClimberLabels`). Labels show read only on today's check-in rows (2, then "+N more") and the arrival toast and Arrivals list (3, then "+N more").
+  - Tests: unit (`validate.test.ts`), database (`labels/actions.db.test.ts` with two gyms; new label cases in `check-ins/queries.db.test.ts` and `check-ins/actions.db.test.ts`, the first test of `waitingDeskScans`), and e2e (`e2e/customer-labels.spec.ts`).
+- **Files touched:** `prisma/schema.prisma`, `prisma/migrations/20261125181208_climber_labels`, `prisma/migrations/20261125182049_label_active_and_unique`, `src/features/labels/`, `src/features/check-ins/{actions,queries}.ts`, `ClimberProfile.tsx`, `DeskDayTable.tsx`, `DeskArrivals.tsx`, `src/app/desk/page.tsx`, `src/app/desk/customers/[climberId]/page.tsx`, `src/components/ui/theme/theme.ts`.
+- **Decisions and why:**
+  - Tables are `GymLabel` and `ClimberLabel`, not `Label`: `check-ins/day.ts` already has a TypeScript type called `Label`.
+  - Any staff role can create, add and take off a label (the developer's call). Manager-only is a follow-up with #254.
+  - Nothing is deleted: taking a label off sets `removedAt` and `removedById`; putting it back clears them on the same row. One row per customer and label (`@@unique([climberId, labelId])`) so two desks can't make a duplicate; only the latest add and removal are kept. `GymLabel.active` switches a label off instead of deleting it.
+  - Staff only: labels are not on the shared `Climber` type or in `getClimber` (both read by `/me`). Desk screens carry them on `DeskClimberPanel`, `DeskRow` and `ScannedClimber`. `/me` imports nothing from `features/labels`.
+  - Belay status is left to #195: the panel's "Belay status: Not recorded" line is untouched.
+  - Names are compared by `key` (lower case, any run of spaces made one plain space), unique per gym. 30 characters; 50 active labels a gym.
+  - Labels are plain neutral chips, not `StatusPill`s: information, not a status. The ✕ is a real button inside a non-clickable chip (MUI's `onDelete` makes the whole chip a button, and a labelled ✕ inside it would be a button in a button). Its look, and "+N more", are in `theme.ts`.
+  - `queries.ts` is not a `"use server"` file on purpose: `getLabelsForClimbers(gymId, …)` must not be callable from a browser. It also returns nothing unless `gymId` is the staff member's.
+  - `createLabel` refusing a duplicate returns the existing label's id, so the picker adds that one when another desk made it a moment earlier.
+- **Gotchas:**
+  - `prisma migrate dev` stops in a non-interactive shell when a migration adds a unique index (it wants to ask). The second migration was made with `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` and applied with `prisma migrate deploy`. Prisma doesn't write Row Level Security; it was added to the first migration by hand, as earlier migrations did.
+  - Lint's raw-color rule reads `"#157"` inside a string (a test name) as a hex color. Issue numbers go in comments.
+  - A `"use server"` file may only export async functions; the limits live in `validate.ts`.
+  - Database test helpers that delete climbers must delete `ClimberLabel` and `GymLabel` rows first (and `QrScan`), or the foreign keys refuse.
+  - `pkill -f "next start"` doesn't stop `next start`: the process is `next-server`. A leftover server on port 3000 is reused by Playwright (`reuseExistingServer`) even after a rebuild.
+  - In `next dev`, the climber app's tab bar link wasn't "stable" for Playwright at phone size; opening `/me/check-in` by URL works.
+  - `npm run build` and `npm run dev` stop once with the Next.js security notice (as #250 and #38 noted); running again works.
+  - **A new table that points at `Climber` (ON DELETE RESTRICT) must also be deleted in `prisma/seed.ts`** before `tx.climber.deleteMany`, or the reseed, `npm run staging:reset` and the Reset staging action (#232) fail with a foreign key error. Review caught this for labels; see the update below. #251's `CheckInAttempt` avoided it by having no relation to `Climber`.
+- **Open follow-ups:**
+  - Rename or hide (switch off) a label: `active` exists, but no screen sets it. Each e2e run adds a label to the demo gym; a long-lived database would reach the 50 cap after about 50 runs (CI seeds fresh).
+  - A manager-only option for creating labels, with #254.
+  - Free-text staff notes on a customer (#236 request 2) are not labels and not done.
+  - Labels in the Manual check in dialog.
+  - Not ours, found while testing: `checkInClimber` is no longer bundled into `/signup` (only `/desk` and `/desk/customers/new`), so `server-actions-auth.spec.ts`'s `/signup` test passes because Next refuses an action that page doesn't carry, not because of `requireStaff`. The label actions aren't on any page a logged-out visitor or demo climber can reach either (the proxy sends them to `/login` and `/staff-only`). The avatar initials in the arrival toast and Arrivals list fail color contrast (1.62:1): `theme.ts` has no `MuiAvatar` style, though STYLE_GUIDE.md says avatars use `primary.soft`.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 50 files, 448 passed (2 todo); `npm run test:db` 13 files, 156 passed; `npm run build` passed (second run, after the security notice). `npx playwright test e2e/customer-labels.spec.ts` 1 passed on the final build; with the row's labels removed it failed at the row check. Full `npm run test:e2e` (before the last review fixes, local Postgres not freshly seeded): 88 passed, 5 failed, none about labels: 3 in `calendar.spec.ts` (the seeded events are dated Nov 22 to 24, before today), `real-login.spec.ts` (needs the real Supabase logins from `seed-logins.ts`), and `release.spec.ts` (timed out loading `/login` in the long run; passed alone in 16.9s). Browser checks in light and dark, at 1280px and 375px: add, take off and reload on the panel and customer page, the row and toast after a real "Simulate scan", offline message, two desks at once, axe on each screen (apart from the avatar above), and no label words in any `/me` page or response.
+
+## Update 2026-11-26: review fixes
+
+- **What the agent did:** Fixed the bug review found: `prisma/seed.ts` now deletes `ClimberLabel` then `GymLabel` rows before climbers, so the reseed, `npm run staging:reset` and the Reset staging action no longer fail with `ClimberLabel_climberId_gymId_fkey` once anyone has added a label; its summary says "… scans and labels". Merged `origin/dev` (#232, #238, #239, #240, #245, #250, #251, #252): the one conflict, `prisma/schema.prisma`, kept both sides' `Gym` relations (`checkInAttempts`, `labels`, `climberLabels`) and took dev's `Climber` fields (#245's optional `studentId`; ours only differed in spacing). The header now says twenty-two tables. Took screenshots for the PR.
+- **Files touched:** `prisma/seed.ts`, `prisma/schema.prisma` (merge).
+- **Gotchas:** dev's two new migrations (`20261124200000_check_in_attempts`, `20261125150000_climber_student_id_optional`) sort before this branch's, which is fine on a fresh or staging database; locally `prisma migrate deploy` applied them after ours.
+- **Verification:** Reproduced on a throwaway local Postgres database with every migration: dev's seed, then a label on a seeded climber, then dev's seed again failed with `Foreign key constraint violated on the constraint: ClimberLabel_climberId_gymId_fkey` (P2003); the fixed seed passed, removing 97 climbers and leaving 0 labels. On the merged code: `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 54 files, 480 passed (2 todo); `npm run test:db` 14 files, 161 passed; `npm run build` passed (second run, after the security notice). Screenshots of the picker, panel, customer page and check-in row in light and dark against the production build.
+- **Second dev merge (#262, desk calendar):** `prisma/schema.prisma` conflicted on the `Gym` and `Staff` relation lists; kept both sides (`staffShifts` and `shifts` beside the label relations) and set the header to twenty-three tables. The seed fix was untouched. Re-ran the reset check on a fresh database with every migration (including `20261126050000_staff_shifts`): dev's seed failed on `ClimberLabel_climberId_gymId_fkey` after labelling a climber, the fixed seed passed. On the merged code: `npm run lint` and `npx tsc --noEmit` clean; `npm test` 55 files, 502 passed (2 todo); `npm run test:db` 14 files, 164 passed; `npm run build` passed (second run); `e2e/customer-labels.spec.ts` passed.

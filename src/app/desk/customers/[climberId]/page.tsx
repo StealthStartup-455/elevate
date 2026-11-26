@@ -18,6 +18,8 @@ import { getClimber } from "@/features/climbers/queries";
 import type { MembershipStatus } from "@/features/climbers/types";
 import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
 import { getBankAccountForStaff } from "@/features/eft/queries";
+import ClimberLabels from "@/features/labels/components/ClimberLabels";
+import { getClimberLabels } from "@/features/labels/queries";
 import { getMembershipRevoke } from "@/features/pos/revoke";
 import { getGymById } from "@/lib/gym";
 import { getStaffWaiverPanel } from "@/features/waivers/queries";
@@ -63,10 +65,12 @@ async function ClimberCard({
   await requireStaff();
   const climber = await getClimber(climberId);
   if (!climber) notFound();
-  const [waiver, bankAccount, gym, manager] = await Promise.all([
+  const [waiver, bankAccount, gym, labels, manager] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getBankAccountForStaff(climber.id),
     getGymById(climber.gymId),
+    // Staff only (#157), so not on Climber, which /me reads too.
+    getClimberLabels(climber.id),
     isManager(),
   ]);
   // Revoking is for managers and owners (#254); desk staff don't see the button.
@@ -145,6 +149,7 @@ async function ClimberCard({
                   climberName={`${climber.firstName} ${climber.lastName}`}
                 />
               ) : null}
+              <ClimberLabels climberId={climber.id} labels={labels ?? []} />
               {/* EFT for a monthly membership, a mock (#179). */}
               <div className="flex flex-col gap-1">
                 <Typography variant="secondary">Monthly payments</Typography>

@@ -17,6 +17,8 @@ import { useState } from "react";
 import DisabledReason from "@/components/ui/DisabledReason";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import type { WaiverStatus } from "@/features/climbers/types";
+import LabelChips from "@/features/labels/components/LabelChips";
+import type { LabelView } from "@/features/labels/types";
 import type { Badge, Label, Tone } from "../day";
 import BadgePill from "./BadgePill";
 import { useClimberPanel } from "./ClimberPanel";
@@ -32,7 +34,13 @@ export type DeskTableRow = {
   waiver: Label;
   waiverStatus: WaiverStatus;
   message: Label;
+  /** Staff labels (#157), shown beside the name. */
+  labels: LabelView[];
 };
+
+// A row stays one line high with a couple of labels; the rest are "+N more"
+// (every label is on the climber's panel, a click away).
+const ROW_LABELS = 2;
 
 type Paging = {
   /** "1–25 of 64" */
@@ -153,20 +161,24 @@ export default function DeskDayTable({
               <TableRow key={row.id} hover selected={panel?.openId === row.climberId}>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{row.time}</TableCell>
                 <TableCell>
-                  <Link
-                    component={NextLink}
-                    href={`/desk/customers/${row.climberId}`}
-                    sx={{ fontWeight: 600 }}
-                    onClick={(e) => {
-                      // A plain click opens the panel; Cmd/Ctrl-click still opens the
-                      // full profile in a new tab.
-                      if (!panel || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                      e.preventDefault();
-                      panel.openClimber(row.climberId);
-                    }}
-                  >
-                    {row.name}
-                  </Link>
+                  {/* The labels sit beside the name, and wrap under it in a narrow column. */}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link
+                      component={NextLink}
+                      href={`/desk/customers/${row.climberId}`}
+                      sx={{ fontWeight: 600 }}
+                      onClick={(e) => {
+                        // A plain click opens the panel; Cmd/Ctrl-click still opens the
+                        // full profile in a new tab.
+                        if (!panel || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                        e.preventDefault();
+                        panel.openClimber(row.climberId);
+                      }}
+                    >
+                      {row.name}
+                    </Link>
+                    <LabelChips labels={row.labels} max={ROW_LABELS} />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <BadgePill badge={row.badge} />

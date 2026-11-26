@@ -1,4 +1,4 @@
-// Elevate database. Eighteen tables.
+// Elevate database. Twenty-three tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -50,28 +50,33 @@ model Gym {
   classes         GymClass[]
   classBookings   ClassBooking[]
   checkInAttempts CheckInAttempt[]
+  labels          GymLabel[]
+  climberLabels   ClimberLabel[]
   staffShifts     StaffShift[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
 // Their email lives on their Supabase login, so it isn't stored twice here.
 model Staff {
-  id         String    @id @default(uuid())
-  gymId      String
-  authUserId String // their Supabase login
-  demoEmail  String?   @unique // local-demo owner login; never used outside demo mode
+  id               String    @id @default(uuid())
+  gymId            String
+  authUserId       String // their Supabase login
+  demoEmail        String?   @unique // local-demo owner login; never used outside demo mode
   demoPasswordHash String? // local-demo owner password, stored only as a hash
-  name       String
-  role       StaffRole @default(DESK)
-  active     Boolean   @default(true) // switch off when someone leaves
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  name             String
+  role             StaffRole @default(DESK)
+  active           Boolean   @default(true) // switch off when someone leaves
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  gym             Gym       @relation(fields: [gymId], references: [id])
+  gym             Gym            @relation(fields: [gymId], references: [id])
   climbersCreated Climber[]
   checkIns        CheckIn[]
   sales           Sale[]
   passesRevoked   Pass[]
+  labelsCreated   GymLabel[]     @relation("LabelCreatedBy")
+  labelsAdded     ClimberLabel[] @relation("LabelAddedBy")
+  labelsRemoved   ClimberLabel[] @relation("LabelRemovedBy")
   shifts          StaffShift[]
 
   @@unique([id, gymId])
@@ -104,6 +109,7 @@ model Climber {
   sales          Sale[]
   classBookings  ClassBooking[]
   bankAccount    BankAccount?
+  labels         ClimberLabel[]
 
   @@unique([id, gymId])
   @@unique([gymId, externalId])
@@ -497,6 +503,50 @@ model ClassBooking {
 
   @@unique([classId, climberId])
   @@index([gymId, climberId])
+}
+
+// A label the desk can put on a customer, like "Ask for ID" (#157). One row
+// per wording in a gym: staff pick an existing one or type a new one. Staff
+// only; climbers never see labels.
+model GymLabel {
+  id          String   @id @default(uuid())
+  gymId       String
+  name        String // as staff typed it, tidied: "Must retest belay"
+  key         String // the name in lower case, so "ask for id" finds "Ask for ID"
+  createdById String? // who first typed it; empty for the shared demo desk login
+  active      Boolean  @default(true) // switched off instead of deleted; an inactive label can't be added and doesn't show
+  createdAt   DateTime @default(now())
+
+  gym           Gym            @relation(fields: [gymId], references: [id])
+  createdBy     Staff?         @relation("LabelCreatedBy", fields: [createdById, gymId], references: [id, gymId], onDelete: Restrict)
+  climberLabels ClimberLabel[]
+
+  @@unique([id, gymId])
+  @@unique([gymId, key])
+}
+
+// One label on one customer. Taking it off sets removedAt (nothing is
+// deleted); putting it back clears removedAt on the same row, so only the
+// latest add and removal are remembered. One row per customer and label, so
+// two desks pressing at once can't make a duplicate.
+model ClimberLabel {
+  id          String    @id @default(uuid())
+  gymId       String
+  climberId   String
+  labelId     String
+  addedAt     DateTime  @default(now())
+  addedById   String? // empty for the shared demo desk login
+  removedAt   DateTime? // empty while the label is on
+  removedById String? // empty while on, or for the shared demo desk login
+
+  gym       Gym      @relation(fields: [gymId], references: [id])
+  climber   Climber  @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
+  label     GymLabel @relation(fields: [labelId, gymId], references: [id, gymId], onDelete: Restrict)
+  addedBy   Staff?   @relation("LabelAddedBy", fields: [addedById, gymId], references: [id, gymId], onDelete: Restrict)
+  removedBy Staff?   @relation("LabelRemovedBy", fields: [removedById, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@unique([climberId, labelId])
+  @@index([gymId, climberId, removedAt])
 }
 
 enum GymSystem {

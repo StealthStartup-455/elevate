@@ -32,7 +32,8 @@ vi.mock("@/lib/gym", () => ({
   getGym: async () => db.gym.findUniqueOrThrow({ where: { slug: SLUG } }),
 }));
 
-const { getDeskClimberPanel } = await import("./actions");
+const { getDeskClimberPanel, waitingDeskScans } = await import("./actions");
+const { saveScan } = await import("./scan-store");
 
 // 2 p.m. in Los Angeles (UTC-8). Not Vancouver: tzdata 2026b keeps BC on
 // UTC-7 all year from November 2026, while older Node versions still switch
@@ -71,8 +72,18 @@ async function clearGym(id: string) {
   await db.checkIn.deleteMany(where);
   await db.pass.deleteMany(where);
   await db.waiver.deleteMany(where);
+  // Scans and labels point at climbers, so they go first.
+  await db.qrScan.deleteMany(where);
+  await db.climberLabel.deleteMany(where);
+  await db.gymLabel.deleteMany(where);
   await db.climber.deleteMany(where);
   await db.staff.deleteMany(where);
+}
+
+/** Puts a label on a climber. */
+async function label(climberId: string, name: string, gym = gymId) {
+  const { id } = await db.gymLabel.create({ data: { gymId: gym, name, key: name.toLowerCase() } });
+  await db.climberLabel.create({ data: { gymId: gym, climberId, labelId: id } });
 }
 
 async function cleanUp() {
@@ -179,5 +190,40 @@ describe("getDeskClimberPanel", () => {
       data: { gymId, climberId: id, kind: "MEMBERSHIP", startsAt: new Date(NOW.getTime() - MINUTE), expiresAt: new Date(NOW.getTime() + 30 * 1440 * MINUTE) },
     });
     expect(await getDeskClimberPanel(id)).toMatchObject({ revoked: null });
+  });
+
+  // Labels (#157). The issue number stays out of test names: lint reads "#157" in a string as a color.
+  it("shows their staff labels, beside the climber rather than on it", async () => {
+    const id = await member();
+    await label(id, "Must retest belay");
+    await label(id, "Ask for ID");
+    const panel = await getDeskClimberPanel(id);
+    expect(panel?.labels.map((l) => l.name)).toEqual(["Ask for ID", "Must retest belay"]);
+    // Climber is shared with /me, which must never get labels.
+    expect(panel?.climber).not.toHaveProperty("labels");
+  });
+});
+
+describe("waitingDeskScans", () => {
+  // Labels on arrivals (#157).
+  it("sends each waiting climber's labels with their arrival, only this gym's", async () => {
+    const labelled = await member();
+    const plain = await member();
+    const elsewhere = await member(otherGymId);
+    await label(labelled, "Ask for ID");
+    await label(elsewhere, "Banned", otherGymId);
+    await saveScan(gymId, labelled);
+    await saveScan(gymId, plain);
+    await saveScan(otherGymId, elsewhere);
+
+    // By climber, not position: the clock is frozen, so both scans share a time.
+    const scans = await waitingDeskScans();
+    const byClimber = Object.fromEntries(scans.map((s) => [s.climber.id, s.climber.labels.map((l) => l.name)]));
+    expect(byClimber).toEqual({ [labelled]: ["Ask for ID"], [plain]: [] });
+  });
+
+  it("refuses anyone who isn't staff", async () => {
+    auth.staff = false;
+    await expect(waitingDeskScans()).rejects.toThrow("redirect /login");
   });
 });

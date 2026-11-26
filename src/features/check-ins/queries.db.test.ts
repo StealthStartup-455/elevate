@@ -69,7 +69,18 @@ async function clearGym(id: string) {
   await db.checkIn.deleteMany(where);
   await db.pass.deleteMany(where);
   await db.waiver.deleteMany(where);
+  // Labels point at climbers, so they go first.
+  await db.climberLabel.deleteMany(where);
+  await db.gymLabel.deleteMany(where);
   await db.climber.deleteMany(where);
+}
+
+/** Puts a label on a climber; `removed` makes it one staff took off. */
+async function label(climberId: string, name: string, { gym = gymId, removed = false } = {}) {
+  const { id } = await db.gymLabel.create({ data: { gymId: gym, name, key: name.toLowerCase() } });
+  await db.climberLabel.create({
+    data: { gymId: gym, climberId, labelId: id, removedAt: removed ? new Date() : null },
+  });
 }
 
 async function cleanUp() {
@@ -221,6 +232,32 @@ describe("getDeskDay", () => {
     auth.gymId = otherGymId;
     const other = await getDeskDay({ date: DAY });
     expect(other.rows.map((r) => r.lastName)).toEqual(["Elsewhere", "Elsewhere"]);
+  });
+
+  // Labels (#157). The issue number stays out of the test name: lint reads "#157" in a string as a color.
+  it("shows each row's labels as they are now, A to Z, and only this gym's", async () => {
+    const sam = await climber("Sam", "Singh");
+    const jo = await climber("Jo", "Unlabelled");
+    const theirs = await climber("Sam", "Elsewhere", { gym: otherGymId });
+    await label(sam, "Must retest belay");
+    await label(sam, "Ask for ID");
+    await label(sam, "Old note", { removed: true });
+    await label(theirs, "Banned", { gym: otherGymId });
+    await checkIn(sam, "2026-10-20T19:00:00Z");
+    await checkIn(sam, "2026-10-20T21:00:00Z");
+    await checkIn(jo, "2026-10-20T20:00:00Z");
+    await checkIn(theirs, "2026-10-20T19:00:00Z", otherGymId);
+
+    const day = await getDeskDay({ date: DAY });
+    const names = (lastName: string) =>
+      day.rows.filter((r) => r.lastName === lastName).map((r) => r.labels.map((l) => l.name));
+    // Both of Sam's visits show his labels; the one staff took off doesn't.
+    expect(names("Singh")).toEqual([
+      ["Ask for ID", "Must retest belay"],
+      ["Ask for ID", "Must retest belay"],
+    ]);
+    expect(names("Unlabelled")).toEqual([[]]);
+    expect(day.rows.flatMap((r) => r.labels.map((l) => l.name))).not.toContain("Banned");
   });
 
   it("is staff only", async () => {
