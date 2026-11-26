@@ -86,5 +86,5 @@ test("a sign-up with no V number is saved, and a malformed one is refused (#245)
   await page.getByLabel("Student ID").fill("");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);
-  await expect(page.getByText("None", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("No V number", { exact: true }).first()).toBeVisible();
 });

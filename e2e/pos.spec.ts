@@ -134,3 +134,23 @@ test("the climber search is always there, and picking someone replaces the climb
   await pickClimber(page, "Nevin Gill");
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
 });
+
+test("switching climber with items in the cart asks first (#263)", async ({ page }) => {
+  await openPos(page);
+  await pickClimber(page, "Nevin Gill");
+  await page.getByRole("button", { name: /^Chalk/ }).click();
+  await expect(page.getByText("Chalk").first()).toBeVisible();
+
+  // Keep cart: still Nevin, still the chalk.
+  await pickClimber(page, "Seth Miller");
+  const ask = page.getByRole("dialog", { name: "Switch climber?" });
+  await expect(ask).toContainText("empties Nevin Gill's cart");
+  await ask.getByRole("button", { name: "Keep cart" }).click();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
+
+  // Switch: Seth, with an empty cart.
+  await pickClimber(page, "Seth Miller");
+  await page.getByRole("dialog", { name: "Switch climber?" }).getByRole("button", { name: "Switch climber" }).click();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
+  await expect(page.getByRole("button", { name: "Checkout" })).toBeDisabled();
+});
