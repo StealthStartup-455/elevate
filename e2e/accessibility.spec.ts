@@ -30,7 +30,6 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
       "/desk/events/set-changes",
       "/desk/events/announcements",
       "/desk/waivers",
-      "/desk/waivers/edit",
     ],
     phone: false,
   },
@@ -38,7 +37,13 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
   // types and events forms (#254); desk staff see those pages read only.
   {
     user: "manager",
-    paths: ["/desk/metrics", "/desk/events/hours", "/desk/events/class-types", "/desk/events/announcements"],
+    paths: [
+      "/desk/metrics",
+      "/desk/events/hours",
+      "/desk/events/class-types",
+      "/desk/events/announcements",
+      "/desk/waivers/edit",
+    ],
     phone: false,
   },
 ];
