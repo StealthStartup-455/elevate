@@ -9,7 +9,11 @@ import { db } from "@/lib/db";
 import { getGym, getGymById } from "@/lib/gym";
 import { logEvent, logWarning } from "@/lib/log";
 import { finishScansForClimber } from "@/features/check-ins/scan-store";
+import { recordCheckInAttempt } from "@/features/metrics/record";
+import { parseCheckInTiming, type CheckInTiming } from "@/features/metrics/timing";
+import { isPosEnabled } from "@/features/pos/queries";
 import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
+import { storedStudentId } from "./student-id";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
 import type { CheckInCandidate, ClimberInput, FormState } from "./types";
@@ -44,6 +48,7 @@ async function studentIdTaken(
   parsed: Extract<ParsedClimberInput, { ok: true }>,
   exceptClimberId?: string,
 ): Promise<FormState | null> {
+  if (!parsed.value.studentId) return null;
   const other = await db.climber.findFirst({
     where: { gymId, studentId: parsed.value.studentId, id: exceptClimberId ? { not: exceptClimberId } : undefined },
     select: { id: true },
@@ -118,7 +123,7 @@ function toColumns(input: ClimberInput) {
   return {
     firstName: input.firstName,
     lastName: input.lastName,
-    studentId: input.studentId,
+    studentId: storedStudentId(input.studentId),
     phone: toStoredPhone(input.phone),
     email: input.email || null,
     dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00Z`),
@@ -265,17 +270,25 @@ export async function giveDayPass(
 // or a punch card with visits left (which loses one punch). Turned-away visits
 // are not saved. Saves a CheckIn row, so the desk list and the busyness count
 // pick it up.
+//
+// `timing` is what the Check in dialog measured (how staff found the climber,
+// how long it took, what blocked them); every outcome is saved as a
+// CheckInAttempt for the value proposition metrics (#251).
 export async function checkInClimber(
   climberId: string,
+  timing?: CheckInTiming,
 ): Promise<{ ok: boolean; message?: string }> {
   await requireStaff();
   const staff = await getStaffContext();
   if (!staff) return { ok: false, message: "You need to be signed in as staff." };
+  const measured = parseCheckInTiming(timing);
+  const attempt = { ...measured, gymId: staff.gymId, climberId: UUID.test(climberId) ? climberId : null };
   // TODO(auth): set staffId from the logged-in staff member.
   // Every refusal is logged with a reason code: which rule turns people away
   // (missing waiver, no membership, already in) is evidence for the pilot.
-  const refuse = (reason: string, message: string) => {
+  const refuse = async (reason: string, message: string) => {
     logEvent("check_in_refused", { climberId, reason });
+    await recordCheckInAttempt({ ...attempt, outcome: "REFUSED", reason, wasBlocked: true });
     return { ok: false, message };
   };
   if (!UUID.test(climberId)) return refuse("invalid_id", "Climber not found.");
@@ -347,6 +360,7 @@ export async function checkInClimber(
     method: "FRONT_DESK",
     pass: usePunch ? "punch" : "membership_or_day",
   });
+  await recordCheckInAttempt({ ...attempt, outcome: "CHECKED_IN" });
   // However staff checked them in, their waiting scans are dealt with, so the
   // arrival leaves Arrivals on every desk (#225). Logged like Close (scan_taken).
   // The check-in is saved: a failure here must not report it as failed (a
@@ -379,7 +393,10 @@ export async function checkInClimber(
 const MAX_CANDIDATES = 8;
 
 export async function findClimbersToCheckIn(query: string): Promise<CheckInCandidate[]> {
-  const climbers = await searchClimbers(String(query ?? ""), MAX_CANDIDATES);
+  const [climbers, posEnabled] = await Promise.all([
+    searchClimbers(String(query ?? ""), MAX_CANDIDATES),
+    isPosEnabled(),
+  ]);
   return climbers.map((c) => ({
     id: c.id,
     name: `${c.firstName} ${c.lastName}`,
@@ -393,5 +410,6 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     membershipRecurring: c.membershipRecurring,
     hasDayPass: c.hasDayPass,
     punchesLeft: c.punchesLeft,
+    posEnabled,
   }));
 }

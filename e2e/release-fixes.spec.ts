@@ -17,7 +17,7 @@ async function logIn(page: Page, username: string, landsOn: RegExp) {
 // Finds a climber in the POS, then opens their account page from the card.
 async function openAccount(page: Page, name: string) {
   await page.goto("/desk/pos");
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill(name);
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill(name);
   await page.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
   await page.getByRole("link", { name: "Open account" }).click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
@@ -86,8 +86,9 @@ test("the desk reads a climber's waiver from their page, and opens POS for them 
   await page.getByRole("link", { name: "Open in POS" }).click();
   await expect(page).toHaveURL(/\/desk\/pos\?climber=[0-9a-f-]+/);
   await expect(page.getByText("Demo Valid-Active", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Change climber" })).toBeVisible();
-  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toHaveCount(0);
+  // The search stays available, with no "Change climber" step (#240).
+  await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
+  await expect(page.getByRole("searchbox", { name: "Search climbers" })).toBeVisible();
 });
 
 test("the POS opens with nobody picked for a bad or foreign climber id (#148)", async ({ page }) => {
@@ -95,7 +96,7 @@ test("the POS opens with nobody picked for a bad or foreign climber id (#148)", 
   for (const id of ["not-an-id", "00000000-0000-4000-8000-000000000000"]) {
     await page.goto(`/desk/pos?climber=${id}`);
     await expect(page.getByRole("heading", { name: "Point of sale" })).toBeVisible();
-    await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search climbers" })).toBeVisible();
   }
 });
 

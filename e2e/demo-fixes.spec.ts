@@ -37,7 +37,7 @@ test("double-clicking Checkout leaves the checkout open (issue 134)", async ({ p
   await logIn(page, "desk", /\/desk/);
   await page.getByRole("link", { name: "POS", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Point of sale" })).toBeVisible();
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill("Nevin Gill");
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill("Nevin Gill");
   await page.getByRole("list", { name: "Matching climbers" }).getByText("Nevin Gill").click();
   await page.getByRole("button", { name: /^Chalk/ }).click();
 

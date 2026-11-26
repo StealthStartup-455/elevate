@@ -31,7 +31,7 @@ test("revoking a membership needs a reason, and the desk shows it", async ({ pag
   await page.getByRole("link", { name: "POS", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Point of sale" })).toBeVisible();
   const pick = async () => {
-    await page.getByRole("searchbox", { name: "Search name or phone" }).fill(last);
+    await page.getByRole("searchbox", { name: "Search climbers" }).fill(last);
     await page.getByRole("list", { name: "Matching climbers" }).getByText(`Casey ${last}`).click();
   };
   await pick();
@@ -39,6 +39,8 @@ test("revoking a membership needs a reason, and the desk shows it", async ({ pag
   await page.getByRole("button", { name: "Checkout" }).click();
   const checkout = page.getByRole("dialog", { name: "Checkout" });
   await checkout.getByRole("button", { name: "Cash" }).click();
+  // Cash needs the amount received before Tender (#250).
+  await checkout.getByRole("button", { name: "Exact" }).click();
   await checkout.getByRole("button", { name: "Tender" }).click();
   await page.getByRole("dialog", { name: "Sale saved" }).getByRole("button", { name: "Back to POS" }).click();
 

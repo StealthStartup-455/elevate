@@ -93,12 +93,11 @@ export default function ClimberForm({
           </Stack>
           <TextField
             name="studentId"
-            label="Student ID"
-            required
+            label="Student ID (optional)"
             fullWidth
             defaultValue={values.studentId}
             error={Boolean(errors.studentId)}
-            helperText={errors.studentId ?? "A V and 8 digits, like V00123456. The check-in barcode is made from it."}
+            helperText={errors.studentId ?? "A V and 8 digits, like V00123456. Leave empty for climbers who aren't students. The check-in barcode is made from it."}
             slotProps={{ htmlInput: { autoComplete: "off", autoCapitalize: "characters", maxLength: 12 } }}
           />
           <TextField

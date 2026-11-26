@@ -1,4 +1,4 @@
-// Elevate database. Twenty-one tables.
+// Elevate database. Twenty-two tables.
 //
 // Rules every table follows:
 // - Every table except Gym has a gymId, so each gym only sees its own rows.
@@ -49,6 +49,7 @@ model Gym {
   classTypes      ClassType[]
   classes         GymClass[]
   classBookings   ClassBooking[]
+  checkInAttempts CheckInAttempt[]
   labels          GymLabel[]
   climberLabels   ClimberLabel[]
 }
@@ -82,20 +83,20 @@ model Staff {
 
 // A customer. Families can share one phone or email, so neither is unique.
 model Climber {
-  id                 String   @id @default(uuid())
-  gymId              String
-  firstName          String
-  lastName           String
-  email              String? // saved lowercased
-  phone              String? // saved like +12505551234
-  dateOfBirth        DateTime @db.Date
-  authUserId         String? // the login that manages this climber; one parent login can manage several kids
-  createdByStaffId   String? // empty means they signed themselves up
-  onboardingComplete Boolean  @default(true) // demo sign-up stays pending until the customer chooses their gym
-  externalId         String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
-  studentId          String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String   @id @default(uuid())
+  gymId            String
+  firstName        String
+  lastName         String
+  email            String? // saved lowercased
+  phone            String? // saved like +12505551234
+  dateOfBirth      DateTime @db.Date
+  authUserId       String? // the login that manages this climber; one parent login can manage several kids
+  createdByStaffId String? // empty means they signed themselves up
+  onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
+  externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
+  studentId        String? // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38). Empty for a climber who isn't a student (#245)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   gym            Gym            @relation(fields: [gymId], references: [id])
   createdByStaff Staff?         @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
@@ -244,6 +245,28 @@ model CheckIn {
 // desk takes it once and shows the popup. Kept in the database (not server
 // memory) so it works when the app runs on several servers, and so two
 // climbers scanning at once both reach the desk. Taken scans are kept.
+// One try at checking a climber in at the desk, saved or not, for the value
+// proposition metrics (#251): how long the desk took, how staff found the
+// climber, and what blocked them. Ids and reason codes only, never names. Not
+// linked to the climber row, so a staging reset or a deleted climber never
+// trips over it; the seed clears a gym's rows with its climbers.
+model CheckInAttempt {
+  id         String         @id @default(uuid())
+  gymId      String
+  climberId  String? // the climber's id, for counting; no relation on purpose
+  source     CheckInSource
+  outcome    CheckInOutcome
+  reason     String? // a refusal code ("waiver_missing"), or what blocked them before it was sorted out
+  wasBlocked Boolean        @default(false) // the climber couldn't be checked in when staff picked them
+  elapsedMs  Int? // from opening the Check in dialog to this outcome; empty when not timed
+  createdAt  DateTime       @default(now())
+
+  // Metric rows go with their gym, so deleting a gym never trips over them.
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, createdAt])
+}
+
 model QrScan {
   id        String    @id @default(uuid())
   gymId     String
@@ -560,6 +583,19 @@ enum SignerRelation {
   SELF
   PARENT
   GUARDIAN
+}
+
+// How staff found the climber they tried to check in (#251).
+enum CheckInSource {
+  CAMERA // the desk camera read their barcode
+  SEARCH // typed a name, phone or V number
+  CLIMBER_PAGE // from the climber's panel or page (an arrival, a customer)
+}
+
+enum CheckInOutcome {
+  CHECKED_IN
+  REFUSED // the server turned it away
+  GAVE_UP // staff closed the dialog without checking them in
 }
 
 enum CheckInMethod {

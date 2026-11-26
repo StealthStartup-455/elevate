@@ -256,6 +256,31 @@ const components: ThemeOptions["components"] = {
       middleButton: { borderRadius: radius.md - 2, borderLeft: 0, marginLeft: 0 },
       lastButton: { borderRadius: radius.md - 2, borderLeft: 0, marginLeft: 0 },
     },
+    variants: [
+      {
+        // Large: separate bordered buttons with a gap and no track, for a choice
+        // that must not be misread (Card or Cash at checkout, #250).
+        props: { size: "large" },
+        style: ({ theme }) => ({
+          gap: 8,
+          padding: 0,
+          backgroundColor: "transparent",
+          "& .MuiToggleButtonGroup-grouped": {
+            border: `1px solid ${theme.vars.palette.divider}`,
+            borderRadius: radius.md,
+            backgroundColor: theme.vars.palette.background.paper,
+            "&:hover": {
+              backgroundColor: theme.vars.palette.secondary.softHover,
+              borderColor: theme.vars.palette.secondary.main,
+            },
+            "&.Mui-selected, &.Mui-selected:hover": {
+              borderColor: theme.vars.palette.secondary.main,
+              backgroundColor: theme.vars.palette.secondary.main,
+            },
+          },
+        }),
+      },
+    ],
   },
   MuiToggleButton: {
     styleOverrides: {
@@ -278,6 +303,7 @@ const components: ThemeOptions["components"] = {
           [touch]: { height: controlHeight.lg - 4, padding: "0 12px" },
           variants: [
             { props: { size: "medium" }, style: { height: controlHeight.md - 4, padding: "0 10px", fontSize: px(13) } },
+            { props: { size: "large" }, style: { height: controlHeight.lg, padding: "0 12px", fontSize: px(13) } },
           ],
         };
       },

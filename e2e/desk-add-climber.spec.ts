@@ -36,3 +36,22 @@ test("the desk adds a climber and lands on their page with the waiver step", asy
   await page.getByRole("link", { name: /Back to Casey/ }).click();
   await expect(page.getByText("Valid", { exact: true })).toBeVisible({ timeout: 5_000 });
 });
+
+test("the New customer back link returns to where staff came from", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("desk");
+  await page.getByLabel("Password").fill("desk");
+  await page.getByRole("button", { name: /log in|sign in/i }).click();
+  await expect(page).toHaveURL(/\/desk/);
+
+  // From the Check-in tab: back to Check-in.
+  await page.getByRole("link", { name: "New customer" }).click();
+  await page.getByRole("link", { name: "← Check-in" }).click();
+  await expect(page).toHaveURL(/\/desk$/);
+
+  // From the Customers tab: back to Customers.
+  await page.goto("/desk/customers");
+  await page.getByRole("link", { name: /New customer|Add customer|Add climber/ }).first().click();
+  await expect(page.getByRole("link", { name: "← Customers" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "← Check-in" })).toHaveCount(0);
+});

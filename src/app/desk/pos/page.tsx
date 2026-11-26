@@ -11,8 +11,14 @@ import { getPosData } from "@/features/pos/queries";
 export default function PosPage({ searchParams }: PageProps<"/desk/pos">) {
   return (
     <div className="flex flex-col gap-3">
-      <Typography variant="pageTitle">Point of sale</Typography>
-      <Suspense fallback={<p>Loading the POS...</p>}>
+      <Suspense
+        fallback={
+          <>
+            <Typography variant="pageTitle">Point of sale</Typography>
+            <p>Loading the POS...</p>
+          </>
+        }
+      >
         <Pos searchParams={searchParams} />
       </Suspense>
     </div>
