@@ -305,6 +305,10 @@ async function main() {
       await tx.pass.deleteMany({ where: { gymId: gym.id } });
       await tx.saleLine.deleteMany({ where: { gymId: gym.id } });
       await tx.sale.deleteMany({ where: { gymId: gym.id } });
+      // Customer labels (#157): the label on each climber, then the gym's list,
+      // so a reset starts with none.
+      await tx.climberLabel.deleteMany({ where: { gymId: gym.id } });
+      await tx.gymLabel.deleteMany({ where: { gymId: gym.id } });
       await tx.climber.deleteMany({ where: { gymId: gym.id } });
       // Wording published from the desk editor (#110) goes too, now that no
       // waiver points at it, so the demo starts again from v1 alone.
@@ -380,7 +384,7 @@ async function main() {
   const added = Math.max(removed - all.length, 0);
   console.log(
     `Removed ${removed} climbers (${added} added since the last seed) with their passes, ` +
-      "waivers, sales, check ins and scans.",
+      "waivers, sales, check ins, scans and labels.",
   );
   console.log(
     `Seeded ${all.length} climbers into ${gym.name} ` +

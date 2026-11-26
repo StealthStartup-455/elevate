@@ -6,6 +6,8 @@ import { formatTime } from "@/features/analytics/components/format";
 import { ACTIVE_WINDOW_MINUTES } from "@/features/analytics/config";
 import { getClimber, getClimberStatuses, getSavedCheckIns } from "@/features/climbers/queries";
 import type { Climber } from "@/features/climbers/types";
+import { getClimberLabels, getLabelsForClimbers } from "@/features/labels/queries";
+import type { LabelView } from "@/features/labels/types";
 import { isPosEnabled } from "@/features/pos/queries";
 import { getMembershipRevoke } from "@/features/pos/revoke";
 import type { MembershipRevoke } from "@/features/pos/types";
@@ -37,6 +39,8 @@ export type ScannedClimber = {
    * so another check-in would be refused (a repeat scan). Absent otherwise.
    */
   checkedInAt?: string;
+  /** Their staff labels (#157), A to Z. Only ever sent to the desk. */
+  labels: LabelView[];
 };
 
 async function getGymForClimberId(climberId: string): Promise<string | null> {
@@ -86,21 +90,24 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
   const now = new Date();
   const gym = await getGymById(staff.gymId);
   if (!gym) return [];
-  const [climbers, recent] = await Promise.all([
+  const climberIds = scans.map((s) => s.climberId);
+  const [climbers, recent, labels] = await Promise.all([
     // Every waiting climber in one query, not one per scan: this runs every
     // 2.5 seconds on every open desk.
-    getClimberStatuses(gym, scans.map((s) => s.climberId), now),
+    getClimberStatuses(gym, climberIds, now),
     // Who is already in: checkInClimber refuses them for this long, so a
     // repeat scan has nothing to do (#225).
     db.checkIn.findMany({
       where: {
         gymId: staff.gymId,
-        climberId: { in: scans.map((s) => s.climberId) },
+        climberId: { in: climberIds },
         checkedInAt: { gt: new Date(now.getTime() - ACTIVE_WINDOW_MINUTES * 60_000) },
       },
       orderBy: { checkedInAt: "desc" },
       select: { climberId: true, checkedInAt: true },
     }),
+    // Every waiting climber's labels in one query too (#157).
+    getLabelsForClimbers(gym.id, climberIds),
   ]);
   const latestCheckIn = new Map<string, Date>();
   for (const c of recent) if (!latestCheckIn.has(c.climberId)) latestCheckIn.set(c.climberId, c.checkedInAt);
@@ -128,6 +135,7 @@ async function waitingDeskScansNow(): Promise<DeskScan[]> {
         hasDayPass: climber.hasDayPass,
         punchesLeft: climber.punchesLeft,
         checkedInAt: checkedInAtLabel(latestCheckIn.get(climber.id), gym.timeZone),
+        labels: labels.get(climber.id) ?? [],
       },
     });
   }
@@ -182,6 +190,8 @@ export type DeskClimberPanel = {
    * Here and not on Climber, which the climber's own pages read too.
    */
   revoked: MembershipRevoke | null;
+  /** Staff labels (#157), A to Z. Here and not on Climber, which /me reads too. */
+  labels: LabelView[];
 };
 
 // The climber panel on the Check-in page (#169). Reads only what the desk
@@ -196,11 +206,12 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
   const [climber, gym] = await Promise.all([getClimber(climberId), getGymById(staff.gymId)]);
   if (!climber || !gym) return null;
   const now = new Date();
-  const [waiver, today, posEnabled, revoked] = await Promise.all([
+  const [waiver, today, posEnabled, revoked, labels] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getSavedCheckIns(startOfGymDay(now, gym.timeZone)),
     isPosEnabled(),
     getMembershipRevoke(gym, climber),
+    getClimberLabels(climber.id),
   ]);
   // Newest first, so this is their latest check-in today.
   const latest = today.find((c) => c.climberId === climber.id);
@@ -214,5 +225,7 @@ export async function getDeskClimberPanel(climberId: string): Promise<DeskClimbe
     posEnabled,
     employee: !!latest && isDemoEmployeeCheckIn(latest.id),
     revoked,
+    // Null only for a climber outside the gym, and getClimber already ruled that out.
+    labels: labels ?? [],
   };
 }

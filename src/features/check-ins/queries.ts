@@ -5,6 +5,8 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getClimberStatuses } from "@/features/climbers/queries";
 import type { WaiverSummary } from "@/features/climbers/status";
 import type { WaiverStatus } from "@/features/climbers/types";
+import { getLabelsForClimbers } from "@/features/labels/queries";
+import type { LabelView } from "@/features/labels/types";
 import type { CheckInMethod } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
@@ -41,6 +43,8 @@ export type DeskRow = {
   /** Its status, for the pill's icon (not worked out from the label's words). */
   waiverStatus: WaiverStatus;
   message: Label;
+  /** Their staff labels now (#157), A to Z. */
+  labels: LabelView[];
 };
 
 export type DeskDay = {
@@ -118,7 +122,7 @@ export async function getDeskDay(
   const checkIns = page === asked ? askedRows : await pageOf(1);
 
   const ids = [...new Set(checkIns.map((c) => c.climberId))];
-  const [statuses, passes, visits] = ids.length
+  const [statuses, passes, visits, labels] = ids.length
     ? await Promise.all([
         // Waiver and punches now, the same as everywhere else on the desk.
         getClimberStatuses(gym, ids, now),
@@ -140,8 +144,10 @@ export async function getDeskDay(
           _min: { checkedInAt: true },
           _max: { checkedInAt: true },
         }),
+        // Everyone on this page's labels, in one query (#157).
+        getLabelsForClimbers(gym.id, ids),
       ])
-    : [new Map(), [], []];
+    : [new Map(), [], [], new Map<string, LabelView[]>()];
 
   const visitsBy = new Map(visits.map((v) => [v.climberId, v]));
   const rows = checkIns.map((c): DeskRow => {
@@ -173,6 +179,7 @@ export async function getDeskDay(
         firstVisit: v?._min.checkedInAt?.getTime() === time,
         latestVisit: v?._max.checkedInAt?.getTime() === time,
       }),
+      labels: labels.get(c.climberId) ?? [],
     };
   });
 

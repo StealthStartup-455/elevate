@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import StatusPill from "@/components/ui/StatusPill";
+import LabelChips from "@/features/labels/components/LabelChips";
 import { finishDeskScan, waitingDeskScans, type DeskScan } from "../actions";
 import { playScanSound } from "../scan-sound";
 import { initials, newArrivals, scanResult } from "../scan-toast";
@@ -29,6 +30,8 @@ const POLL_MS = 2500;
 const TOAST_MS = 10_000;
 // A rush shows the newest few; the rest wait in Arrivals.
 const MAX_TOASTS = 3;
+// Staff labels under the name (#157); the rest are "+N more", all on the panel.
+const ARRIVAL_LABELS = 3;
 // Scans this browser tab has already announced, so a reload doesn't ding again.
 const SEEN_KEY = "elevate.desk.seenScans";
 
@@ -182,8 +185,9 @@ export default function DeskArrivals() {
             return (
               <Box component="li" key={scan.scanId} className="flex items-center gap-3">
                 <Avatar alt="">{initials(scan.climber.name)}</Avatar>
-                <Box className="flex min-w-0 flex-1 flex-col">
+                <Box className="flex min-w-0 flex-1 flex-col gap-1">
                   <Typography variant="body">{scan.climber.name}</Typography>
+                  <LabelChips labels={scan.climber.labels} max={ARRIVAL_LABELS} />
                   <Typography variant="secondary">{result.reasons[0] ?? result.label}</Typography>
                 </Box>
                 <Button size="small" variant="outlined" onClick={() => open(scan)}>
@@ -265,6 +269,7 @@ function ArrivalToast({
         <Typography variant="cardTitle" component="p">
           {scan.climber.name}
         </Typography>
+        <LabelChips labels={scan.climber.labels} max={ARRIVAL_LABELS} />
         <Box>
           <StatusPill status={result.ready || result.alreadyIn ? "ok" : "bad"} label={result.label} />
         </Box>
