@@ -410,3 +410,75 @@ describe("class types and the sessions scheduled from them", () => {
     expect(await actions.updateClassType(theirs.id, type)).toEqual({ ok: false, message: "That class type doesn't exist." });
   });
 });
+
+describe("the desk's month calendar", () => {
+  it("is staff only", async () => {
+    await expect(queries.getDeskCalendar(undefined)).rejects.toThrow("redirect /login");
+  });
+
+  it("shows the gym's own month with who signed up, on the gym's clock", async () => {
+    session.staff = true;
+    // 8 PM on May 10, 2031 in Vancouver: already May 11 in UTC.
+    const startsAt = new Date("2031-05-11T03:00:00Z");
+    const shared = { startsAt, durationMinutes: 60, capacity: 4 };
+    const mine = await db.gymClass.create({ data: { gymId, title: "Evening", instructor: "Sam", ...shared } });
+    const theirs = await db.gymClass.create({ data: { gymId: otherGymId, title: "Theirs", ...shared } });
+    await db.classBooking.createMany({
+      data: [
+        { gymId, classId: mine.id, climberId: climbers[0] },
+        { gymId, classId: mine.id, climberId: climbers[1], canceledAt: new Date() },
+        { gymId: otherGymId, classId: theirs.id, climberId: otherClimber },
+      ],
+    });
+    await db.gymEvent.createMany({
+      data: [
+        { gymId, title: "Fest", startsAt: new Date("2031-04-30T17:00:00Z"), endsAt: new Date("2031-05-02T21:00:00Z") },
+        { gymId, title: "Off", startsAt: new Date("2031-05-20T17:00:00Z"), canceledAt: new Date() },
+        { gymId: otherGymId, title: "Their event", startsAt: new Date("2031-05-20T17:00:00Z") },
+      ],
+    });
+    await db.setChange.createMany({
+      data: [
+        { gymId, wall: "Cave", startsAt: new Date("2031-05-31T16:00:00Z"), endsAt: new Date("2031-06-02T16:00:00Z") },
+        { gymId: otherGymId, wall: "Their wall", startsAt: new Date("2031-05-10T16:00:00Z"), endsAt: new Date("2031-05-10T20:00:00Z") },
+      ],
+    });
+    await db.specialHours.create({
+      data: { gymId, date: new Date("2031-05-19T00:00:00Z"), closed: true, note: "Victoria Day" },
+    });
+    await db.specialHours.create({
+      data: { gymId: otherGymId, date: new Date("2031-05-21T00:00:00Z"), closed: true, note: "Their closure" },
+    });
+
+    const calendar = (await queries.getDeskCalendar("2031-05-10"))!;
+    expect(calendar.month).toBe("2031-05");
+    expect(calendar.days).toHaveLength(31);
+    const on = (day: string) => calendar.days.find((d) => d.day === day)!;
+
+    expect(on("2031-05-10").items).toEqual([
+      expect.objectContaining({
+        kind: "class",
+        title: "Evening",
+        time: "8 PM – 9 PM",
+        classInfo: { instructor: "Sam", capacity: 4, signedUp: [{ climberId: climbers[0], name: "Ana Test" }] },
+      }),
+    ]);
+    expect(on("2031-05-11").items).toEqual([]);
+    // Over several days, and from the month before or into the month after.
+    expect(on("2031-05-01").items.map((i) => `${i.title} ${i.time}`)).toEqual(["Fest All day"]);
+    expect(on("2031-05-02").items.map((i) => `${i.title} ${i.time}`)).toEqual(["Fest Until 2 PM"]);
+    expect(on("2031-05-31").items.map((i) => `${i.title} ${i.time}`)).toEqual(["Cave From 9 AM"]);
+    expect(on("2031-05-20").items.map((i) => [i.title, i.canceled])).toEqual([["Off", true]]);
+    expect(on("2031-05-19")).toMatchObject({ closed: true, special: true, note: "Victoria Day" });
+    expect(on("2031-05-21")).toMatchObject({ special: false, note: null });
+
+    const june = (await queries.getDeskCalendar("2031-06-15"))!;
+    expect(june.days.filter((d) => d.items.length).map((d) => d.day)).toEqual(["2031-06-01", "2031-06-02"]);
+  });
+
+  it("opens on this month when the day isn't a date", async () => {
+    session.staff = true;
+    const calendar = (await queries.getDeskCalendar("not-a-day"))!;
+    expect(calendar.today.startsWith(calendar.month)).toBe(true);
+  });
+});

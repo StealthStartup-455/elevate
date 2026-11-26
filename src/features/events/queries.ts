@@ -6,7 +6,17 @@ import { getStaffContext, requireStaff } from "@/features/auth/staff";
 import { getMyGym } from "@/features/purchase/queries";
 import { db } from "@/lib/db";
 import { getGymById } from "@/lib/gym";
-import { CALENDAR_MONTHS, calendarEnd } from "./calendar";
+import { CALENDAR_MONTHS, calendarEnd, monthOf } from "./calendar";
+import {
+  daysOfMonth,
+  groupByDay,
+  monthBounds,
+  parseDay,
+  shiftsByDay,
+  type DeskCalendarEntry,
+  type DeskCalendarItem,
+  type DeskShift,
+} from "./desk-calendar";
 import {
   describeHours,
   openStatus,
@@ -36,6 +46,7 @@ import {
   formatDay,
   formatSpan,
   gymClockAt,
+  gymTime,
   MINUTES_PER_DAY,
   weekdayName,
 } from "./time";
@@ -503,4 +514,188 @@ export async function getDeskEvents(): Promise<DeskEvent[]> {
     when: formatSpan(e.startsAt, e.endsAt, gym.timeZone),
     canceled: e.canceledAt !== null,
   }));
+}
+
+export type DeskCalendarDay = {
+  day: string;
+  /** "6 AM – 10 PM", "Closed", or null when the gym hasn't set its hours. */
+  hours: string | null;
+  closed: boolean;
+  /** True when a special day replaces the regular hours. */
+  special: boolean;
+  note: string | null;
+  /** Open and close in minutes after midnight, for the day's timeline; null when closed or unknown. */
+  open: { opensAt: number; closesAt: number } | null;
+  /** What's on, in time order, canceled ones marked. */
+  items: DeskCalendarItem[];
+  /** Who works that day, in time order. */
+  shifts: DeskShift[];
+};
+
+export type DeskCalendarMonth = {
+  /** Today on the gym's clock. */
+  today: string;
+  /** The time now on the gym's clock, in minutes after midnight, for the line on today's timeline. */
+  nowMinutes: number;
+  month: string;
+  days: DeskCalendarDay[];
+};
+
+/**
+ * The Calendar tab: the month `day` is in (today's when it isn't a date), past months included,
+ * with who signed up for each class. Past days show the regular hours as they are set now:
+ * older regular hours aren't kept. Special days are.
+ */
+export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth | null> {
+  const gym = await deskGym();
+  if (!gym) return null;
+  const { timeZone } = gym;
+  const now = gymClockAt(new Date(), timeZone);
+  const today = now.day;
+  const month = monthOf(parseDay(day, today));
+  const days = daysOfMonth(month);
+  const { from, to } = monthBounds(month, timeZone);
+
+  const [weekly, special, classes, events, setChanges, shifts] = await Promise.all([
+    db.openingHours.findMany({
+      where: { gymId: gym.id },
+      select: { weekday: true, closed: true, opensAt: true, closesAt: true },
+    }),
+    loadSpecialDays(gym.id, days[0], days[days.length - 1]),
+    db.gymClass.findMany({
+      // A day early for one that runs past midnight into the month: the longest is 8 hours.
+      where: { gymId: gym.id, startsAt: { gte: new Date(from.getTime() - DAY_MS), lt: to } },
+      select: {
+        id: true,
+        title: true,
+        details: true,
+        instructor: true,
+        startsAt: true,
+        durationMinutes: true,
+        capacity: true,
+        canceledAt: true,
+        bookings: {
+          where: { canceledAt: null },
+          orderBy: { createdAt: "asc" },
+          select: { climber: { select: { id: true, firstName: true, lastName: true } } },
+        },
+      },
+    }),
+    db.gymEvent.findMany({
+      where: {
+        gymId: gym.id,
+        startsAt: { lt: to },
+        OR: [{ endsAt: { gt: from } }, { startsAt: { gte: from } }],
+      },
+      select: { id: true, title: true, details: true, startsAt: true, endsAt: true, canceledAt: true },
+    }),
+    db.setChange.findMany({
+      where: { gymId: gym.id, startsAt: { lt: to }, endsAt: { gt: from } },
+      select: { id: true, wall: true, note: true, startsAt: true, endsAt: true, canceledAt: true },
+    }),
+    db.staffShift.findMany({
+      where: { gymId: gym.id, startsAt: { gte: from, lt: to } },
+      orderBy: { startsAt: "asc" },
+      select: {
+        id: true,
+        kind: true,
+        startsAt: true,
+        endsAt: true,
+        note: true,
+        canceledAt: true,
+        classId: true,
+        eventId: true,
+        setChangeId: true,
+        staff: { select: { name: true } },
+        class: { select: { title: true } },
+        event: { select: { title: true } },
+        setChange: { select: { wall: true } },
+      },
+    }),
+  ]);
+
+  // Who is on each class, event and set change, from the shifts linked to it.
+  const staffOn = new Map<string, string[]>();
+  for (const s of shifts) {
+    if (s.canceledAt) continue;
+    const key = s.classId ? `class-${s.classId}` : s.eventId ? `event-${s.eventId}` : s.setChangeId ? `setChange-${s.setChangeId}` : null;
+    if (key) staffOn.set(key, [...(staffOn.get(key) ?? []), s.staff.name]);
+  }
+
+  const entries: DeskCalendarEntry[] = [
+    ...classes.map((c) => ({
+      id: c.id,
+      kind: "class" as const,
+      title: c.title,
+      details: c.details,
+      startsAt: c.startsAt,
+      endsAt: new Date(c.startsAt.getTime() + c.durationMinutes * 60_000),
+      canceled: c.canceledAt !== null,
+      staff: staffOn.get(`class-${c.id}`) ?? [],
+      classInfo: {
+        instructor: c.instructor,
+        capacity: c.capacity,
+        // Staff see who is coming; climbers only ever see counts.
+        signedUp: c.bookings.map(({ climber }) => ({
+          climberId: climber.id,
+          name: `${climber.firstName} ${climber.lastName}`,
+        })),
+      },
+    })),
+    ...events.map(({ canceledAt, ...e }) => ({
+      ...e,
+      kind: "event" as const,
+      canceled: canceledAt !== null,
+      classInfo: null,
+      staff: staffOn.get(`event-${e.id}`) ?? [],
+    })),
+    ...setChanges.map((s) => ({
+      id: s.id,
+      kind: "setChange" as const,
+      title: s.wall,
+      details: s.note,
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      canceled: s.canceledAt !== null,
+      classInfo: null,
+      staff: staffOn.get(`setChange-${s.id}`) ?? [],
+    })),
+  ];
+  const shiftDays = shiftsByDay(
+    month,
+    shifts.map((s) => ({
+      id: s.id,
+      staffName: s.staff.name,
+      kind: s.kind,
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      forTitle: s.class?.title ?? s.event?.title ?? s.setChange?.wall ?? null,
+      note: s.note,
+      canceled: s.canceledAt !== null,
+    })),
+    timeZone,
+  );
+  const itemsByDay = groupByDay(month, entries, timeZone);
+  // weekAhead counts from the day it's given; noon is on the 1st whatever the clocks do.
+  const hours = weekAhead(gymTime(days[0], 12 * 60, timeZone), timeZone, weekly, special, days.length);
+  const hoursSet = weekly.length > 0;
+
+  return {
+    today,
+    nowMinutes: now.minutes,
+    month,
+    days: hours.map((h) => {
+      const known = hoursSet || h.special;
+      return {
+        day: h.day,
+        hours: known ? describeHours(h.hours) : null,
+        closed: known && h.hours === null,
+        special: h.special,
+        note: h.note,
+        open: known && h.hours ? { opensAt: h.hours.opensAt, closesAt: h.hours.closesAt } : null,
+        items: itemsByDay[h.day] ?? [],
+        shifts: shiftDays[h.day] ?? [],
+      };
+    }),
+  };
 }
