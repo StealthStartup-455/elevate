@@ -125,11 +125,11 @@ test("the climber search is always there, and picking someone replaces the climb
   await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
   // Searching again drops a list down and blurs the sale area, not the nav, and keeps the climber.
   await search.click();
-  await expect(page.getByRole("list", { name: "Checked in today" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Checked in today" })).toBeVisible();
   await expect(page.getByRole("navigation")).toHaveCSS("filter", "none");
   await expect(page.getByRole("heading", { name: "Add to cart" }).locator("xpath=ancestor::div[contains(@class,'grid')][1]")).toHaveCSS("filter", /blur/);
   await search.press("Escape");
-  await expect(page.getByRole("list", { name: "Checked in today" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Checked in today" })).toBeHidden();
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
   await pickClimber(page, "Nevin Gill");
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
