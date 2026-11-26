@@ -29,7 +29,7 @@ export async function signUpDemoCustomer(
   await page.goto("/signup");
   await page.getByLabel("First name").fill(firstName);
   await page.getByLabel("Last name").fill(lastName);
-  await page.getByRole("textbox", { name: "Student ID", exact: true }).fill(randomStudentId());
+  await page.getByRole("textbox", { name: "Student ID (optional)", exact: true }).fill(randomStudentId());
   await page.getByLabel("Phone number").fill(phone);
   await page.getByLabel("Email").fill(`${firstName}.${lastName}@elevate.test`);
   await page.getByLabel("Date of birth").fill(dateOfBirth);

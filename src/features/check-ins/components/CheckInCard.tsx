@@ -33,14 +33,22 @@ export default async function CheckInCard() {
     <>
       <ClimberCard label="Your check-in code">
         <div className="flex flex-col items-center gap-4 text-center">
-          <ClimberBarcode value={membership.studentId} width={300} />
+          {membership.studentId ? (
+            <ClimberBarcode value={membership.studentId} width={300} />
+          ) : (
+            <Typography variant="secondary">
+              You don&apos;t have a student ID on file, so there is no barcode. Tell the front desk your name or phone number.
+            </Typography>
+          )}
           <div className="flex flex-col gap-1">
             <Typography variant="cardTitle" component="p" sx={{ fontSize: "1.375rem" }}>
               {membership.firstName} {membership.lastName}
             </Typography>
-            <Typography variant="body" sx={{ fontFamily: "var(--font-plex-mono)", letterSpacing: "0.06em", color: "text.secondary" }}>
-              {membership.studentId}
-            </Typography>
+            {membership.studentId ? (
+              <Typography variant="body" sx={{ fontFamily: "var(--font-plex-mono)", letterSpacing: "0.06em", color: "text.secondary" }}>
+                {membership.studentId}
+              </Typography>
+            ) : null}
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             <StatusPill status={pass.status} label={pass.label} />

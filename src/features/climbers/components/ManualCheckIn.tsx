@@ -297,7 +297,7 @@ export default function ManualCheckIn() {
                 Back to search
               </Button>
               {selected.posEnabled ? (
-                <LinkButton href={`/desk/pos?climber=${selected.id}`} variant="outlined" color="error">
+                <LinkButton href={`/desk/pos?climber=${selected.id}`} variant="outlined" color="error" onClick={close}>
                   POS
                 </LinkButton>
               ) : (
@@ -386,7 +386,7 @@ export default function ManualCheckIn() {
 
 // Student ID, phone and birthday, so two climbers with the same name can be told apart (#129, #38).
 function personDetails(c: CheckInCandidate): string {
-  return [c.studentId, c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
+  return [c.studentId ?? "", c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
     .filter(Boolean)
     .join(" · ");
 }

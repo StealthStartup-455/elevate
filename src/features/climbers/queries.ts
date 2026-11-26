@@ -33,7 +33,7 @@ export type Membership = {
   // Calendar date the waiver runs out (or ran out). Unset when never signed.
   waiverExpiresOn?: string;
   // The student ID the barcode holds, printed under it for manual entry at the desk (#38).
-  studentId: string;
+  studentId: string | null;
   /** A day pass covers today. */
   hasDayPass: boolean;
   /** Visits left on their punch cards. */
@@ -92,6 +92,7 @@ function toClimber(
       .filter((p) => p.kind === "MEMBERSHIP")
       .map((p) => ({ ...p, plan: p.saleLine?.name ?? null })),
     now,
+    gym.timeZone,
   );
   return {
     id: row.id,

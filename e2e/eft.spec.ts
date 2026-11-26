@@ -48,7 +48,7 @@ test("a member adds a bank account, the desk sees it on the POS, then the member
   const desk = await (await browser.newContext()).newPage();
   await logIn(desk, "desk", /\/desk/);
   await desk.getByRole("link", { name: "POS", exact: true }).click();
-  await desk.getByRole("searchbox", { name: "Search name or phone" }).fill("Demo Valid-Active");
+  await desk.getByRole("searchbox", { name: "Search climbers" }).fill("Demo Valid-Active");
   await desk.getByRole("list", { name: "Matching climbers" }).getByText("Demo Valid-Active").click();
   await expect(desk.getByText("EFT on file: RBC ••••7890")).toBeVisible();
 
@@ -60,7 +60,7 @@ test("a member adds a bank account, the desk sees it on the POS, then the member
 test("the desk adds a member's bank account on the customer page and sees it on the POS", async ({ page }) => {
   await logIn(page, "desk", /\/desk/);
   await page.getByRole("link", { name: "POS", exact: true }).click();
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill("Demo Valid-Paused");
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill("Demo Valid-Paused");
   await page.getByRole("list", { name: "Matching climbers" }).getByText("Demo Valid-Paused").click();
   await page.getByRole("link", { name: "Open account" }).click();
   await expect(page.getByRole("heading", { name: "Demo Valid-Paused" })).toBeVisible();
@@ -91,7 +91,7 @@ test("the desk adds a member's bank account on the customer page and sees it on 
   await page.reload();
   await expect(main).toContainText("EFT on file: TD ••••5111");
   await page.goto("/desk/pos");
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill("Demo Valid-Paused");
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill("Demo Valid-Paused");
   await page.getByRole("list", { name: "Matching climbers" }).getByText("Demo Valid-Paused").click();
   await expect(page.getByText("EFT on file: TD ••••5111")).toBeVisible();
   // Once: a shared React key once drew the line three times.

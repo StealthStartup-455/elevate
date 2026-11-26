@@ -46,8 +46,8 @@ export function parseClimberInput(
   else if (values.lastName.length > MAX_NAME_LENGTH)
     errors.lastName = `Use ${MAX_NAME_LENGTH} characters or fewer.`;
 
-  if (!values.studentId) errors.studentId = "Enter your student ID.";
-  else if (!isStudentId(values.studentId))
+  // Optional (#245): a climber who isn't a student has none. A V number must be well formed.
+  if (values.studentId && !isStudentId(values.studentId))
     errors.studentId = "Use a V followed by 8 digits, like V00123456.";
 
   const digits = values.phone.replace(/\D/g, "");

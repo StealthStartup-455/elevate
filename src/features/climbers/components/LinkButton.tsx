@@ -12,6 +12,7 @@ export default function LinkButton({
   size,
   color,
   fullWidth,
+  onClick,
 }: {
   href: string;
   children: React.ReactNode;
@@ -20,9 +21,11 @@ export default function LinkButton({
   /** warning: a renew link. error: a button staff must notice (POS in the Check in dialog). */
   color?: "warning" | "error";
   fullWidth?: boolean;
+  /** Runs when the link is clicked, as well as navigating (e.g. to close a dialog). */
+  onClick?: () => void;
 }) {
   return (
-    <Button component={Link} href={href} variant={variant} size={size} color={color} fullWidth={fullWidth}>
+    <Button component={Link} href={href} variant={variant} size={size} color={color} fullWidth={fullWidth} onClick={onClick}>
       {children}
     </Button>
   );

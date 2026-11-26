@@ -12,11 +12,13 @@ import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import DeskWaiverPanel from "@/features/climbers/components/DeskWaiverPanel";
 import LinkButton from "@/features/climbers/components/LinkButton";
 import WaiverStep from "@/features/climbers/components/WaiverStep";
-import { membershipDateLine } from "@/features/climbers/format";
+import { membershipDateLine, revokedLine } from "@/features/climbers/format";
 import { getClimber } from "@/features/climbers/queries";
 import type { MembershipStatus } from "@/features/climbers/types";
 import DeskBankAccount from "@/features/eft/components/DeskBankAccount";
 import { getBankAccountForStaff } from "@/features/eft/queries";
+import { getMembershipRevoke } from "@/features/pos/revoke";
+import { getGymById } from "@/lib/gym";
 import { getStaffWaiverPanel } from "@/features/waivers/queries";
 
 const MEMBERSHIP: Record<MembershipStatus, { status: Status; label: string }> = {
@@ -60,16 +62,17 @@ async function ClimberCard({
   await requireStaff();
   const climber = await getClimber(climberId);
   if (!climber) notFound();
-  const [waiver, bankAccount] = await Promise.all([
+  const [waiver, bankAccount, gym] = await Promise.all([
     getStaffWaiverPanel(climber.id),
     getBankAccountForStaff(climber.id),
+    getGymById(climber.gymId),
   ]);
+  // Why it was revoked, for staff only (#241); getClimber leaves it out because /me reads it too.
+  const revoked = gym ? await getMembershipRevoke(gym, climber) : null;
   const membership = MEMBERSHIP[climber.membershipStatus];
-  const membershipLine = membershipDateLine(
-    climber.membershipStatus,
-    climber.membershipRenewsOn,
-    climber.membershipRecurring,
-  );
+  const membershipLine = revoked
+    ? revokedLine(revoked)
+    : membershipDateLine(climber.membershipStatus, climber.membershipRenewsOn, climber.membershipRecurring);
 
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 560, borderRadius: 3 }}>
@@ -110,7 +113,7 @@ async function ClimberCard({
             details={{
               firstName: climber.firstName,
               lastName: climber.lastName,
-              studentId: climber.studentId,
+              studentId: climber.studentId ?? "",
               phone: climber.phone,
               email: climber.email,
               dateOfBirth: climber.dateOfBirth,

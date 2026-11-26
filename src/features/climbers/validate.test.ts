@@ -37,6 +37,11 @@ describe("parseClimberInput", () => {
     }
   });
 
+  it("allows no student ID, for a climber who isn't a student", () => {
+    const result = parseClimberInput(form({ ...VALID, studentId: "" }), NOW);
+    expect(result.ok && result.value.studentId).toBe("");
+  });
+
   it("allows an empty email", () => {
     expect(parseClimberInput(form({ ...VALID, email: "" }), NOW).ok).toBe(true);
   });
@@ -46,7 +51,7 @@ describe("parseClimberInput", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(Object.keys(result.errors).sort()).toEqual(
-        ["dateOfBirth", "firstName", "lastName", "phone", "studentId"].sort(),
+        ["dateOfBirth", "firstName", "lastName", "phone"].sort(),
       );
     }
   });
