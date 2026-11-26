@@ -135,7 +135,7 @@ test("the climber search is always there, and picking someone replaces the climb
   await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
 });
 
-test("switching climber with items in the cart asks first (#263)", async ({ page }) => {
+test("switching climber with items in the cart asks first (#239)", async ({ page }) => {
   await openPos(page);
   await pickClimber(page, "Nevin Gill");
   await page.getByRole("button", { name: /^Chalk/ }).click();

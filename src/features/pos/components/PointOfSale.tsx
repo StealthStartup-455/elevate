@@ -110,7 +110,7 @@ function Pos({
     if (product) setCart(addToCart([], product, products));
   }
 
-  // Switching climber starts a new cart, so ask first when there is one (#263).
+  // Switching climber starts a new cart, so ask first when there is one (#239).
   function confirmSwitch(id: string, name: string, go: () => void) {
     if (cart.length > 0 && selected && selected.id !== id) setSwitchTo({ name, go });
     else go();
