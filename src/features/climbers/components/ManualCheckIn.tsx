@@ -316,9 +316,9 @@ export default function ManualCheckIn() {
                   </Button>
                 </DisabledReason>
               )}
-              {/* Always there: their page has the waiver to look at or sign. */}
-              <LinkButton href={`/desk/customers/${selected.id}`} variant="outlined" onClick={close}>
-                Go to waiver
+              {/* Always there: their account page, with the waiver to look at or sign. */}
+              <LinkButton href={`/desk/customers/${selected.id}?from=check-in`} variant="outlined" onClick={close}>
+                Account
               </LinkButton>
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>

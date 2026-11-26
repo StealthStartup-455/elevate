@@ -8,6 +8,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import StatusPill, { type Status } from "@/components/ui/StatusPill";
 import { requireStaff } from "@/features/auth/staff";
+import CustomersBackLink from "@/features/climbers/components/CustomersBackLink";
 import ClimberDetails from "@/features/climbers/components/ClimberDetails";
 import DeskWaiverPanel from "@/features/climbers/components/DeskWaiverPanel";
 import LinkButton from "@/features/climbers/components/LinkButton";
@@ -35,9 +36,7 @@ export default function ClimberPage({
   return (
     <div className="mx-auto flex w-full max-w-narrow flex-col gap-4 sm:gap-6">
       <div className="flex flex-col items-start">
-        <LinkButton href="/desk/customers" variant="text">
-          ← Customers
-        </LinkButton>
+        <CustomersBackLink searchParams={searchParams} />
       </div>
       <Suspense fallback={<p>Loading...</p>}>
         <ClimberCard params={params} searchParams={searchParams} />

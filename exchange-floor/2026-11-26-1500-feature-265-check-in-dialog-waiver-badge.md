@@ -4,10 +4,12 @@
 - **AI tool / model:** Claude Code (claude-sonnet-5-5)
 - **Issue / PR:** StealthStartup-455/elevate#265 / PR to follow
 - **Branch:** `feature/265-check-in-dialog-waiver-badge`
-- **What the agent did:** After a climber is picked in the desk's Check in dialog (scan or search): one **Go to waiver** button, always there, that opens the climber's page (`/desk/customers/<id>`, where the waiver can be read or signed) and closes the dialog; and a **Pass** row with the badge (`BadgePill`, from `badgeFor`: Member, Day pass, Punch card or No pass).
+- **What the agent did:** After a climber is picked in the desk's Check in dialog (scan or search): one **Account** button, always there, that opens the climber's page (`/desk/customers/<id>`, where the waiver can be read or signed) and closes the dialog; and a **Pass** row with the badge (`BadgePill`, from `badgeFor`: Member, Day pass, Punch card or No pass).
 - **Files touched:** `ManualCheckIn.tsx`, `e2e/manual-check-in.spec.ts`.
 - **Decisions:** notes, belay status and staff tags are not here: there are no such fields yet, and labels are in #261. Labels can be added to the dialog after #261 merges.
 - **Open follow-ups:** labels in the dialog after #261; notes and belay status need new fields.
 - **Verification:** lint and `tsc` clean; Playwright manual-check-in: 7 passed (1 new) on a fresh build. Full suite not run.
 
-**Update:** the first version had separate Sign waiver and Look at waiver buttons, which both showed for an expired waiver. Replaced by the single Go to waiver button.
+**Update:** the first version had separate Sign waiver and Look at waiver buttons, which both showed for an expired waiver. Replaced by the single Account button.
+
+**Update 2:** the button is labelled **Account**. It links to `/desk/customers/<id>?from=check-in`, so the page's back link reads "← Check-in" (and returns to `/desk`) instead of "← Customers"; the back link is now the shared `CustomersBackLink`, also used by New customer.
