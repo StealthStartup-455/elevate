@@ -32,3 +32,8 @@ const REASONS: Record<string, string> = {
 export function reasonLabel(code: string): string {
   return REASONS[code] ?? code.replaceAll("_", " ");
 }
+
+/** "1 try", "3 tries": the count with the right word. */
+export function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
