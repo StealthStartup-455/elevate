@@ -10,7 +10,11 @@ const demo = all.filter((l) => !l.username.includes("@"));
 describe("getTestLogins", () => {
   it("lists the front desk first, with the password the demo login expects", () => {
     expect(groups[0].title).toContain("Front desk");
-    expect(groups[0].logins).toEqual([expect.objectContaining({ username: "desk", password: "desk" })]);
+    expect(groups[0].logins).toEqual([
+      expect.objectContaining({ username: "desk", password: "desk" }),
+      // The same desk with the manager role, for the metrics page.
+      expect.objectContaining({ username: "manager", password: "manager" }),
+    ]);
   });
 
   it("lists every demo climber by waiver and membership", () => {

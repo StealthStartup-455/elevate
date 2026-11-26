@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getGym } from "@/lib/gym";
-import { DESK_USERNAME, findClimberIdByUsername } from "./mock-users";
+import { DESK_USERNAME, findClimberIdByUsername, MANAGER_USERNAME } from "./mock-users";
 import { logEvent } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "./demo-mode";
@@ -196,7 +196,7 @@ export async function completeCustomerProfile(
 }
 
 // Static demo login, no real auth: the password must equal the username.
-// A climber from the database goes to /me, "desk" goes to /desk.
+// A climber from the database goes to /me, "desk" and "manager" go to /desk.
 async function demoLogin(username: string, rawPassword: string): Promise<LoginState> {
   const password = rawPassword.trim().toLowerCase();
 
@@ -209,6 +209,12 @@ async function demoLogin(username: string, rawPassword: string): Promise<LoginSt
     logEvent("login_succeeded", { role: "desk" });
     await clearSession();
     await setDeskSession();
+    redirect("/desk");
+  }
+  if (username === MANAGER_USERNAME) {
+    logEvent("login_succeeded", { role: "manager" });
+    await clearSession();
+    await setDeskSession(undefined, "manager");
     redirect("/desk");
   }
 
