@@ -393,7 +393,6 @@ export async function findClimbersToCheckIn(query: string): Promise<CheckInCandi
     phone: c.phone,
     dateOfBirth: c.dateOfBirth,
     waiverStatus: c.waiverStatus,
-    waiverId: c.waiverId,
     waiverExpiresOn: c.waiverExpiresOn,
     membershipStatus: c.membershipStatus,
     membershipRenewsOn: c.membershipRenewsOn,

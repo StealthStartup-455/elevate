@@ -18,7 +18,6 @@ import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
 import DisabledReason from "@/components/ui/DisabledReason";
 import BadgePill from "@/features/check-ins/components/BadgePill";
 import { badgeFor } from "@/features/check-ins/day";
-import DeskWaiverDialog from "@/features/waivers/components/DeskWaiverDialog";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
@@ -317,12 +316,10 @@ export default function ManualCheckIn() {
                   </Button>
                 </DisabledReason>
               )}
-              {selected.waiverStatus !== "valid" ? (
-                <LinkButton href={`/desk/customers/${selected.id}/waiver`} variant="outlined" onClick={close}>
-                  Sign waiver
-                </LinkButton>
-              ) : null}
-              {selected.waiverId ? <DeskWaiverDialog waiverId={selected.waiverId} /> : null}
+              {/* Always there: their page has the waiver to look at or sign. */}
+              <LinkButton href={`/desk/customers/${selected.id}`} variant="outlined" onClick={close}>
+                Go to waiver
+              </LinkButton>
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
                   Give free day pass
