@@ -11,3 +11,5 @@
 **Verification:** see PR.
 
 **Update:** every button that opens the POS is red now: the Check in dialog, the Check-in panel (`ClimberProfile.tsx` `SellPass`, including its disabled form) and "Open in POS" on the climber page. The POS nav tab and "Back to POS" in checkout are unchanged.
+
+**Review update (Seth's comments):** the Check in dialog now closes when POS is clicked (`LinkButton` takes an optional `onClick`; `ManualCheckIn` passes `close`), so coming back to the Check-in tab shows no stale dialog. The e2e test checks that. `STYLE_GUIDE.md` has POS as a third status-color exception (red, the developer's call). Merged `origin/dev` into the branch (kept both tests in `e2e/manual-check-in.spec.ts`).
