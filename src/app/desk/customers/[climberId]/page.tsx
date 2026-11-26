@@ -99,7 +99,7 @@ async function ClimberCard({
             </Typography>
           </div>
           {/* Straight to the POS with this climber picked (#148). */}
-          <LinkButton href={`/desk/pos?climber=${climber.id}`} variant="outlined">
+          <LinkButton href={`/desk/pos?climber=${climber.id}`} variant="outlined" color="error">
             Open in POS
           </LinkButton>
         </div>
@@ -113,7 +113,7 @@ async function ClimberCard({
             details={{
               firstName: climber.firstName,
               lastName: climber.lastName,
-              studentId: climber.studentId,
+              studentId: climber.studentId ?? "",
               phone: climber.phone,
               email: climber.email,
               dateOfBirth: climber.dateOfBirth,

@@ -15,11 +15,15 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
+import { recordCheckInGaveUp } from "@/features/metrics/actions";
+import { blockerCodes, type CheckInSourceName, type CheckInTiming } from "@/features/metrics/timing";
+import DisabledReason from "@/components/ui/DisabledReason";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
 import { isStudentId, normalizeStudentId } from "../student-id";
 import type { CheckInCandidate, MembershipStatus } from "../types";
+import LinkButton from "./LinkButton";
 import WaiverBadge from "./WaiverBadge";
 
 const OFFLINE = "Couldn't reach the server. Check the connection and try again.";
@@ -94,6 +98,32 @@ export default function ManualCheckIn() {
   const [pending, startTransition] = useTransition();
   const [scanNote, setScanNote] = useState<string | null>(null);
   const scanning = useRef(false);
+  // For the value proposition metrics (#251): when the dialog opened, how the
+  // climber was found, and what blocked them when picked. Sent with the check
+  // in, or as "gave up" if the dialog closes without one.
+  const openedAt = useRef(0);
+  const foundRef = useRef<{ source: CheckInSourceName; blockers: string[] } | null>(null);
+
+  function openDialog() {
+    openedAt.current = performance.now();
+    foundRef.current = null;
+    setOpen(true);
+  }
+
+  function pick(c: CheckInCandidate, source: CheckInSourceName) {
+    foundRef.current = { source, blockers: blockerCodes(c) };
+    setSelected(c);
+  }
+
+  function timing(): CheckInTiming | undefined {
+    if (!foundRef.current) return undefined;
+    return {
+      source: foundRef.current.source,
+      elapsedMs: performance.now() - openedAt.current,
+      wasBlocked: foundRef.current.blockers.length > 0,
+      blockers: foundRef.current.blockers,
+    };
+  }
 
   useEffect(() => {
     const q = query.trim();
@@ -128,10 +158,10 @@ export default function ManualCheckIn() {
     }
     scanning.current = true;
     try {
-      const found = (await findClimbersToCheckIn(id)).find((c) => c.studentId === id);
-      if (found) {
+      const match = (await findClimbersToCheckIn(id)).find((c) => c.studentId === id);
+      if (match) {
         setScanNote(null);
-        setSelected(found);
+        pick(match, "CAMERA");
       } else {
         setScanNote(`No climber has student ID ${id}.`);
       }
@@ -143,6 +173,14 @@ export default function ManualCheckIn() {
   }
 
   function close() {
+    // Picked but not checked in: usually sent away by what blocked them.
+    if (selected && !done) recordCheckInGaveUp(selected.id, timing()).catch(() => {});
+    closeQuietly();
+  }
+
+  // Closes without counting the climber as sent away: staff are going to sort
+  // them out somewhere else (the POS button sells them a pass).
+  function closeQuietly() {
     setOpen(false);
     // Reset after the closing animation so nothing flashes.
     setTimeout(() => {
@@ -160,7 +198,7 @@ export default function ManualCheckIn() {
     setError(null);
     startTransition(async () => {
       try {
-        const result = await checkInClimber(climber.id);
+        const result = await checkInClimber(climber.id, timing());
         if (result.ok) setDone(`${climber.name} is checked in.`);
         else setError(result.message ?? "Couldn't check in. Try again.");
       } catch {
@@ -187,7 +225,7 @@ export default function ManualCheckIn() {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)} startIcon={<CameraIcon />}>
+      <Button variant="outlined" onClick={openDialog} startIcon={<CameraIcon />}>
         Check in
       </Button>
       <Dialog
@@ -209,6 +247,9 @@ export default function ManualCheckIn() {
               <Button
                 variant="contained"
                 onClick={() => {
+                  // The next climber's time starts now (#251).
+                  openedAt.current = performance.now();
+                  foundRef.current = null;
                   setDone(null);
                   setSelected(null);
                   setQuery("");
@@ -294,6 +335,17 @@ export default function ManualCheckIn() {
               >
                 Back to search
               </Button>
+              {selected.posEnabled ? (
+                <LinkButton href={`/desk/pos?climber=${selected.id}`} variant="outlined" color="error" onClick={closeQuietly}>
+                  POS
+                </LinkButton>
+              ) : (
+                <DisabledReason reason="This gym doesn't sell passes in Elevate.">
+                  <Button variant="outlined" color="error" disabled>
+                    POS
+                  </Button>
+                </DisabledReason>
+              )}
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
                   Give free day pass
@@ -353,7 +405,7 @@ export default function ManualCheckIn() {
               ) : (
                 <List aria-label="Matching climbers" sx={{ mt: 2 }}>
                   {results.map((c) => (
-                    <ListItemButton key={c.id} onClick={() => setSelected(c)}>
+                    <ListItemButton key={c.id} onClick={() => pick(c, "SEARCH")}>
                       <ListItemText primary={c.name} secondary={personDetails(c)} />
                       <WaiverBadge status={c.waiverStatus} />
                     </ListItemButton>
@@ -373,7 +425,7 @@ export default function ManualCheckIn() {
 
 // Student ID, phone and birthday, so two climbers with the same name can be told apart (#129, #38).
 function personDetails(c: CheckInCandidate): string {
-  return [c.studentId, c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
+  return [c.studentId ?? "", c.phone, c.dateOfBirth ? `Born ${formatDate(c.dateOfBirth, true)}` : ""]
     .filter(Boolean)
     .join(" · ");
 }

@@ -20,6 +20,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 | `Waiver` | One signed waiver | `v2`, signed by Kim's dad |
 | `CheckIn` | One visit | Kim, 4:12 pm, scanned QR |
 | `QrScan` | A QR scan waiting for the desk | Kim tapped scan at 4:11 pm |
+| `CheckInAttempt` | One try at checking a climber in at the desk, for the metrics page | Camera scan, checked in after 3.2 s |
 | `Product` | Something the desk sells on the POS | 10-punch card, $200 |
 | `Sale` | One POS sale, for one climber | Kim, $217.35 by card |
 | `SaleLine` | One line of a sale | 10-punch card ×1, $200 |
@@ -36,6 +37,7 @@ Server code reads and writes through `db` in `src/lib/db.ts`. Pages don't query 
 Gym
  ├── Staff
  ├── Product
+ ├── CheckInAttempt (climber id only, no link)
  ├── WaiverTemplate
  ├── OpeningHours, SpecialHours, GymEvent, SetChange
  ├── ClassType
@@ -132,7 +134,7 @@ Email and password live in Supabase Auth, not here.
 | `authUserId` | text | no | The login that manages this climber |
 | `createdByStaffId` | text | no | Who added them. Empty means they signed up themselves |
 | `onboardingComplete` | boolean | yes | `false` only while a demo customer must still choose the demo gym |
-| `studentId` | text | yes | `V` and 8 digits, like `V00946178`. The barcode holds it. Unique per gym |
+| `studentId` | text | no | `V` and 8 digits, like `V00946178`. The barcode holds it. Unique per gym when set; null for a non-student (#245) |
 | `externalId` | text | no | Their id in Redpoint or Rock Gym Pro. Unique per gym |
 
 Searchable by phone, email and last name within a gym.
@@ -227,6 +229,21 @@ Searchable by gym and time (busyness) and by climber and time (visit history).
 | `takenAt` | timestamp | no | Set when the desk shows it. Empty means still waiting |
 
 The climber's phone saves one per scan; the desk takes the oldest waiting scan for its gym, once (a conditional update, so two desks never show the same scan). Scans older than two minutes are ignored. Kept in the database rather than server memory so it works when the app runs on several servers.
+
+### CheckInAttempt
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `gymId` | text | yes | |
+| `climberId` | text | no | The climber's id, for counting. No relation on purpose, so deleting climbers (a staging reset) never trips over it |
+| `source` | enum | yes | `CAMERA`, `SEARCH` or `CLIMBER_PAGE`: how staff found the climber |
+| `outcome` | enum | yes | `CHECKED_IN`, `REFUSED` (the server turned it away) or `GAVE_UP` (staff closed the dialog without checking them in) |
+| `reason` | text | no | A refusal code (`waiver_missing`), or what blocked them before it was sorted out |
+| `wasBlocked` | boolean | yes | The climber couldn't be checked in when staff picked them |
+| `elapsedMs` | integer | no | From opening the Check in dialog to this outcome, measured in the browser and capped at 10 minutes. Empty when not timed |
+| `createdAt` | timestamp | yes | Set automatically |
+
+Saved by `checkInClimber` and `recordCheckInGaveUp` for the value proposition metrics (#251, `src/features/metrics`). Ids and reason codes only, never names. A failed save is logged and never fails the check in.
 
 ### Product
 

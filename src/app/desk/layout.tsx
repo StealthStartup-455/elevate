@@ -7,6 +7,7 @@ import NavLink from "@/components/ui/NavLink";
 import LogoutButton from "@/features/auth/components/LogoutButton";
 import DeskArrivals from "@/features/check-ins/components/DeskArrivals";
 import { requireStaff } from "@/features/auth/staff";
+import { canSeeMetrics } from "@/features/metrics/queries";
 import { isPosEnabled } from "@/features/pos/queries";
 
 export default function DeskLayout({ children }: LayoutProps<"/desk">) {
@@ -27,6 +28,9 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
             <NavLink href="/desk/customers">Customers</NavLink>
             <NavLink href="/desk/events">Calendar</NavLink>
             <NavLink href="/desk/waivers">Waivers</NavLink>
+            <Suspense fallback={null}>
+              <MetricsLink />
+            </Suspense>
             {/* On every desk page, so a scan shows wherever staff are (#127, #225). */}
             <div className="ml-auto flex items-center gap-2">
               <DeskArrivals />
@@ -49,6 +53,11 @@ async function StaffOnly({ children }: { children: ReactNode }) {
   await connection();
   await requireStaff();
   return children;
+}
+
+// Managers and owners see how Elevate is doing (#251); desk staff don't.
+async function MetricsLink() {
+  return (await canSeeMetrics()) ? <NavLink href="/desk/metrics">Metrics</NavLink> : null;
 }
 
 // Only gyms that sell passes in Elevate get the POS (see features/pos).

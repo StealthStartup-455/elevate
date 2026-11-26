@@ -35,6 +35,9 @@ export type DeskCalendarItem = Omit<DeskCalendarEntry, "startsAt" | "endsAt"> & 
   to: number;
   /** On the whole day (the middle of something over several days): it goes above the timeline. */
   allDay: boolean;
+  /** It began on an earlier day or goes on past this one, so `from` or `to` is only midnight. */
+  startsEarlier: boolean;
+  endsLater: boolean;
 };
 
 /** The kinds of shift, as stored (ShiftKind). */
@@ -142,7 +145,8 @@ export function groupByDay(
       const from = starts ? start.minutes : 0;
       const to = !ends ? MINUTES_PER_DAY : endsAt && endsAt > startsAt ? end.minutes : Math.min(from + POINT_MINUTES, MINUTES_PER_DAY);
       const allDay = !starts && (!ends || end.minutes >= MINUTES_PER_DAY);
-      (placed[day] ??= []).push({ from, item: { ...entry, time, from, to: Math.max(to, from), allDay } });
+      const item = { ...entry, time, from, to: Math.max(to, from), allDay, startsEarlier: !starts, endsLater: !ends };
+      (placed[day] ??= []).push({ from, item });
     }
   }
   return Object.fromEntries(
@@ -206,12 +210,16 @@ export function layoutDay<T extends { from: number; to: number }>(items: T[]): P
 }
 
 /**
- * The hours the day's timeline covers: the opening hours, stretched to fit anything before or
- * after them, in whole hours. 8 AM to 8 PM when there is nothing to go by.
+ * The hours the day's timeline covers: the opening hours, stretched to fit anything that starts
+ * before or ends after them, in whole hours. 8 AM to 8 PM when there is nothing to go by. The
+ * midnight edge of something from another day doesn't stretch it: that part is cut off instead.
  */
-export function timelineHours(open: { opensAt: number; closesAt: number } | null, items: { from: number; to: number }[]) {
-  const froms = items.map((i) => i.from);
-  const tos = items.map((i) => Math.max(i.to, i.from + MIN_BLOCK_MINUTES));
+export function timelineHours(
+  open: { opensAt: number; closesAt: number } | null,
+  items: { from: number; to: number; startsEarlier?: boolean; endsLater?: boolean }[],
+) {
+  const froms = items.filter((i) => !i.startsEarlier).map((i) => i.from);
+  const tos = items.filter((i) => !i.endsLater).map((i) => Math.max(i.to, i.from + MIN_BLOCK_MINUTES));
   const first = Math.min(open?.opensAt ?? 8 * 60, ...froms);
   const last = Math.max(open?.closesAt ?? 20 * 60, ...tos);
   return { startHour: Math.floor(first / 60), endHour: Math.min(24, Math.ceil(last / 60)) };

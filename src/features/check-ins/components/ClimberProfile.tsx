@@ -104,7 +104,7 @@ export default function ClimberProfile({
             sx={{ fontFamily: "var(--font-mono)" }}
           >
             <span className="sr-only">Student ID </span>
-            {c.studentId}
+            {c.studentId ?? "No V number"}
           </Typography>
         </div>
         <StatusBox panel={panel} onChanged={onChanged} />
@@ -200,7 +200,9 @@ function StatusBox({ panel, onChanged }: { panel: DeskClimberPanel; onChanged: (
     });
   }
 
-  const checkIn = () => run(() => checkInClimber(c.id), "Couldn't check in. Try again.");
+  // Not timed: the panel opens from many places (#251 counts it by source only).
+  const checkIn = () =>
+    run(() => checkInClimber(c.id, { source: "CLIMBER_PAGE" }), "Couldn't check in. Try again.");
 
   // Checked in today comes first, whatever else is true: a problem that came
   // up since (an expired waiver) still shows below with its fix.
@@ -309,14 +311,14 @@ function SellPass({
   if (!posEnabled) {
     return (
       <DisabledReason reason="This gym doesn't sell passes in Elevate.">
-        <Button variant={variant} disabled>
+        <Button variant={variant} color="error" disabled>
           POS
         </Button>
       </DisabledReason>
     );
   }
   return (
-    <LinkButton href={posHref(climberId)} variant={variant}>
+    <LinkButton href={posHref(climberId)} variant={variant} color="error">
       POS
     </LinkButton>
   );
@@ -420,7 +422,7 @@ function PassesAndDetails({
               details={{
                 firstName: c.firstName,
                 lastName: c.lastName,
-                studentId: c.studentId,
+                studentId: c.studentId ?? "",
                 phone: c.phone,
                 email: c.email,
                 dateOfBirth: c.dateOfBirth,

@@ -49,24 +49,25 @@ model Gym {
   classTypes      ClassType[]
   classes         GymClass[]
   classBookings   ClassBooking[]
+  checkInAttempts CheckInAttempt[]
   staffShifts     StaffShift[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
 // Their email lives on their Supabase login, so it isn't stored twice here.
 model Staff {
-  id               String    @id @default(uuid())
-  gymId            String
-  authUserId       String // their Supabase login
-  demoEmail        String?   @unique // local-demo owner login; never used outside demo mode
+  id         String    @id @default(uuid())
+  gymId      String
+  authUserId String // their Supabase login
+  demoEmail  String?   @unique // local-demo owner login; never used outside demo mode
   demoPasswordHash String? // local-demo owner password, stored only as a hash
-  name             String
-  role             StaffRole @default(DESK)
-  active           Boolean   @default(true) // switch off when someone leaves
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  name       String
+  role       StaffRole @default(DESK)
+  active     Boolean   @default(true) // switch off when someone leaves
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  gym             Gym          @relation(fields: [gymId], references: [id])
+  gym             Gym       @relation(fields: [gymId], references: [id])
   climbersCreated Climber[]
   checkIns        CheckIn[]
   sales           Sale[]
@@ -79,20 +80,20 @@ model Staff {
 
 // A customer. Families can share one phone or email, so neither is unique.
 model Climber {
-  id                 String   @id @default(uuid())
-  gymId              String
-  firstName          String
-  lastName           String
-  email              String? // saved lowercased
-  phone              String? // saved like +12505551234
-  dateOfBirth        DateTime @db.Date
-  authUserId         String? // the login that manages this climber; one parent login can manage several kids
-  createdByStaffId   String? // empty means they signed themselves up
-  onboardingComplete Boolean  @default(true) // demo sign-up stays pending until the customer chooses their gym
-  externalId         String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
-  studentId          String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String   @id @default(uuid())
+  gymId            String
+  firstName        String
+  lastName         String
+  email            String? // saved lowercased
+  phone            String? // saved like +12505551234
+  dateOfBirth      DateTime @db.Date
+  authUserId       String? // the login that manages this climber; one parent login can manage several kids
+  createdByStaffId String? // empty means they signed themselves up
+  onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
+  externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
+  studentId        String? // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38). Empty for a climber who isn't a student (#245)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   gym            Gym            @relation(fields: [gymId], references: [id])
   createdByStaff Staff?         @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
@@ -116,22 +117,22 @@ model Climber {
 // Anything that lets a climber in: a day pass, a punch card or a membership.
 // Sold at the desk POS (saleLineId), or synced from the gym's own system.
 model Pass {
-  id           String    @id @default(uuid())
-  gymId        String
-  climberId    String
-  kind         PassKind
-  startsAt     DateTime
-  expiresAt    DateTime? // empty means no end date
-  visitsLeft   Int? // punch cards only
-  pausedAt     DateTime? // memberships only: set while the membership is on hold
-  renews       Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
-  saleLineId   String? // the POS sale that paid for it; empty for passes from before the POS or another system
-  externalId   String?
+  id         String    @id @default(uuid())
+  gymId      String
+  climberId  String
+  kind       PassKind
+  startsAt   DateTime
+  expiresAt  DateTime? // empty means no end date
+  visitsLeft Int? // punch cards only
+  pausedAt   DateTime? // memberships only: set while the membership is on hold
+  renews     Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
+  saleLineId String? // the POS sale that paid for it; empty for passes from before the POS or another system
+  externalId String?
   // Memberships only: staff revoked it, and why, so there's a record if the member asks (#241).
   revokedAt    DateTime?
   revokeReason String?
   revokedById  String? // who revoked it; empty for the shared demo desk login
-  createdAt    DateTime  @default(now())
+  createdAt  DateTime  @default(now())
 
   gym       Gym       @relation(fields: [gymId], references: [id])
   climber   Climber   @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
@@ -240,6 +241,28 @@ model CheckIn {
 // desk takes it once and shows the popup. Kept in the database (not server
 // memory) so it works when the app runs on several servers, and so two
 // climbers scanning at once both reach the desk. Taken scans are kept.
+// One try at checking a climber in at the desk, saved or not, for the value
+// proposition metrics (#251): how long the desk took, how staff found the
+// climber, and what blocked them. Ids and reason codes only, never names. Not
+// linked to the climber row, so a staging reset or a deleted climber never
+// trips over it; the seed clears a gym's rows with its climbers.
+model CheckInAttempt {
+  id         String         @id @default(uuid())
+  gymId      String
+  climberId  String? // the climber's id, for counting; no relation on purpose
+  source     CheckInSource
+  outcome    CheckInOutcome
+  reason     String? // a refusal code ("waiver_missing"), or what blocked them before it was sorted out
+  wasBlocked Boolean        @default(false) // the climber couldn't be checked in when staff picked them
+  elapsedMs  Int? // from opening the Check in dialog to this outcome; empty when not timed
+  createdAt  DateTime       @default(now())
+
+  // Metric rows go with their gym, so deleting a gym never trips over them.
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, createdAt])
+}
+
 model QrScan {
   id        String    @id @default(uuid())
   gymId     String
@@ -385,6 +408,7 @@ model GymEvent {
   gym    Gym          @relation(fields: [gymId], references: [id])
   shifts StaffShift[]
 
+  @@unique([id, gymId]) // so a staff shift can't point at another gym's event
   @@index([gymId, startsAt])
 }
 
@@ -404,6 +428,7 @@ model SetChange {
   gym    Gym          @relation(fields: [gymId], references: [id])
   shifts StaffShift[]
 
+  @@unique([id, gymId]) // so a staff shift can't point at another gym's wall
   @@index([gymId, startsAt])
 }
 
@@ -520,8 +545,8 @@ model StaffShift {
   gym       Gym        @relation(fields: [gymId], references: [id])
   staff     Staff      @relation(fields: [staffId, gymId], references: [id, gymId], onDelete: Restrict)
   class     GymClass?  @relation(fields: [classId, gymId], references: [id, gymId], onDelete: Restrict)
-  event     GymEvent?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  setChange SetChange? @relation(fields: [setChangeId], references: [id], onDelete: Restrict)
+  event     GymEvent?  @relation(fields: [eventId, gymId], references: [id, gymId], onDelete: Restrict)
+  setChange SetChange? @relation(fields: [setChangeId, gymId], references: [id, gymId], onDelete: Restrict)
 
   @@index([gymId, startsAt])
 }
@@ -550,6 +575,19 @@ enum SignerRelation {
   SELF
   PARENT
   GUARDIAN
+}
+
+// How staff found the climber they tried to check in (#251).
+enum CheckInSource {
+  CAMERA // the desk camera read their barcode
+  SEARCH // typed a name, phone or V number
+  CLIMBER_PAGE // from the climber's panel or page (an arrival, a customer)
+}
+
+enum CheckInOutcome {
+  CHECKED_IN
+  REFUSED // the server turned it away
+  GAVE_UP // staff closed the dialog without checking them in
 }
 
 enum CheckInMethod {

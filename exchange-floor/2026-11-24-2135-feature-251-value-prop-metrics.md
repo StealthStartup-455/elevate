@@ -1,0 +1,29 @@
+# 2026-11-24 21:35 UTC: Value proposition metrics and the manager Metrics page
+
+- **Developer:** @guerrerj
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#251 / #252
+- **Branch:** `feature/251-value-prop-metrics`
+- **What the agent did:**
+  - New `CheckInAttempt` table (migration `20261124200000_check_in_attempts`): one row per try at the desk, with how the climber was found (`CAMERA`, `SEARCH`, `CLIMBER_PAGE`), the outcome (`CHECKED_IN`, `REFUSED`, `GAVE_UP`), a reason code, whether they were blocked when picked, and the time from opening the Check in dialog.
+  - `checkInClimber(climberId, timing?)` saves an attempt on every outcome; new `recordCheckInGaveUp` saves "sent away" when the dialog closes with a climber picked and not checked in. The Check in dialog measures the time and source; the climber panel sends `CLIMBER_PAGE` untimed.
+  - `/desk/metrics` (Metrics in the desk nav, managers and owners only): front desk first (time to check in with a 5 s target, camera vs search, arrival wait, blocked and why, sorting out, sent away, lost scans, a day by day table), then waivers signed before arriving, self signup and online sales, days to the first check in and voided sales. Definitions are written under each section.
+  - Demo `manager` login (password `manager`): the demo desk with the MANAGER role, so the page can be shown on staging. Listed behind the (i) on the login card.
+  - `src/features/metrics` (timing, record, actions, compute, queries, format, dashboard, README), DATABASE.md, seed reset clears attempts.
+- **Files touched:** `prisma/schema.prisma`, the new migration, `prisma/seed.ts`, `prisma/DATABASE.md`, `src/features/metrics/**`, `src/app/desk/metrics/page.tsx`, `src/app/desk/layout.tsx`, `src/features/climbers/actions.ts`, `ManualCheckIn.tsx`, `ClimberProfile.tsx`, `src/features/auth/{session,staff,actions,demo-logins,mock-users}.ts`, `staff.test.ts`, `e2e/metrics.spec.ts`, `e2e/accessibility.spec.ts`.
+- **Decisions and why:**
+  - Computed from saved rows, not logs: Vercel keeps logs only briefly. Only what wasn't saved anywhere (dialog timing, source, refusal reasons, sent away) got a table.
+  - Timing is measured in the browser (`performance.now`, no clock skew) and clamped on the server (0 to 10 minutes); unknown sources and codes are dropped.
+  - No relation from `CheckInAttempt` to `Climber`, and `onDelete: Cascade` from `Gym`, so a staging reset or a test deleting its gym never trips over metric rows.
+  - Self signup uses "has their own login" (`authUserId`) because `createdByStaffId` is never set yet; online sales use tender `ONLINE` because `Sale.staffId` is empty for the demo desk too.
+  - "Waiver signed before arriving" compares a climber's first visit with their first waiver, since nothing records where a waiver was signed.
+  - Recording never fails a check in: `recordCheckInAttempt` catches and logs `check_in_attempt_not_saved`.
+- **Gotchas:**
+  - "Back to search" clears the picked climber, so closing after it isn't counted as sent away. Only closing with a climber picked is.
+  - The page read the clock before `connection()`, which fails the build ("unstable value `new Date()` while prerendering"); read it after. Streamed text has a hidden copy outside `<main>` for a moment, so e2e looks inside `getByRole("main")`.
+  - The dialog's picked view has no Cancel button; the e2e closes it with Escape after clicking the title (focus is lost once the result list goes).
+  - Overlaps open PR #238 (POS button in `ManualCheckIn.tsx`); different lines, so a merge should be clean.
+  - This session couldn't download Prisma's engines, so `prisma generate`, `tsc`, the build, database tests and e2e weren't run locally. The migration SQL was applied to a local Postgres 16 with all earlier migrations (it applies cleanly); CI's `migrate diff` checks it matches the schema.
+- **Update 2026-11-26 (merge with dev after #238):** the conflicts were only imports in `climbers/actions.ts` and `ManualCheckIn.tsx`. #238's POS button now closes the dialog with `closeQuietly()`, so selling a pass isn't counted as "sent away"; any future "go elsewhere to sort it out" button (like #266's Account button) should do the same. Fixed Khanh's review: the page names the start date without a time (a time ends in "a.m." and doubled the full stop), and counts use `plural()` ("1 try", "3 tries").
+- **Open follow-ups:** The staff rating after a shift and server errors or downtime aren't on the page yet (it says so). Setting `createdByStaffId` and `Sale.staffId` from the real staff login would sharpen two metrics.
+- **Verification:** `npm run lint` clean. `npm test`: the 4 new unit files pass (19 tests), and `staff.test.ts` with the manager case; the 15 files that need the generated Prisma client couldn't load here. CI on 5240602 passes: check (tsc, 52 unit files with 452 tests, database tests, build) and e2e (91 tests, including `metrics.spec.ts` and the metrics page in both colour modes in `accessibility.spec.ts`).

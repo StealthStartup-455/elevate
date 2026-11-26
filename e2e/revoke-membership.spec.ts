@@ -31,7 +31,7 @@ test("revoking a membership needs a reason, and the desk shows it", async ({ pag
   await page.getByRole("link", { name: "POS", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Point of sale" })).toBeVisible();
   const pick = async () => {
-    await page.getByRole("searchbox", { name: "Search name or phone" }).fill(last);
+    await page.getByRole("searchbox", { name: "Search climbers" }).fill(last);
     await page.getByRole("list", { name: "Matching climbers" }).getByText(`Casey ${last}`).click();
   };
   await pick();

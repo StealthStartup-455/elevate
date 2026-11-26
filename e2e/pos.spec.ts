@@ -15,7 +15,7 @@ async function openPos(page: Page) {
 }
 
 async function pickClimber(page: Page, name: string) {
-  await page.getByRole("searchbox", { name: "Search name or phone" }).fill(name);
+  await page.getByRole("searchbox", { name: "Search climbers" }).fill(name);
   await page.getByRole("list", { name: "Matching climbers" }).getByText(name).click();
 }
 
@@ -95,25 +95,62 @@ test("a missing waiver is a warning, not a block", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Checkout" })).toBeEnabled();
 });
 
-test("POS from a climber's panel opens them again after Change climber", async ({ page }) => {
+test("POS from a climber's panel opens them again after picking someone else (#255, #240)", async ({ page }) => {
   await openPos(page);
-  // Opened from the Check-in panel, staff move on to nobody, then open the
-  // same climber from the panel again. Next.js keeps the POS page alive in
-  // between, so this used to show the empty POS.
+  // Opened from the Check-in panel, staff pick another climber in the POS, then
+  // open the first climber from the panel again. Next.js keeps the POS page
+  // alive in between, so this used to show the wrong climber.
   const openFromPanel = async () => {
     await page.getByRole("link", { name: "Check-in", exact: true }).click();
     await page.getByRole("combobox", { name: "Find climber" }).fill("Nevin Gill");
     await page.getByRole("option", { name: /Nevin Gill/ }).click();
     await page.getByRole("complementary").getByRole("link", { name: "POS" }).click();
     await expect(page).toHaveURL(/\/desk\/pos\?climber=/);
-    await expect(page.getByRole("button", { name: "Change climber" })).toBeVisible();
-    await expect(page.getByText("Nevin Gill").first()).toBeVisible();
+    await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
   };
   await openFromPanel();
-  await page.getByRole("button", { name: "Change climber" }).click();
-  await expect(page.getByRole("searchbox", { name: "Search name or phone" })).toBeVisible();
+  await pickClimber(page, "Seth Miller");
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
   // The Check-in page keeps its own search too: clear it first.
   await page.getByRole("link", { name: "Check-in", exact: true }).click();
   await page.getByRole("combobox", { name: "Find climber" }).clear();
   await openFromPanel();
+});
+
+test("the climber search is always there, and picking someone replaces the climber (#240)", async ({ page }) => {
+  await openPos(page);
+  await pickClimber(page, "Seth Miller");
+  const search = page.getByRole("searchbox", { name: "Search climbers" });
+  await expect(search).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change climber" })).toHaveCount(0);
+  // Searching again drops a list down and blurs the sale area, not the nav, and keeps the climber.
+  await search.click();
+  await expect(page.getByRole("heading", { name: "Checked in today" })).toBeVisible();
+  await expect(page.getByRole("navigation")).toHaveCSS("filter", "none");
+  await expect(page.getByRole("heading", { name: "Add to cart" }).locator("xpath=ancestor::div[contains(@class,'grid')][1]")).toHaveCSS("filter", /blur/);
+  await search.press("Escape");
+  await expect(page.getByRole("heading", { name: "Checked in today" })).toBeHidden();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
+  await pickClimber(page, "Nevin Gill");
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
+});
+
+test("switching climber with items in the cart asks first (#239)", async ({ page }) => {
+  await openPos(page);
+  await pickClimber(page, "Nevin Gill");
+  await page.getByRole("button", { name: /^Chalk/ }).click();
+  await expect(page.getByText("Chalk").first()).toBeVisible();
+
+  // Keep cart: still Nevin, still the chalk.
+  await pickClimber(page, "Seth Miller");
+  const ask = page.getByRole("dialog", { name: "Switch climber?" });
+  await expect(ask).toContainText("empties Nevin Gill's cart");
+  await ask.getByRole("button", { name: "Keep cart" }).click();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Nevin Gill");
+
+  // Switch: Seth, with an empty cart.
+  await pickClimber(page, "Seth Miller");
+  await page.getByRole("dialog", { name: "Switch climber?" }).getByRole("button", { name: "Switch climber" }).click();
+  await expect(page.getByRole("group", { name: "Selected climber" })).toContainText("Seth Miller");
+  await expect(page.getByRole("button", { name: "Checkout" })).toBeDisabled();
 });

@@ -38,6 +38,8 @@ export default function DayTimeline({ items, open, nowMinutes }: Props) {
   const allDay = items.filter((i) => i.allDay);
   const timed = items.filter((i) => !i.allDay);
   const { startHour, endHour } = timelineHours(open, timed);
+  // Something from another day is cut off at the top or bottom of the hours shown.
+  const shown = timed.map((i) => ({ ...i, from: Math.max(i.from, startHour * 60), to: Math.min(i.to, endHour * 60) }));
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
   const top = (minutes: number) => ((minutes - startHour * 60) / 60) * HOUR;
 
@@ -86,7 +88,7 @@ export default function DayTimeline({ items, open, nowMinutes }: Props) {
           ) : null}
         </div>
         {/* Each block links to its details below. */}
-        {layoutDay(timed).map(({ item, column, columns }) => {
+        {layoutDay(shown).map(({ item, column, columns }) => {
           // The same least size the layout used, less a little gap between blocks in one column.
           const height = top(Math.max(item.to, item.from + MIN_BLOCK_MINUTES)) - top(item.from) - 2;
           return (

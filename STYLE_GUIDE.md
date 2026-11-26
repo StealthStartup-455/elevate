@@ -80,10 +80,13 @@ In MUI, **primary = actions** and **secondary = navigation and settings**. Links
 
 Green, amber and red only describe state. They are never used for decoration, and for actions only in the two cases below.
 
-Two buttons take a status color, because the action is about a status:
+Three buttons take a status color, because the action is about a status or must be easy to find:
 
 - **Destructive** (revoke, remove): `color="error"` (red), on the button and on its confirm button in the dialog. The confirm is the dialog's one `contained` button.
-- **Renew**: `color="warning"` (amber), for the "Renew membership" button and the renewal rows on the POS. Teal stays for every other action, including buying.
+- **Renew**: `color="warning"` (amber), for the "Renew membership" button and the renewal rows on the POS.
+- **POS** (the developer's exception): `color="error"` (red), on every button or link that opens the POS for a climber: Check in's dialog, the Check-in panel and "Open in POS" on a climber's page. It is not destructive. Red keeps the way to a sale easy to spot on the desk, where staff reach for it all day. The POS tab in the nav and "Back to POS" in checkout stay as they are.
+
+Teal stays for every other action, including buying.
 
 An **expired membership** is red wherever it shows: the `StatusPill` (`status="bad"`, ✕), and the "Ended …" line next to it (`color="error"`).
 

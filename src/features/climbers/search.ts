@@ -27,7 +27,7 @@ function nearDigits(hay: string, needle: string): boolean {
 // V number (student ID, #38), a word like "v0094" matches the V number, and
 // the rest fuzzy match the name (same rules as the check-in table).
 export function searchScore(
-  row: { name: string; phone: string; studentId?: string },
+  row: { name: string; phone: string; studentId?: string | null },
   query: string,
 ): number {
   const terms = query.split(/\s+/).filter(Boolean);
@@ -52,7 +52,7 @@ export function searchScore(
 
 // The best `limit` matches for `query`, best first. Rows that don't match are
 // left out.
-export function bestMatches<T extends { name: string; phone: string; studentId?: string }>(
+export function bestMatches<T extends { name: string; phone: string; studentId?: string | null }>(
   rows: T[],
   query: string,
   limit: number,

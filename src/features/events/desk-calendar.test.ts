@@ -181,6 +181,7 @@ describe("the day's timeline", () => {
     ];
     const day = groupByDay("2026-11", items, ZONE);
     const pick = (d: string) => day[d].map(({ title, from, to, allDay }) => ({ title, from, to, allDay }));
+    expect(day["2026-11-06"][0]).toMatchObject({ startsEarlier: true, endsLater: false });
     expect(pick("2026-11-05")).toEqual([
       { title: "League", from: 0, to: 24 * 60, allDay: true },
       { title: "Intro", from: 18 * 60, to: 19 * 60 + 30, allDay: false },
@@ -223,6 +224,13 @@ describe("the day's timeline", () => {
       endHour: 20,
     });
     expect(timelineHours(null, [])).toEqual({ startHour: 8, endHour: 20 });
+    // The last day of a two-day reset starts at midnight, but the timeline still starts at opening.
+    expect(
+      timelineHours({ opensAt: 9 * 60, closesAt: 18 * 60 }, [{ from: 0, to: 15 * 60, startsEarlier: true, endsLater: false }]),
+    ).toEqual({ startHour: 9, endHour: 18 });
+    expect(
+      timelineHours({ opensAt: 9 * 60, closesAt: 18 * 60 }, [{ from: 12 * 60, to: 24 * 60, startsEarlier: false, endsLater: true }]),
+    ).toEqual({ startHour: 9, endHour: 18 });
   });
 });
 

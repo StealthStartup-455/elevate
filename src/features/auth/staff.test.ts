@@ -7,6 +7,7 @@ import { getStaffContext, hasStaffRole, isStaff, requireStaff, requireStaffRole 
 const signedIn = vi.hoisted(() => ({
   user: null as CurrentUser | null,
   demoDesk: false,
+  demoManager: false,
   demoClimberId: undefined as string | undefined,
   demoOwner: null as { id: string; gymId: string; role: "OWNER" } | null,
 }));
@@ -18,6 +19,7 @@ vi.mock("./queries", () => ({
 vi.mock("./session", () => ({
   hasDemoDeskSession: async () => signedIn.demoDesk,
   getDemoDeskSession: async () => undefined,
+  getDemoDeskRole: async () => (signedIn.demoManager ? "MANAGER" : "DESK"),
 }));
 vi.mock("@/lib/gym", () => ({ getGym: async () => ({ id: "demo-gym" }) }));
 vi.mock("next/navigation", () => ({
@@ -36,6 +38,7 @@ const STAFF: CurrentUser = {
 beforeEach(() => {
   signedIn.user = null;
   signedIn.demoDesk = false;
+  signedIn.demoManager = false;
   signedIn.demoClimberId = undefined;
   signedIn.demoOwner = null;
 });
@@ -50,6 +53,13 @@ describe("requireStaff", () => {
     signedIn.demoDesk = true;
     await expect(requireStaff()).resolves.toBeUndefined();
     await expect(getStaffContext()).resolves.toMatchObject({ gymId: "demo-gym", role: "DESK" });
+  });
+
+  it("gives the demo manager login the manager role, for the metrics page", async () => {
+    signedIn.demoDesk = true;
+    signedIn.demoManager = true;
+    await expect(getStaffContext()).resolves.toMatchObject({ gymId: "demo-gym", role: "MANAGER" });
+    expect(await hasStaffRole("MANAGER", "OWNER")).toBe(true);
   });
 
   it("uses a verified demo owner's gym and role", async () => {
