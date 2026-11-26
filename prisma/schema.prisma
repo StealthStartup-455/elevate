@@ -50,8 +50,10 @@ model Gym {
   classes         GymClass[]
   classBookings   ClassBooking[]
   checkInAttempts CheckInAttempt[]
+
   labels          GymLabel[]
   climberLabels   ClimberLabel[]
+  staffShifts     StaffShift[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
@@ -73,9 +75,11 @@ model Staff {
   checkIns        CheckIn[]
   sales           Sale[]
   passesRevoked   Pass[]
+
   labelsCreated   GymLabel[]     @relation("LabelCreatedBy")
   labelsAdded     ClimberLabel[] @relation("LabelAddedBy")
   labelsRemoved   ClimberLabel[] @relation("LabelRemovedBy")
+  shifts          StaffShift[]
 
   @@unique([id, gymId])
   @@unique([gymId, authUserId])
@@ -409,8 +413,10 @@ model GymEvent {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  gym Gym @relation(fields: [gymId], references: [id])
+  gym    Gym          @relation(fields: [gymId], references: [id])
+  shifts StaffShift[]
 
+  @@unique([id, gymId]) // so a staff shift can't point at another gym's event
   @@index([gymId, startsAt])
 }
 
@@ -427,8 +433,10 @@ model SetChange {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  gym Gym @relation(fields: [gymId], references: [id])
+  gym    Gym          @relation(fields: [gymId], references: [id])
+  shifts StaffShift[]
 
+  @@unique([id, gymId]) // so a staff shift can't point at another gym's wall
   @@index([gymId, startsAt])
 }
 
@@ -474,6 +482,7 @@ model GymClass {
   gym       Gym            @relation(fields: [gymId], references: [id])
   classType ClassType?     @relation(fields: [classTypeId, gymId], references: [id, gymId], onDelete: Restrict)
   bookings  ClassBooking[]
+  shifts    StaffShift[]
 
   @@unique([id, gymId])
   @@index([gymId, startsAt])
@@ -565,6 +574,41 @@ enum Tender {
 enum SaleStatus {
   PAID
   VOIDED
+}
+
+// Who works when (#249): a desk shift, coaching, teaching a class, setting a wall or running an
+// event. A shift for a class, event or set change links to it, so the desk calendar shows who is
+// on it. Canceled, never deleted.
+model StaffShift {
+  id          String    @id @default(uuid())
+  gymId       String
+  staffId     String
+  kind        ShiftKind
+  startsAt    DateTime
+  endsAt      DateTime
+  classId     String? // the class they teach
+  eventId     String? // the event they run
+  setChangeId String? // the wall they set
+  note        String? // "Belay tests", "Closing"
+  canceledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  gym       Gym        @relation(fields: [gymId], references: [id])
+  staff     Staff      @relation(fields: [staffId, gymId], references: [id, gymId], onDelete: Restrict)
+  class     GymClass?  @relation(fields: [classId, gymId], references: [id, gymId], onDelete: Restrict)
+  event     GymEvent?  @relation(fields: [eventId, gymId], references: [id, gymId], onDelete: Restrict)
+  setChange SetChange? @relation(fields: [setChangeId, gymId], references: [id, gymId], onDelete: Restrict)
+
+  @@index([gymId, startsAt])
+}
+
+enum ShiftKind {
+  DESK // front desk
+  COACHING // coaching a team or a private lesson
+  CLASS // teaching a class
+  SETTING // setting routes
+  EVENT // running an event
 }
 
 enum StaffRole {
