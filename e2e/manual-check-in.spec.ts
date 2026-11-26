@@ -88,3 +88,39 @@ test("a sign-up with no V number is saved, and a malformed one is refused (#245)
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);
   await expect(page.getByText("No V number", { exact: true }).first()).toBeVisible();
 });
+
+async function pickInCheckIn(page: Page, name: string) {
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Check in" });
+  await dialog.getByLabel("Search name, phone or V number").fill(name);
+  await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).first().click();
+  await expect(dialog.getByRole("heading", { name })).toBeVisible();
+  return dialog;
+}
+
+test("Check in shows the pass badge and Look at waiver for a valid waiver (#265)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  const dialog = await pickInCheckIn(page, "Agam Kamran");
+  await expect(dialog.getByText("Member", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Sign waiver" })).toHaveCount(0);
+  await expect(dialog.getByRole("link", { name: "Sign waiver" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Look at waiver" }).click();
+  await expect(page.getByRole("dialog", { name: "Signed waiver" })).toBeVisible();
+});
+
+test("Check in offers Sign waiver, and no Look at waiver, when none was signed (#265)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  const dialog = await pickInCheckIn(page, "Seth Miller");
+  await expect(dialog.getByText("No pass")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Look at waiver" })).toHaveCount(0);
+  await dialog.getByRole("link", { name: "Sign waiver" }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\/waiver/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("Check in offers both Sign waiver and Look at waiver when the waiver expired (#265)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  const dialog = await pickInCheckIn(page, "Zack Zhao");
+  await expect(dialog.getByRole("link", { name: "Sign waiver" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Look at waiver" })).toBeVisible();
+});

@@ -26,6 +26,8 @@ export type Climber = {
   /** What they type to log in (demo login only). */
   username: string;
   waiverStatus: WaiverStatus;
+  /** The latest signed waiver, for staff to look at (#265). Unset when never signed. */
+  waiverId?: string;
   /** ISO date the current waiver runs out (or ran out). Unset when never signed. */
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
@@ -83,6 +85,8 @@ export type CheckInCandidate = {
   /** ISO calendar date, so same-name climbers can be told apart (#129). */
   dateOfBirth: string;
   waiverStatus: WaiverStatus;
+  /** The latest signed waiver, so staff can look at it (#265). */
+  waiverId?: string;
   waiverExpiresOn?: string;
   membershipStatus: MembershipStatus;
   membershipRenewsOn?: string;

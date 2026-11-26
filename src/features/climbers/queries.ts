@@ -51,7 +51,7 @@ function findRows(gymId: string, ids?: string[]) {
       waivers: {
         orderBy: { signedAt: "desc" },
         take: 1,
-        select: { signedAt: true, version: true },
+        select: { id: true, signedAt: true, version: true },
       },
       passes: {
         // Every membership: a renewal bought early has not started yet, and the
@@ -106,6 +106,7 @@ function toClimber(
     studentId: row.studentId,
     username: usernameFor(row),
     waiverStatus: waiver.status,
+    waiverId: row.waivers[0]?.id,
     waiverExpiresOn: waiver.expiresOn,
     membershipStatus: membership.status,
     membershipRenewsOn: membership.renewsOn,
