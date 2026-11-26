@@ -7,15 +7,30 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import StatusPill from "@/components/ui/StatusPill";
 import { addMonths, formatMonth, monthGrid, monthOf } from "../../calendar";
-import { countByKind, dayForKey, dayInMonth, parseDay, type DeskCalendarItem, type DeskCalendarKind } from "../../desk-calendar";
+import {
+  countByKind,
+  dayForKey,
+  dayInMonth,
+  parseDay,
+  type DeskCalendarItem,
+  type DeskCalendarKind,
+  type DeskShift,
+  type DeskShiftKind,
+} from "../../desk-calendar";
 import type { DeskCalendarDay, DeskCalendarMonth } from "../../queries";
 import { formatDay, weekdayName, weekdayOf } from "../../time";
+import DayTimeline, { itemAnchor } from "./DayTimeline";
 
 // Every kind has its own letter and words, so none depends on color.
 const KINDS: Record<DeskCalendarKind, { letter: string; one: string; many: string }> = {
@@ -25,6 +40,13 @@ const KINDS: Record<DeskCalendarKind, { letter: string; one: string; many: strin
 };
 const KIND_ORDER: DeskCalendarKind[] = ["class", "event", "setChange"];
 const KIND_LABEL: Record<DeskCalendarKind, string> = { class: "Class", event: "Event", setChange: "Set change" };
+const SHIFT_LABEL: Record<DeskShiftKind, string> = {
+  DESK: "Front desk",
+  COACHING: "Coaching",
+  CLASS: "Teaching",
+  SETTING: "Setting",
+  EVENT: "Running an event",
+};
 
 const hrefFor = (day: string) => `/desk/events/calendar?day=${day}`;
 const cellId = (day: string) => `calendar-${day}`;
@@ -33,7 +55,7 @@ const cellId = (day: string) => `calendar-${day}`;
 // (with who signed up), events and set changes beside it. Read only: the other tabs add and
 // cancel. The chosen day is in the address, so Back from a climber's account returns to it.
 export default function DeskMonthView({ calendar }: { calendar: DeskCalendarMonth }) {
-  const { today, month, days } = calendar;
+  const { today, nowMinutes, month, days } = calendar;
   const router = useRouter();
   const asked = parseDay(useSearchParams().get("day"), today);
   const day = monthOf(asked) === month ? asked : dayInMonth(month, today);
@@ -69,8 +91,8 @@ export default function DeskMonthView({ calendar }: { calendar: DeskCalendarMont
   }
 
   return (
-    <div className="grid items-start gap-3 lg:grid-cols-3">
-      <Card className="lg:col-span-2">
+    <div className="grid items-start gap-3 xl:grid-cols-2">
+      <Card>
         <CardContent className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <IconButton
@@ -139,7 +161,7 @@ export default function DeskMonthView({ calendar }: { calendar: DeskCalendarMont
         </CardContent>
       </Card>
 
-      {chosen ? <DayPanel info={chosen} today={today} /> : null}
+      {chosen ? <DayPanel info={chosen} today={today} nowMinutes={nowMinutes} /> : null}
     </div>
   );
 }
@@ -233,7 +255,7 @@ function Legend({ letter, label }: { letter: string; label: string }) {
   );
 }
 
-function DayPanel({ info, today }: { info: DeskCalendarDay; today: string }) {
+function DayPanel({ info, today, nowMinutes }: { info: DeskCalendarDay; today: string; nowMinutes: number }) {
   return (
     <Card component="section" aria-labelledby="calendar-day" data-testid="desk-calendar-day">
       <CardContent className="flex flex-col gap-2">
@@ -260,24 +282,89 @@ function DayPanel({ info, today }: { info: DeskCalendarDay; today: string }) {
           </Typography>
         )}
 
-        {info.items.length === 0 ? (
-          <Typography variant="body">Nothing scheduled</Typography>
-        ) : (
-          <ul aria-label={`On ${formatDay(info.day)}`} className="flex flex-col">
-            {info.items.map((item) => (
-              <DayItem key={`${item.kind}-${item.id}`} item={item} />
-            ))}
-          </ul>
-        )}
+        {info.items.length === 0 ? <Typography variant="body">Nothing scheduled</Typography> : null}
+        {info.items.length > 0 || info.open ? (
+          <DayTimeline items={info.items} open={info.open} nowMinutes={info.day === today ? nowMinutes : null} />
+        ) : null}
+
+        <WhoIsWorking shifts={info.shifts} />
+
+        {info.items.length > 0 ? (
+          <>
+            <Typography variant="label" component="h3">
+              Details
+            </Typography>
+            <ul aria-label={`On ${formatDay(info.day)}`} className="flex flex-col">
+              {info.items.map((item) => (
+                <DayItem key={`${item.kind}-${item.id}`} item={item} />
+              ))}
+            </ul>
+          </>
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+// Who works the chosen day (#249): a table, not a list, so a class's name in it never doubles
+// the class in the day's list.
+function WhoIsWorking({ shifts }: { shifts: DeskShift[] }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Typography variant="label" component="h3" id="calendar-staff">
+        Who&apos;s working
+      </Typography>
+      {shifts.length === 0 ? (
+        <Typography variant="secondary">No shifts scheduled</Typography>
+      ) : (
+        <Table size="small" aria-labelledby="calendar-staff" data-testid="desk-calendar-staff">
+          <TableHead>
+            <TableRow>
+              <TableCell>Time</TableCell>
+              <TableCell>Staff</TableCell>
+              <TableCell>Shift</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {shifts.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <Typography variant="body" component="span" noWrap>
+                    {s.time}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body" component="span">
+                    {s.staffName}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {s.canceled ? (
+                      <StatusPill status="bad" label="Canceled" />
+                    ) : (
+                      <StatusPill status="neutral" label={SHIFT_LABEL[s.kind]} />
+                    )}
+                    {s.forTitle || s.note ? (
+                      <Typography variant="secondary" component="span">
+                        {[s.forTitle, s.note].filter(Boolean).join(" · ")}
+                      </Typography>
+                    ) : null}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
 function DayItem({ item }: { item: DeskCalendarItem }) {
   const { classInfo } = item;
   return (
-    <li className="flex flex-col gap-1 border-b border-line py-2 last:border-b-0">
+    <li id={itemAnchor(item)} className="flex scroll-mt-4 flex-col gap-1 border-b border-line py-2 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Typography variant="body" sx={{ fontWeight: 600 }}>
           {item.title}
@@ -293,6 +380,9 @@ function DayItem({ item }: { item: DeskCalendarItem }) {
         {item.time}
         {classInfo?.instructor ? ` · with ${classInfo.instructor}` : ""}
       </Typography>
+      {item.staff?.length ? (
+        <Typography variant="secondary">Staff on it: {item.staff.join(", ")}</Typography>
+      ) : null}
       {item.details ? <Typography variant="secondary">{item.details}</Typography> : null}
       {classInfo ? (
         <>

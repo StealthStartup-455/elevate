@@ -5,9 +5,13 @@ import {
   dayInMonth,
   daysOfMonth,
   groupByDay,
+  layoutDay,
   monthBounds,
   parseDay,
+  shiftsByDay,
+  timelineHours,
   type DeskCalendarEntry,
+  type DeskShiftEntry,
 } from "./desk-calendar";
 import { gymTime } from "./time";
 
@@ -165,5 +169,86 @@ describe("dayForKey", () => {
 
   it("stops at the end of a shorter month", () => {
     expect(dayForKey("PageDown", "2027-01-31", 6)).toBe("2027-02-28");
+  });
+});
+
+describe("the day's timeline", () => {
+  it("gives each item its minutes on the day, and marks the middle of a long one all day", () => {
+    const items = [
+      entry({ id: "a", title: "Intro", startsAt: at("2026-11-05", 18), endsAt: at("2026-11-05", 19, 30) }),
+      entry({ id: "b", title: "Film", startsAt: at("2026-11-05", 20) }),
+      entry({ id: "c", title: "League", startsAt: at("2026-11-04", 12), endsAt: at("2026-11-06", 21) }),
+    ];
+    const day = groupByDay("2026-11", items, ZONE);
+    const pick = (d: string) => day[d].map(({ title, from, to, allDay }) => ({ title, from, to, allDay }));
+    expect(pick("2026-11-05")).toEqual([
+      { title: "League", from: 0, to: 24 * 60, allDay: true },
+      { title: "Intro", from: 18 * 60, to: 19 * 60 + 30, allDay: false },
+      // No set end: an hour on the timeline.
+      { title: "Film", from: 20 * 60, to: 21 * 60, allDay: false },
+    ]);
+    expect(pick("2026-11-04")).toEqual([{ title: "League", from: 12 * 60, to: 24 * 60, allDay: false }]);
+    expect(pick("2026-11-06")).toEqual([{ title: "League", from: 0, to: 21 * 60, allDay: false }]);
+  });
+
+  it("puts overlapping items side by side and the rest full width", () => {
+    const placed = layoutDay([
+      { id: "a", from: 9 * 60, to: 11 * 60 },
+      { id: "b", from: 10 * 60, to: 12 * 60 },
+      { id: "c", from: 11 * 60, to: 13 * 60 },
+      { id: "d", from: 14 * 60, to: 15 * 60 },
+    ]);
+    const shape = Object.fromEntries(placed.map((p) => [p.item.id, [p.column, p.columns]]));
+    // c starts as a ends, so it takes a's column back.
+    expect(shape).toEqual({ a: [0, 2], b: [1, 2], c: [0, 2], d: [0, 1] });
+  });
+
+  it("covers the opening hours, stretched to fit what is on", () => {
+    expect(timelineHours({ opensAt: 6 * 60, closesAt: 22 * 60 }, [])).toEqual({ startHour: 6, endHour: 22 });
+    expect(timelineHours({ opensAt: 9 * 60, closesAt: 18 * 60 }, [{ from: 7 * 60 + 30, to: 19 * 60 + 10 }])).toEqual({
+      startHour: 7,
+      endHour: 20,
+    });
+    expect(timelineHours(null, [])).toEqual({ startHour: 8, endHour: 20 });
+  });
+});
+
+describe("shiftsByDay", () => {
+  const shift = (over: Partial<DeskShiftEntry> & Pick<DeskShiftEntry, "startsAt" | "endsAt">): DeskShiftEntry => ({
+    id: "1",
+    staffName: "Riley",
+    kind: "DESK",
+    forTitle: null,
+    note: null,
+    canceled: false,
+    ...over,
+  });
+
+  it("puts each shift on its day on the gym's clock, in time order", () => {
+    const byDay = shiftsByDay(
+      "2026-11",
+      [
+        shift({ id: "b", staffName: "Casey", startsAt: at("2026-11-05", 14), endsAt: at("2026-11-05", 22) }),
+        shift({ id: "a", startsAt: at("2026-11-05", 6), endsAt: at("2026-11-05", 14) }),
+        shift({ id: "c", staffName: "Sam", kind: "CLASS", forTitle: "Intro", startsAt: at("2026-11-06", 18), endsAt: at("2026-11-06", 19) }),
+      ],
+      ZONE,
+    );
+    expect(Object.keys(byDay).sort()).toEqual(["2026-11-05", "2026-11-06"]);
+    expect(byDay["2026-11-05"].map((s) => `${s.staffName}: ${s.time}`)).toEqual(["Riley: 6 AM – 2 PM", "Casey: 2 PM – 10 PM"]);
+    expect(byDay["2026-11-06"][0]).toMatchObject({ staffName: "Sam", kind: "CLASS", forTitle: "Intro" });
+  });
+
+  it("stops a shift past midnight at the end of its first day, and leaves out other months", () => {
+    const byDay = shiftsByDay(
+      "2026-11",
+      [
+        shift({ startsAt: at("2026-11-30", 20), endsAt: at("2026-12-01", 2) }),
+        shift({ id: "2", startsAt: at("2026-12-01", 9), endsAt: at("2026-12-01", 17) }),
+      ],
+      ZONE,
+    );
+    expect(Object.keys(byDay)).toEqual(["2026-11-30"]);
+    expect(byDay["2026-11-30"][0].to).toBe(24 * 60);
   });
 });

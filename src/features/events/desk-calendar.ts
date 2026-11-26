@@ -22,13 +22,45 @@ export type DeskCalendarEntry = {
   canceled: boolean;
   /** Classes only. */
   classInfo: { instructor: string | null; capacity: number; signedUp: SignedUp[] } | null;
+  /** Staff with a shift on it: who teaches the class, runs the event or sets the wall. */
+  staff?: string[];
 };
 
 /** An entry on one of its days. */
 export type DeskCalendarItem = Omit<DeskCalendarEntry, "startsAt" | "endsAt"> & {
   /** That day's part of it: "6 PM – 7:30 PM", "From 9 AM", "All day" or "Until 2 PM". */
   time: string;
+  /** Minutes after midnight that day's part starts and ends, for the day's timeline. */
+  from: number;
+  to: number;
+  /** On the whole day (the middle of something over several days): it goes above the timeline. */
+  allDay: boolean;
 };
+
+/** The kinds of shift, as stored (ShiftKind). */
+export type DeskShiftKind = "DESK" | "COACHING" | "CLASS" | "SETTING" | "EVENT";
+
+/** A staff shift as it is stored, with what it is for. */
+export type DeskShiftEntry = {
+  id: string;
+  staffName: string;
+  kind: DeskShiftKind;
+  startsAt: Date;
+  endsAt: Date;
+  /** The class, event or wall it is for, if any. */
+  forTitle: string | null;
+  note: string | null;
+  canceled: boolean;
+};
+
+/** A shift on its day. */
+export type DeskShift = Omit<DeskShiftEntry, "startsAt" | "endsAt"> & { time: string; from: number; to: number };
+
+/** Something placed on the day's timeline: its column, out of how many sit side by side. */
+export type Placed<T> = { item: T; column: number; columns: number };
+
+/** An event with no set end shows as an hour on the timeline. */
+const POINT_MINUTES = 60;
 
 /**
  * The day to open from the page's address, or `today` when it isn't a real date. Years outside
@@ -101,7 +133,10 @@ export function groupByDay(
             : ends && end.minutes < MINUTES_PER_DAY
               ? `Until ${formatClock(end.minutes)}`
               : "All day";
-      (placed[day] ??= []).push({ from: starts ? start.minutes : 0, item: { ...entry, time } });
+      const from = starts ? start.minutes : 0;
+      const to = !ends ? MINUTES_PER_DAY : endsAt && endsAt > startsAt ? end.minutes : Math.min(from + POINT_MINUTES, MINUTES_PER_DAY);
+      const allDay = !starts && (!ends || end.minutes >= MINUTES_PER_DAY);
+      (placed[day] ??= []).push({ from, item: { ...entry, time, from, to: Math.max(to, from), allDay } });
     }
   }
   return Object.fromEntries(
@@ -112,6 +147,68 @@ export function groupByDay(
         .map((p) => p.item),
     ]),
   );
+}
+
+/**
+ * The month's shifts by day, each day in time order. A shift goes on the day it starts; one past
+ * midnight stops at the end of that day.
+ */
+export function shiftsByDay(month: string, shifts: DeskShiftEntry[], timeZone: string): Record<string, DeskShift[]> {
+  const byDay: Record<string, DeskShift[]> = {};
+  for (const { startsAt, endsAt, ...shift } of shifts) {
+    const start = gymClockAt(startsAt, timeZone);
+    if (monthOf(start.day) !== month) continue;
+    const end = gymClockAt(endsAt, timeZone);
+    const to = end.day === start.day ? Math.max(end.minutes, start.minutes) : MINUTES_PER_DAY;
+    (byDay[start.day] ??= []).push({ ...shift, from: start.minutes, to, time: formatClockRange(start.minutes, to) });
+  }
+  for (const list of Object.values(byDay)) {
+    list.sort((a, b) => a.from - b.from || a.to - b.to || a.staffName.localeCompare(b.staffName));
+  }
+  return byDay;
+}
+
+/**
+ * Lays out a day's timeline like a calendar app: things that overlap sit side by side, each in the
+ * first column free when it starts; a group that overlaps shares one column count.
+ */
+export function layoutDay<T extends { from: number; to: number }>(items: T[]): Placed<T>[] {
+  const sorted = [...items].sort((a, b) => a.from - b.from || b.to - a.to);
+  const placed: Placed<T>[] = [];
+  let group: Placed<T>[] = [];
+  let groupEnd = -1;
+  let columnEnds: number[] = [];
+  const close = () => {
+    for (const p of group) p.columns = columnEnds.length;
+    group = [];
+    columnEnds = [];
+  };
+  for (const item of sorted) {
+    // A point in time still takes up a little room, so its neighbours don't cover it.
+    const to = Math.max(item.to, item.from + 15);
+    if (item.from >= groupEnd) close();
+    let column = columnEnds.findIndex((end) => end <= item.from);
+    if (column === -1) column = columnEnds.push(to) - 1;
+    else columnEnds[column] = to;
+    const p = { item, column, columns: 1 };
+    group.push(p);
+    placed.push(p);
+    groupEnd = Math.max(groupEnd, to);
+  }
+  close();
+  return placed;
+}
+
+/**
+ * The hours the day's timeline covers: the opening hours, stretched to fit anything before or
+ * after them, in whole hours. 8 AM to 8 PM when there is nothing to go by.
+ */
+export function timelineHours(open: { opensAt: number; closesAt: number } | null, items: { from: number; to: number }[]) {
+  const froms = items.map((i) => i.from);
+  const tos = items.map((i) => Math.max(i.to, i.from + 15));
+  const first = Math.min(open?.opensAt ?? 8 * 60, ...froms);
+  const last = Math.max(open?.closesAt ?? 20 * 60, ...tos);
+  return { startHour: Math.floor(first / 60), endHour: Math.min(24, Math.ceil(last / 60)) };
 }
 
 /** Items still on, by kind: what a day's cell marks. Canceled ones only show in the day's list. */

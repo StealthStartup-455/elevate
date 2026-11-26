@@ -101,8 +101,8 @@ test("a climber signs up for a class and cancels, and a full class can't be join
 test("the desk announces an event and the climber sees it, until it is canceled", async ({ browser }) => {
   const desk = await browser.newPage();
   await logIn(desk, "desk", /\/desk/);
-  await desk.getByRole("navigation").getByRole("link", { name: "Events", exact: true }).click();
-  await expect(desk.getByRole("heading", { name: "Hours and events", level: 1 })).toBeVisible();
+  await desk.getByRole("navigation").getByRole("link", { name: "Calendar", exact: true }).click();
+  await expect(desk.getByRole("heading", { name: "Calendar", level: 1 })).toBeVisible();
   // It opens on the Calendar; events have their own tab.
   await expect(desk).toHaveURL(/\/desk\/events\/calendar/);
   await desk.getByRole("tab", { name: "Events" }).click();
@@ -172,6 +172,11 @@ test("the desk opens a day on the calendar and finds who is registered", async (
   await expect(yoga).toContainText("with Jordan");
   await expect(yoga).toContainText("3 of 12 places taken");
   await expect(panel).toContainText(/Open \d/);
+  // The day as a timeline, and who works it: the desk, and Jordan teaching the yoga class.
+  await expect(panel.getByTestId("desk-calendar-timeline")).toContainText("Yoga for climbers");
+  const staff = panel.getByTestId("desk-calendar-staff");
+  await expect(staff).toContainText("Front desk");
+  await expect(staff.getByRole("row").filter({ hasText: "Jordan" }).filter({ hasText: "Yoga for climbers" })).toContainText("Teaching");
 
   // A name opens the climber's account, and Back returns to the same day.
   await yoga.getByRole("link", { name: "Agam Kamran" }).click();

@@ -49,27 +49,29 @@ model Gym {
   classTypes      ClassType[]
   classes         GymClass[]
   classBookings   ClassBooking[]
+  staffShifts     StaffShift[]
 }
 
 // Someone who works at the gym and logs in to the desk app.
 // Their email lives on their Supabase login, so it isn't stored twice here.
 model Staff {
-  id         String    @id @default(uuid())
-  gymId      String
-  authUserId String // their Supabase login
-  demoEmail  String?   @unique // local-demo owner login; never used outside demo mode
+  id               String    @id @default(uuid())
+  gymId            String
+  authUserId       String // their Supabase login
+  demoEmail        String?   @unique // local-demo owner login; never used outside demo mode
   demoPasswordHash String? // local-demo owner password, stored only as a hash
-  name       String
-  role       StaffRole @default(DESK)
-  active     Boolean   @default(true) // switch off when someone leaves
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  name             String
+  role             StaffRole @default(DESK)
+  active           Boolean   @default(true) // switch off when someone leaves
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  gym             Gym       @relation(fields: [gymId], references: [id])
+  gym             Gym          @relation(fields: [gymId], references: [id])
   climbersCreated Climber[]
   checkIns        CheckIn[]
   sales           Sale[]
   passesRevoked   Pass[]
+  shifts          StaffShift[]
 
   @@unique([id, gymId])
   @@unique([gymId, authUserId])
@@ -77,20 +79,20 @@ model Staff {
 
 // A customer. Families can share one phone or email, so neither is unique.
 model Climber {
-  id               String   @id @default(uuid())
-  gymId            String
-  firstName        String
-  lastName         String
-  email            String? // saved lowercased
-  phone            String? // saved like +12505551234
-  dateOfBirth      DateTime @db.Date
-  authUserId       String? // the login that manages this climber; one parent login can manage several kids
-  createdByStaffId String? // empty means they signed themselves up
-  onboardingComplete Boolean @default(true) // demo sign-up stays pending until the customer chooses their gym
-  externalId       String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
-  studentId        String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  gymId              String
+  firstName          String
+  lastName           String
+  email              String? // saved lowercased
+  phone              String? // saved like +12505551234
+  dateOfBirth        DateTime @db.Date
+  authUserId         String? // the login that manages this climber; one parent login can manage several kids
+  createdByStaffId   String? // empty means they signed themselves up
+  onboardingComplete Boolean  @default(true) // demo sign-up stays pending until the customer chooses their gym
+  externalId         String? // their id in Redpoint or Rock Gym Pro, once synced; empty means Elevate created them
+  studentId          String // "V00946178": V and 8 digits. The climber's barcode holds this, and the desk scans it (#38)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   gym            Gym            @relation(fields: [gymId], references: [id])
   createdByStaff Staff?         @relation(fields: [createdByStaffId, gymId], references: [id, gymId], onDelete: Restrict)
@@ -114,22 +116,22 @@ model Climber {
 // Anything that lets a climber in: a day pass, a punch card or a membership.
 // Sold at the desk POS (saleLineId), or synced from the gym's own system.
 model Pass {
-  id         String    @id @default(uuid())
-  gymId      String
-  climberId  String
-  kind       PassKind
-  startsAt   DateTime
-  expiresAt  DateTime? // empty means no end date
-  visitsLeft Int? // punch cards only
-  pausedAt   DateTime? // memberships only: set while the membership is on hold
-  renews     Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
-  saleLineId String? // the POS sale that paid for it; empty for passes from before the POS or another system
-  externalId String?
+  id           String    @id @default(uuid())
+  gymId        String
+  climberId    String
+  kind         PassKind
+  startsAt     DateTime
+  expiresAt    DateTime? // empty means no end date
+  visitsLeft   Int? // punch cards only
+  pausedAt     DateTime? // memberships only: set while the membership is on hold
+  renews       Boolean   @default(false) // monthly recurring membership: the desk rings up the next month
+  saleLineId   String? // the POS sale that paid for it; empty for passes from before the POS or another system
+  externalId   String?
   // Memberships only: staff revoked it, and why, so there's a record if the member asks (#241).
   revokedAt    DateTime?
   revokeReason String?
   revokedById  String? // who revoked it; empty for the shared demo desk login
-  createdAt  DateTime  @default(now())
+  createdAt    DateTime  @default(now())
 
   gym       Gym       @relation(fields: [gymId], references: [id])
   climber   Climber   @relation(fields: [climberId, gymId], references: [id, gymId], onDelete: Restrict)
@@ -380,7 +382,8 @@ model GymEvent {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  gym Gym @relation(fields: [gymId], references: [id])
+  gym    Gym          @relation(fields: [gymId], references: [id])
+  shifts StaffShift[]
 
   @@index([gymId, startsAt])
 }
@@ -398,7 +401,8 @@ model SetChange {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  gym Gym @relation(fields: [gymId], references: [id])
+  gym    Gym          @relation(fields: [gymId], references: [id])
+  shifts StaffShift[]
 
   @@index([gymId, startsAt])
 }
@@ -445,6 +449,7 @@ model GymClass {
   gym       Gym            @relation(fields: [gymId], references: [id])
   classType ClassType?     @relation(fields: [classTypeId, gymId], references: [id, gymId], onDelete: Restrict)
   bookings  ClassBooking[]
+  shifts    StaffShift[]
 
   @@unique([id, gymId])
   @@index([gymId, startsAt])
@@ -492,6 +497,41 @@ enum Tender {
 enum SaleStatus {
   PAID
   VOIDED
+}
+
+// Who works when (#249): a desk shift, coaching, teaching a class, setting a wall or running an
+// event. A shift for a class, event or set change links to it, so the desk calendar shows who is
+// on it. Canceled, never deleted.
+model StaffShift {
+  id          String    @id @default(uuid())
+  gymId       String
+  staffId     String
+  kind        ShiftKind
+  startsAt    DateTime
+  endsAt      DateTime
+  classId     String? // the class they teach
+  eventId     String? // the event they run
+  setChangeId String? // the wall they set
+  note        String? // "Belay tests", "Closing"
+  canceledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  gym       Gym        @relation(fields: [gymId], references: [id])
+  staff     Staff      @relation(fields: [staffId, gymId], references: [id, gymId], onDelete: Restrict)
+  class     GymClass?  @relation(fields: [classId, gymId], references: [id, gymId], onDelete: Restrict)
+  event     GymEvent?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  setChange SetChange? @relation(fields: [setChangeId], references: [id], onDelete: Restrict)
+
+  @@index([gymId, startsAt])
+}
+
+enum ShiftKind {
+  DESK // front desk
+  COACHING // coaching a team or a private lesson
+  CLASS // teaching a class
+  SETTING // setting routes
+  EVENT // running an event
 }
 
 enum StaffRole {

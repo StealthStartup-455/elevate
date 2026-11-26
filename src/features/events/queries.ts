@@ -12,8 +12,10 @@ import {
   groupByDay,
   monthBounds,
   parseDay,
+  shiftsByDay,
   type DeskCalendarEntry,
   type DeskCalendarItem,
+  type DeskShift,
 } from "./desk-calendar";
 import {
   describeHours,
@@ -513,13 +515,19 @@ export type DeskCalendarDay = {
   /** True when a special day replaces the regular hours. */
   special: boolean;
   note: string | null;
+  /** Open and close in minutes after midnight, for the day's timeline; null when closed or unknown. */
+  open: { opensAt: number; closesAt: number } | null;
   /** What's on, in time order, canceled ones marked. */
   items: DeskCalendarItem[];
+  /** Who works that day, in time order. */
+  shifts: DeskShift[];
 };
 
 export type DeskCalendarMonth = {
   /** Today on the gym's clock. */
   today: string;
+  /** The time now on the gym's clock, in minutes after midnight, for the line on today's timeline. */
+  nowMinutes: number;
   month: string;
   days: DeskCalendarDay[];
 };
@@ -533,12 +541,13 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
   const gym = await deskGym();
   if (!gym) return null;
   const { timeZone } = gym;
-  const today = gymClockAt(new Date(), timeZone).day;
+  const now = gymClockAt(new Date(), timeZone);
+  const today = now.day;
   const month = monthOf(parseDay(day, today));
   const days = daysOfMonth(month);
   const { from, to } = monthBounds(month, timeZone);
 
-  const [weekly, special, classes, events, setChanges] = await Promise.all([
+  const [weekly, special, classes, events, setChanges, shifts] = await Promise.all([
     db.openingHours.findMany({
       where: { gymId: gym.id },
       select: { weekday: true, closed: true, opensAt: true, closesAt: true },
@@ -575,7 +584,34 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
       where: { gymId: gym.id, startsAt: { lt: to }, endsAt: { gt: from } },
       select: { id: true, wall: true, note: true, startsAt: true, endsAt: true, canceledAt: true },
     }),
+    db.staffShift.findMany({
+      where: { gymId: gym.id, startsAt: { gte: from, lt: to } },
+      orderBy: { startsAt: "asc" },
+      select: {
+        id: true,
+        kind: true,
+        startsAt: true,
+        endsAt: true,
+        note: true,
+        canceledAt: true,
+        classId: true,
+        eventId: true,
+        setChangeId: true,
+        staff: { select: { name: true } },
+        class: { select: { title: true } },
+        event: { select: { title: true } },
+        setChange: { select: { wall: true } },
+      },
+    }),
   ]);
+
+  // Who is on each class, event and set change, from the shifts linked to it.
+  const staffOn = new Map<string, string[]>();
+  for (const s of shifts) {
+    if (s.canceledAt) continue;
+    const key = s.classId ? `class-${s.classId}` : s.eventId ? `event-${s.eventId}` : s.setChangeId ? `setChange-${s.setChangeId}` : null;
+    if (key) staffOn.set(key, [...(staffOn.get(key) ?? []), s.staff.name]);
+  }
 
   const entries: DeskCalendarEntry[] = [
     ...classes.map((c) => ({
@@ -586,6 +622,7 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
       startsAt: c.startsAt,
       endsAt: new Date(c.startsAt.getTime() + c.durationMinutes * 60_000),
       canceled: c.canceledAt !== null,
+      staff: staffOn.get(`class-${c.id}`) ?? [],
       classInfo: {
         instructor: c.instructor,
         capacity: c.capacity,
@@ -596,7 +633,13 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
         })),
       },
     })),
-    ...events.map(({ canceledAt, ...e }) => ({ ...e, kind: "event" as const, canceled: canceledAt !== null, classInfo: null })),
+    ...events.map(({ canceledAt, ...e }) => ({
+      ...e,
+      kind: "event" as const,
+      canceled: canceledAt !== null,
+      classInfo: null,
+      staff: staffOn.get(`event-${e.id}`) ?? [],
+    })),
     ...setChanges.map((s) => ({
       id: s.id,
       kind: "setChange" as const,
@@ -606,8 +649,23 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
       endsAt: s.endsAt,
       canceled: s.canceledAt !== null,
       classInfo: null,
+      staff: staffOn.get(`setChange-${s.id}`) ?? [],
     })),
   ];
+  const shiftDays = shiftsByDay(
+    month,
+    shifts.map((s) => ({
+      id: s.id,
+      staffName: s.staff.name,
+      kind: s.kind,
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      forTitle: s.class?.title ?? s.event?.title ?? s.setChange?.wall ?? null,
+      note: s.note,
+      canceled: s.canceledAt !== null,
+    })),
+    timeZone,
+  );
   const itemsByDay = groupByDay(month, entries, timeZone);
   // weekAhead counts from the day it's given; noon is on the 1st whatever the clocks do.
   const hours = weekAhead(gymTime(days[0], 12 * 60, timeZone), timeZone, weekly, special, days.length);
@@ -615,6 +673,7 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
 
   return {
     today,
+    nowMinutes: now.minutes,
     month,
     days: hours.map((h) => {
       const known = hoursSet || h.special;
@@ -624,7 +683,9 @@ export async function getDeskCalendar(day: unknown): Promise<DeskCalendarMonth |
         closed: known && h.hours === null,
         special: h.special,
         note: h.note,
+        open: known && h.hours ? { opensAt: h.hours.opensAt, closesAt: h.hours.closesAt } : null,
         items: itemsByDay[h.day] ?? [],
+        shifts: shiftDays[h.day] ?? [],
       };
     }),
   };
