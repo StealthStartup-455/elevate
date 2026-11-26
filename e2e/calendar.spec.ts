@@ -101,10 +101,10 @@ test("a climber signs up for a class and cancels, and a full class can't be join
 test("the desk announces an event and the climber sees it, until it is canceled", async ({ browser }) => {
   const desk = await browser.newPage();
   await logIn(desk, "desk", /\/desk/);
-  await desk.getByRole("navigation").getByRole("link", { name: "Events", exact: true }).click();
-  await expect(desk.getByRole("heading", { name: "Hours and events", level: 1 })).toBeVisible();
-  // It opens on Hours; events have their own tab.
-  await expect(desk).toHaveURL(/\/desk\/events\/hours/);
+  await desk.getByRole("navigation").getByRole("link", { name: "Calendar", exact: true }).click();
+  await expect(desk.getByRole("heading", { name: "Calendar", level: 1 })).toBeVisible();
+  // It opens on the Calendar; events have their own tab.
+  await expect(desk).toHaveURL(/\/desk\/events\/calendar/);
   await desk.getByRole("tab", { name: "Events" }).click();
   await expect(desk).toHaveURL(/\/desk\/events\/announcements/);
   const deskMain = desk.getByRole("main");
@@ -148,6 +148,70 @@ test("the desk's hours form shows the regular week", async ({ page }) => {
   await expect(main.getByLabel("Mon opens")).toHaveValue("06:00");
   await expect(main.getByLabel("Sun closes")).toHaveValue("18:00");
   await expect(main.getByRole("list", { name: "Special days" })).toContainText("Staff training day");
+});
+
+test("the desk opens a day on the calendar and finds who is registered", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  await page.goto("/desk/events/calendar");
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: /^[A-Z][a-z]+ \d{4}$/ })).toBeVisible();
+  const panel = main.getByTestId("desk-calendar-day");
+  await expect(panel).toContainText("Today");
+
+  // The seed puts Agam Kamran in the yoga class six days from today, with two others. The
+  // address opens a day whichever month it falls in.
+  const day = (days: number) => gymLocal(new Date(Date.now() + days * 24 * 60 * 60 * 1000)).slice(0, 10);
+  await page.goto(`/desk/events/calendar?day=${day(7)}`);
+  await expect(main.locator(`#calendar-${day(7)}`)).toHaveAttribute("tabindex", "0");
+  if (day(6).slice(0, 7) !== day(7).slice(0, 7)) {
+    await main.getByRole("link", { name: "Previous month" }).click();
+  }
+  await main.locator(`#calendar-${day(6)}`).click();
+  await expect(page).toHaveURL(new RegExp(`day=${day(6)}`));
+  const yoga = panel.getByRole("listitem").filter({ hasText: "Yoga for climbers" });
+  await expect(yoga).toContainText("with Jordan");
+  await expect(yoga).toContainText("3 of 12 places taken");
+  await expect(panel).toContainText(/Open \d/);
+  // The day as a timeline, and who works it: the desk, and Jordan teaching the yoga class.
+  await expect(panel.getByTestId("desk-calendar-timeline")).toContainText("Yoga for climbers");
+  const staff = panel.getByTestId("desk-calendar-staff");
+  await expect(staff).toContainText("Front desk");
+  await expect(staff.getByRole("row").filter({ hasText: "Jordan" }).filter({ hasText: "Yoga for climbers" })).toContainText("Teaching");
+
+  // A name opens the climber's account, and Back returns to the same day.
+  await yoga.getByRole("link", { name: "Agam Kamran" }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\//);
+  await expect(page.getByRole("main")).toContainText("Agam Kamran");
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`day=${day(6)}`));
+  await expect(yoga).toBeVisible();
+
+  // The arrow keys move between days, across months too.
+  await main.locator(`#calendar-${day(6)}`).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(main.locator(`#calendar-${day(7)}`)).toBeFocused();
+  await page.keyboard.press("PageDown");
+  await expect(main.locator(`#calendar-${day(7)}`)).toHaveCount(0);
+  await expect(main.getByRole("grid").locator("button:focus")).toHaveCount(1);
+  await main.getByRole("link", { name: "Today" }).click();
+  await expect(main.locator(`#calendar-${day(0)}`)).toHaveAttribute("aria-current", "date");
+});
+
+test("the desk calendar marks closed days and fits a phone", async ({ browser }) => {
+  const { context, page } = await phone(browser);
+  await logIn(page, "desk", /\/desk/);
+  // The seed closes the gym four days from today.
+  const closed = gymLocal(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)).slice(0, 10);
+  await page.goto(`/desk/events/calendar?day=${closed}`);
+  const main = page.getByRole("main");
+  const panel = main.getByTestId("desk-calendar-day");
+  await expect(panel).toContainText("Closed");
+  await expect(panel).toContainText("Staff training day");
+  await expect(panel).toContainText("Nothing scheduled");
+  await expect(main.locator(`#calendar-${closed}`)).toHaveAccessibleName(/: closed$/);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await context.close();
 });
 
 test("the desk adds a class type, schedules a class of it, and a climber can sign up", async ({ browser }) => {

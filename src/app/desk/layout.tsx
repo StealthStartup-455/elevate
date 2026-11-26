@@ -26,7 +26,7 @@ export default function DeskLayout({ children }: LayoutProps<"/desk">) {
               <PosLink />
             </Suspense>
             <NavLink href="/desk/customers">Customers</NavLink>
-            <NavLink href="/desk/events">Events</NavLink>
+            <NavLink href="/desk/events">Calendar</NavLink>
             <NavLink href="/desk/waivers">Waivers</NavLink>
             <Suspense fallback={null}>
               <MetricsLink />
