@@ -12,6 +12,8 @@ features/events/
 ├── queries.ts     # reads: the climber dashboard and the desk's Events page
 ├── time.ts        # the gym's clock: days, minutes after midnight, formatting
 ├── hours.ts       # the week ahead and "open now" (pure)
+├── calendar.ts    # the month grid, shared by the climber's and the desk's calendar (pure)
+├── desk-calendar.ts # the desk calendar: what's on each day, and its keys (pure)
 ├── schedule.ts    # when events, set changes and classes show (pure)
 ├── validate.ts    # checks what staff type into the forms (pure)
 ├── components/    # climber cards; desk/ holds the staff editor
@@ -30,7 +32,8 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
   - `Classes`: the next 14 days, with sign up and cancel. Free; capacity is the only limit. A canceled class only shows to climbers who were signed up.
   - `EventsList`: every event in the next 60 days, canceled ones marked.
   - `Calendar` / `CalendarView`: the same classes and events by day on a month grid (`calendar.ts`, Monday first), with a dot per kind and the coming week's closed days. Tapping a day lists it underneath; tapping an item opens a bottom sheet (MUI `Drawer`, `disablePortal` so it stays inside `ClimberTheme`). A class's sheet is the same `ClassList` card, so sign up and cancel work there too.
-- **Desk (`/desk/events`, "Events" in the menu)**: five tabs, each its own page (`EventsTabs`, `components/desk/DeskCalendar.tsx`):
+- **Desk (`/desk/events`, "Events" in the menu)**: six tabs, each its own page (`EventsTabs`, `components/desk/DeskCalendar.tsx`):
+  - **Calendar** (`/desk/events/calendar`, first, where `/desk/events` lands, #249): a month of days marked with their classes, events, set changes and special or closed days, and the chosen day's list with the hours and who signed up (`DeskMonth`, `DeskMonthView`). Read only. The day is in the address (`?day=2026-11-05`); past and future months both work. Past days show the regular hours as they are now, since older ones aren't kept.
   - **Hours** (`/desk/events/hours`): the regular week (all seven days save together) and special days.
   - **Class types** (`/desk/events/class-types`): the kinds of class the gym runs (`ClassType`): add, edit, archive.
   - **Classes** (`/desk/events/classes`): schedule a session of a type (it copies the type; instructor and places can be changed for that session), cancel one, see who signed up.
