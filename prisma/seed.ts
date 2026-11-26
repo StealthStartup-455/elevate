@@ -299,6 +299,7 @@ async function main() {
       removed = await tx.climber.count({ where: { gymId: gym.id } });
       // Children first: they reference climbers with ON DELETE RESTRICT.
       await tx.qrScan.deleteMany({ where: { gymId: gym.id } });
+      await tx.checkInAttempt.deleteMany({ where: { gymId: gym.id } });
       await tx.checkIn.deleteMany({ where: { gymId: gym.id } });
       await tx.waiver.deleteMany({ where: { gymId: gym.id } });
       await tx.pass.deleteMany({ where: { gymId: gym.id } });

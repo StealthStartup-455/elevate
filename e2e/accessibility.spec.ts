@@ -34,6 +34,8 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
     ],
     phone: false,
   },
+  // The metrics page is for managers and owners (#251).
+  { user: "manager", paths: ["/desk/metrics"], phone: false },
 ];
 
 async function logIn(page: Page, username: string) {

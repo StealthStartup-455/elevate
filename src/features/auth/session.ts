@@ -8,7 +8,8 @@ import { signDemoDeskSession } from "./demo-credentials";
 export const MOCK_USER_COOKIE = "elevate_mock_user";
 // Every gym-scoped customer record that belongs to this demo browser session.
 export const MOCK_USER_IDS_COOKIE = "elevate_mock_user_ids";
-// Set by the "desk" demo login so the proxy lets staff into /desk.
+// Set by the "desk" demo login so the proxy lets staff into /desk: "1" for the
+// desk, "manager" for the demo manager (#251), or a signed demo owner token.
 export const MOCK_DESK_COOKIE = "elevate_mock_desk";
 // The gym-specific customer record selected by a real login. A person can
 // join more than one gym, but the climber app shows one gym at a time.
@@ -42,10 +43,16 @@ export async function setActiveClimberSession(climberId: string): Promise<void> 
   (await cookies()).set(ACTIVE_CLIMBER_COOKIE, climberId, COOKIE_OPTIONS);
 }
 
-export async function setDeskSession(owner?: { id: string; demoPasswordHash: string }): Promise<void> {
+export async function setDeskSession(
+  owner?: { id: string; demoPasswordHash: string },
+  role: "desk" | "manager" = "desk",
+): Promise<void> {
   if (!isDemoMode()) return;
-  (await cookies()).set(MOCK_DESK_COOKIE, owner ? signDemoDeskSession(owner) : "1", COOKIE_OPTIONS);
+  const value = owner ? signDemoDeskSession(owner) : role === "manager" ? DEMO_MANAGER : "1";
+  (await cookies()).set(MOCK_DESK_COOKIE, value, COOKIE_OPTIONS);
 }
+
+const DEMO_MANAGER = "manager";
 
 export async function clearSession(): Promise<void> {
   const jar = await cookies();
@@ -59,7 +66,13 @@ export async function clearSession(): Promise<void> {
 // the real login.
 export async function hasDemoDeskSession(): Promise<boolean> {
   if (!isDemoMode()) return false;
-  return (await cookies()).get(MOCK_DESK_COOKIE)?.value === "1";
+  const value = (await cookies()).get(MOCK_DESK_COOKIE)?.value;
+  return value === "1" || value === DEMO_MANAGER;
+}
+
+// The demo desk's role: "manager" from the manager login, otherwise the desk.
+export async function getDemoDeskRole(): Promise<"DESK" | "MANAGER"> {
+  return (await getDemoDeskSession()) === DEMO_MANAGER ? "MANAGER" : "DESK";
 }
 
 export async function getDemoDeskSession(): Promise<string | undefined> {
