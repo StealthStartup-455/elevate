@@ -118,77 +118,77 @@ export default function ClimberSearch({
             sx={{ position: "absolute", top: "100%", left: 0, right: 0, mt: 1, zIndex: "drawer", p: 3, maxHeight: 480, overflowY: "auto" }}
           >
             <div className="flex flex-col gap-2">
-      {searchError ? <Alert severity="error">{searchError}</Alert> : null}
-  
-        {query.trim() !== "" ? (
-          !searched ? (
-            <Typography variant="secondary">Searching…</Typography>
-          ) : results.length === 0 ? (
-            <Typography variant="secondary">No climbers match.</Typography>
-          ) : (
-            <List dense disablePadding aria-label="Matching climbers">
-              {results.map((c) => (
-                <ListItem key={c.id} disablePadding>
-                  <ListItemButton onClick={() => pick(c)}>
-                    <ListItemText primary={c.name} secondary={c.phone} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )
-        ) : (
-          <>
-            {renewalsDue.length ? (
-              <>
-                <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
-                  Renewals due
-                </Typography>
-                <List dense disablePadding aria-label="Renewals due">
-                  {renewalsDue.map((renewal) => (
-                    <ListItem key={renewal.climberId} disablePadding>
-                      <ListItemButton
-                        onClick={() => {
-                          close();
-                          onRenew(renewal);
-                        }}
-                        sx={{ bgcolor: "warning.soft", "&:hover": { bgcolor: "warning.softHover" } }}
-                      >
-                        <ListItemText
-                          primary={renewal.name}
-                          secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}${renewal.hasBankAccount ? " · EFT on file" : ""}`}
-                        />
-                        <StatusPill status="warn" label={renewal.overdue ? "Overdue" : "Due"} />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
-                </List>
-              </>
-            ) : null}
-  
-            <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
-              Checked in today
-            </Typography>
-            {checkedInToday.length === 0 ? (
-              <Typography variant="secondary">
-                Nobody has checked in yet today. Search to find a climber.
-              </Typography>
-            ) : (
-              <List dense disablePadding aria-label="Checked in today" className="max-h-96 overflow-y-auto">
-                {checkedInToday.map((c) => (
-                  <ListItem key={c.climberId} disablePadding>
-                    <ListItemButton onClick={() => pick({ id: c.climberId, name: c.name })}>
-                      <ListItemText primary={c.name} secondary={c.phone} />
-                      <Typography variant="secondary" component="span">
-                        {c.time}
+              {searchError ? <Alert severity="error">{searchError}</Alert> : null}
+
+              {query.trim() !== "" ? (
+                !searched ? (
+                  <Typography variant="secondary">Searching…</Typography>
+                ) : results.length === 0 ? (
+                  <Typography variant="secondary">No climbers match.</Typography>
+                ) : (
+                  <List dense disablePadding aria-label="Matching climbers">
+                    {results.map((c) => (
+                      <ListItem key={c.id} disablePadding>
+                        <ListItemButton onClick={() => pick(c)}>
+                          <ListItemText primary={c.name} secondary={c.phone} />
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                )
+              ) : (
+                <>
+                  {renewalsDue.length ? (
+                    <>
+                      <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
+                        Renewals due
                       </Typography>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </>
-        )}
-  
+                      <List dense disablePadding aria-label="Renewals due">
+                        {renewalsDue.map((renewal) => (
+                          <ListItem key={renewal.climberId} disablePadding>
+                            <ListItemButton
+                              onClick={() => {
+                                close();
+                                onRenew(renewal);
+                              }}
+                              sx={{ bgcolor: "warning.soft", "&:hover": { bgcolor: "warning.softHover" } }}
+                            >
+                              <ListItemText
+                                primary={renewal.name}
+                                secondary={`Monthly membership ${renewal.overdue ? "ended" : "ends"} ${formatDate(renewal.dueOn)}${renewal.hasBankAccount ? " · EFT on file" : ""}`}
+                              />
+                              <StatusPill status="warn" label={renewal.overdue ? "Overdue" : "Due"} />
+                            </ListItemButton>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </>
+                  ) : null}
+
+                  <Typography variant="secondary" component="h3" sx={{ mt: 1 }}>
+                    Checked in today
+                  </Typography>
+                  {checkedInToday.length === 0 ? (
+                    <Typography variant="secondary">
+                      Nobody has checked in yet today. Search to find a climber.
+                    </Typography>
+                  ) : (
+                    <List dense disablePadding aria-label="Checked in today" className="max-h-96 overflow-y-auto">
+                      {checkedInToday.map((c) => (
+                        <ListItem key={c.climberId} disablePadding>
+                          <ListItemButton onClick={() => pick({ id: c.climberId, name: c.name })}>
+                            <ListItemText primary={c.name} secondary={c.phone} />
+                            <Typography variant="secondary" component="span">
+                              {c.time}
+                            </Typography>
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </>
+              )}
+
             </div>
           </Paper>
         ) : null}
