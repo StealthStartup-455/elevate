@@ -104,7 +104,7 @@ export default function ClimberProfile({
             sx={{ fontFamily: "var(--font-mono)" }}
           >
             <span className="sr-only">Student ID </span>
-            {c.studentId}
+            {c.studentId ?? "No V number"}
           </Typography>
         </div>
         <StatusBox panel={panel} onChanged={onChanged} />
@@ -420,7 +420,7 @@ function PassesAndDetails({
               details={{
                 firstName: c.firstName,
                 lastName: c.lastName,
-                studentId: c.studentId,
+                studentId: c.studentId ?? "",
                 phone: c.phone,
                 email: c.email,
                 dateOfBirth: c.dateOfBirth,

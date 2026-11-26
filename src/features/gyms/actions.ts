@@ -16,6 +16,7 @@ import {
   setDeskSession,
   setSession,
 } from "@/features/auth/session";
+import { storedStudentId } from "@/features/climbers/student-id";
 import { toStoredPhone } from "@/features/climbers/phone";
 import { db } from "@/lib/db";
 import { forgetGym } from "@/lib/gym";
@@ -213,7 +214,7 @@ export async function joinGym(slug: string, _formData: FormData): Promise<void> 
         authUserId: user.authUserId,
         firstName: profile.firstName,
         lastName: profile.lastName,
-        studentId: profile.studentId,
+        studentId: storedStudentId(profile.studentId),
         phone: toStoredPhone(profile.phone),
         email: profile.email || null,
         dateOfBirth: new Date(`${profile.dateOfBirth}T00:00:00Z`),
