@@ -1,4 +1,5 @@
 import type { WaiverStatus } from "@/features/analytics/types";
+import type { Label } from "@/features/check-ins/day";
 
 export type { WaiverStatus };
 
@@ -91,4 +92,8 @@ export type CheckInCandidate = {
   punchesLeft: number;
   /** Whether this gym sells in Elevate, so the dialog can offer POS. */
   posEnabled: boolean;
+  /** On the demo's employee pass today: the badge says Employee, like the Check-in table (#265). */
+  employee: boolean;
+  /** The Message the Check-in table would show for them (#265). */
+  message: Label;
 };

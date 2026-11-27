@@ -17,6 +17,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
 import DisabledReason from "@/components/ui/DisabledReason";
 import BadgePill from "@/features/check-ins/components/BadgePill";
+import { Tinted } from "@/features/check-ins/components/DeskDayTable";
 import { badgeFor } from "@/features/check-ins/day";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
@@ -245,10 +246,17 @@ export default function ManualCheckIn() {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  Pass
+                  Badge
                 </Typography>
                 <Box>
-                  <BadgePill badge={badgeFor(selected)} />
+                  <BadgePill badge={selected.employee ? "EMPLOYEE" : badgeFor(selected)} />
+                </Box>
+
+                <Typography variant="body2" color="text.secondary">
+                  Message
+                </Typography>
+                <Box>
+                  <Tinted label={selected.message} />
                 </Box>
 
                 <Typography variant="body2" color="text.secondary">
