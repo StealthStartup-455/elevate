@@ -74,7 +74,21 @@ function Tile({
         textAlign: "left",
         whiteSpace: "normal",
         lineHeight: 1.3,
-        ...(selected ? { borderColor: "primary.main", bgcolor: "primary.softHover" } : {}),
+        // Only the picked tile is teal (#248): the others are plain, so they
+        // don't all look picked. The picked one gets a thicker teal edge too.
+        ...(selected
+          ? {
+              borderColor: "primary.main",
+              bgcolor: "primary.softHover",
+              boxShadow: (t) => `inset 0 0 0 1px ${t.palette.primary.main}`,
+              "&:hover": { bgcolor: "primary.softHover" },
+            }
+          : {
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              color: "text.primary",
+              "&:hover": { bgcolor: "action.hover", borderColor: "text.secondary" },
+            }),
       }}
     >
       <span>
