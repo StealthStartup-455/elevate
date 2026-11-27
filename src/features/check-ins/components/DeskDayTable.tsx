@@ -62,7 +62,7 @@ const TONE: Record<Tone, object> = {
 // The waiver is a status, so it's a pill like everywhere else on the desk.
 const PILL = { normal: "ok", warning: "warn", error: "bad" } as const satisfies Record<Tone, Status>;
 
-function Tinted({ label }: { label: Label }) {
+export function Tinted({ label }: { label: Label }) {
   return (
     <Typography variant="body" component="span" sx={TONE[label.tone]}>
       {label.text}

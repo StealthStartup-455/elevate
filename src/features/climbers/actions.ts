@@ -12,7 +12,9 @@ import { finishScansForClimber } from "@/features/check-ins/scan-store";
 import { recordCheckInAttempt } from "@/features/metrics/record";
 import { parseCheckInTiming, type CheckInTiming } from "@/features/metrics/timing";
 import { isPosEnabled } from "@/features/pos/queries";
-import { findPossibleDuplicates, getClimber, searchClimbers } from "./queries";
+import { isDemoEmployeeCheckIn } from "@/features/check-ins/demo-examples";
+import { badgeFor, gymDay, rowMessage, startOfGymDay } from "@/features/check-ins/day";
+import { findPossibleDuplicates, getClimber, getSavedCheckIns, searchClimbers } from "./queries";
 import { storedStudentId } from "./student-id";
 import { toStoredPhone } from "./phone";
 import { endOfGymDay } from "./status";
@@ -393,23 +395,55 @@ export async function checkInClimber(
 const MAX_CANDIDATES = 8;
 
 export async function findClimbersToCheckIn(query: string): Promise<CheckInCandidate[]> {
-  const [climbers, posEnabled] = await Promise.all([
+  const [climbers, posEnabled, staff] = await Promise.all([
     searchClimbers(String(query ?? ""), MAX_CANDIDATES),
     isPosEnabled(),
+    getStaffContext(),
   ]);
-  return climbers.map((c) => ({
-    id: c.id,
-    name: `${c.firstName} ${c.lastName}`,
-    studentId: c.studentId,
-    phone: c.phone,
-    dateOfBirth: c.dateOfBirth,
-    waiverStatus: c.waiverStatus,
-    waiverExpiresOn: c.waiverExpiresOn,
-    membershipStatus: c.membershipStatus,
-    membershipRenewsOn: c.membershipRenewsOn,
-    membershipRecurring: c.membershipRecurring,
-    hasDayPass: c.hasDayPass,
-    punchesLeft: c.punchesLeft,
-    posEnabled,
-  }));
+  // Badge and Message follow the Check-in table's rules (#265). The demo's
+  // employee example is whoever's latest check-in today is that fixture.
+  const gym = staff ? await getGymById(staff.gymId) : null;
+  const latestToday = new Map<string, string>();
+  if (gym) {
+    // Newest first, so the first one seen per climber is their latest.
+    for (const ci of await getSavedCheckIns(startOfGymDay(new Date(), gym.timeZone))) {
+      if (!latestToday.has(ci.climberId)) latestToday.set(ci.climberId, ci.id);
+    }
+  }
+  // Anyone with no check-in yet would be on their first visit.
+  const visited = new Set(
+    climbers.length
+      ? (await db.checkIn.groupBy({ by: ["climberId"], where: { climberId: { in: climbers.map((c) => c.id) } } })).map(
+          (v) => v.climberId,
+        )
+      : [],
+  );
+  const today = gym ? gymDay(new Date(), gym.timeZone) : "";
+  return climbers.map((c) => {
+    const employee = isDemoEmployeeCheckIn(latestToday.get(c.id) ?? "");
+    return {
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`,
+      studentId: c.studentId,
+      phone: c.phone,
+      dateOfBirth: c.dateOfBirth,
+      waiverStatus: c.waiverStatus,
+      waiverExpiresOn: c.waiverExpiresOn,
+      membershipStatus: c.membershipStatus,
+      membershipRenewsOn: c.membershipRenewsOn,
+      membershipRecurring: c.membershipRecurring,
+      hasDayPass: c.hasDayPass,
+      punchesLeft: c.punchesLeft,
+      posEnabled,
+      employee,
+      message: rowMessage({
+        badge: employee ? "EMPLOYEE" : badgeFor(c),
+        punchesLeft: c.punchesLeft,
+        waiver: { status: c.waiverStatus, expiresOn: c.waiverExpiresOn },
+        today,
+        firstVisit: !visited.has(c.id),
+        latestVisit: true,
+      }),
+    };
+  });
 }

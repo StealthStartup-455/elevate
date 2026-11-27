@@ -18,6 +18,9 @@ import BarcodeCamera from "@/features/check-ins/components/BarcodeCamera";
 import { recordCheckInGaveUp } from "@/features/metrics/actions";
 import { blockerCodes, type CheckInSourceName, type CheckInTiming } from "@/features/metrics/timing";
 import DisabledReason from "@/components/ui/DisabledReason";
+import BadgePill from "@/features/check-ins/components/BadgePill";
+import { Tinted } from "@/features/check-ins/components/DeskDayTable";
+import { badgeFor } from "@/features/check-ins/day";
 import { useDeskDialogOpen } from "@/features/check-ins/desk-dialogs";
 import { checkInClimber, findClimbersToCheckIn, giveDayPass } from "../actions";
 import { formatDate, membershipDateLine } from "../format";
@@ -282,6 +285,20 @@ export default function ManualCheckIn() {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
+                  Badge
+                </Typography>
+                <Box>
+                  <BadgePill badge={selected.employee ? "EMPLOYEE" : badgeFor(selected)} />
+                </Box>
+
+                <Typography variant="body2" color="text.secondary">
+                  Message
+                </Typography>
+                <Box>
+                  <Tinted label={selected.message} />
+                </Box>
+
+                <Typography variant="body2" color="text.secondary">
                   Membership
                 </Typography>
                 <Box>
@@ -346,6 +363,10 @@ export default function ManualCheckIn() {
                   </Button>
                 </DisabledReason>
               )}
+              {/* Always there: their account page, with the waiver to look at or sign. */}
+              <LinkButton href={`/desk/customers/${selected.id}?from=check-in`} variant="outlined" onClick={close}>
+                Account
+              </LinkButton>
               {canGiveDayPass(selected) ? (
                 <Button variant="outlined" disabled={pending} onClick={() => dayPass(selected)}>
                   Give free day pass

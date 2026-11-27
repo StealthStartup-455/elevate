@@ -88,3 +88,40 @@ test("a sign-up with no V number is saved, and a malformed one is refused (#245)
   await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?added=1/);
   await expect(page.getByText("No V number", { exact: true }).first()).toBeVisible();
 });
+
+async function pickInCheckIn(page: Page, name: string) {
+  await page.getByRole("button", { name: "Check in", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Check in" });
+  await dialog.getByLabel("Search name, phone or V number").fill(name);
+  await dialog.getByRole("list", { name: "Matching climbers" }).getByText(name).first().click();
+  await expect(dialog.getByRole("heading", { name })).toBeVisible();
+  return dialog;
+}
+
+test("Check in shows the pass badge and one Account button for any waiver state (#265)", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  // Valid waiver, a member.
+  let dialog = await pickInCheckIn(page, "Agam Kamran");
+  await expect(dialog.getByText("Member", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Account", exact: true })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+
+  // Expired waiver: still one button, not two.
+  await page.goto("/desk");
+  dialog = await pickInCheckIn(page, "Zack Zhao");
+  await expect(dialog.getByRole("link", { name: "Account", exact: true })).toHaveCount(1);
+  await expect(dialog.getByRole("button", { name: /Sign waiver|Look at waiver/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // No waiver at all, and no pass.
+  await page.goto("/desk");
+  dialog = await pickInCheckIn(page, "Seth Miller");
+  await expect(dialog.getByText("No pass")).toBeVisible();
+  await dialog.getByRole("link", { name: "Account", exact: true }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[0-9a-f-]+\?from=check-in$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The back link returns to Check-in, not Customers.
+  await expect(page.getByRole("link", { name: "← Customers" })).toHaveCount(0);
+  await page.getByRole("link", { name: "← Check-in" }).click();
+  await expect(page).toHaveURL(/\/desk$/);
+});
