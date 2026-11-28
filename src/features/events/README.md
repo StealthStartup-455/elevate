@@ -42,6 +42,6 @@ Pages in `src/app/` import from here. Nothing outside this folder talks to its t
 ## Rules
 
 - Times are stored as real moments (`DateTime`); hours as minutes after midnight on the gym's clock. Everything is shown in `Gym.timeZone`, never the server's zone.
-- Climbers act for themselves only: the climber and their gym come from the session. Staff act on their own gym only (`getStaffContext`).
+- Climbers act for themselves only: the climber and their gym come from the session. Staff act on their own gym only (`getStaffContext`). Hours, special days, events and class types are for managers and owners to change (#254): desk staff see them read only, and the actions refuse them ("Only managers and owners can change this."). Desk staff still schedule and cancel classes and set changes.
 - Nothing is deleted: events, set changes and classes are canceled (`canceledAt`), special days removed (`removedAt`), class places cancelled (`ClassBooking.canceledAt`).
 - The seed (`prisma/seed-calendar.ts`) dates everything from today, so the demo always has something coming up.

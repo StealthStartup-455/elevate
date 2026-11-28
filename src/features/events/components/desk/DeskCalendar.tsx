@@ -2,6 +2,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import StatusPill from "@/components/ui/StatusPill";
+import { isManager } from "@/features/auth/staff";
 import {
   getDeskClasses,
   getDeskClassTypes,
@@ -14,7 +15,10 @@ import CancelCalendarItem from "./CancelCalendarItem";
 import OpeningHoursForm from "./OpeningHoursForm";
 
 // The tabs of the desk's Events page (/desk/events/...). What staff save here is what climbers
-// see in their app.
+// see in their app. Hours, class types and events are managers' and owners' to change (#254):
+// desk staff see them without the Add, Edit and Cancel buttons. Each action checks too.
+
+const MANAGERS_ONLY = "Only managers and owners can change these.";
 
 type Item = {
   id: string;
@@ -26,7 +30,9 @@ type Item = {
 };
 
 export async function HoursTab() {
+  // The query first: it opens the request (connection()) before anything reads the session.
   const hours = await getDeskHours();
+  const canEdit = await isManager();
   if (!hours) return <LoggedOut />;
   return (
     <div className="grid gap-3 lg:grid-cols-2">
@@ -34,10 +40,29 @@ export async function HoursTab() {
         <CardContent className="flex flex-col gap-2">
           <Typography variant="cardTitle">Opening hours</Typography>
           <Typography variant="secondary">The regular week. Climbers see the next seven days, today first.</Typography>
-          <OpeningHoursForm week={hours.week} hoursSet={hours.hoursSet} />
+          {canEdit ? (
+            <OpeningHoursForm week={hours.week} hoursSet={hours.hoursSet} />
+          ) : (
+            <>
+              <ul className="flex flex-col" aria-label="Opening hours">
+                {hours.week.map((day) => (
+                  <li key={day.weekday} className="flex gap-2 border-b border-line py-2 last:border-b-0">
+                    <Typography variant="body" component="span" className="w-10" sx={{ fontWeight: 600 }}>
+                      {day.name}
+                    </Typography>
+                    <Typography variant="body" component="span">
+                      {hours.hoursSet ? day.hours : "Not set yet"}
+                    </Typography>
+                  </li>
+                ))}
+              </ul>
+              <Typography variant="secondary">{MANAGERS_ONLY}</Typography>
+            </>
+          )}
         </CardContent>
       </Card>
       <CalendarCard
+        canEdit={canEdit}
         title="Special days"
         about="Holidays and other days with different hours. They replace the regular hours for that date."
         add="specialDay"
@@ -51,8 +76,10 @@ export async function HoursTab() {
 
 export async function ClassTypesTab() {
   const types = await getDeskClassTypes();
+  const canEdit = await isManager();
   return (
     <CalendarCard
+      canEdit={canEdit}
       title="Class types"
       about="The classes the gym runs. Schedule sessions of them on the Classes tab. Editing a type doesn't change classes already scheduled."
       add="classType"
@@ -121,8 +148,10 @@ export async function SetChangesTab() {
 
 export async function EventsTab() {
   const events = await getDeskEvents();
+  const canEdit = await isManager();
   return (
     <CalendarCard
+      canEdit={canEdit}
       title="Events"
       about="Competitions, film nights, meetups. Climbers see the next one at the top of their Home tab for the 30 days before."
       add="event"
@@ -138,6 +167,7 @@ function LoggedOut() {
 }
 
 function CalendarCard({
+  canEdit = true,
   title,
   about,
   add,
@@ -146,6 +176,8 @@ function CalendarCard({
   empty,
   items,
 }: {
+  /** False for desk staff on a manager-only card (#254): no Add, Edit or Cancel. */
+  canEdit?: boolean;
   title: string;
   about: string;
   add: AddKind;
@@ -159,9 +191,10 @@ function CalendarCard({
       <CardContent className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Typography variant="cardTitle">{title}</Typography>
-          <AddCalendarItem kind={add} options={addOptions} />
+          {canEdit ? <AddCalendarItem kind={add} options={addOptions} /> : null}
         </div>
         <Typography variant="secondary">{about}</Typography>
+        {canEdit ? null : <Typography variant="secondary">{MANAGERS_ONLY}</Typography>}
         {items.length === 0 ? (
           <Typography variant="body">{empty}</Typography>
         ) : (
@@ -183,7 +216,7 @@ function CalendarCard({
                 </div>
                 {item.canceled ? (
                   <StatusPill status="bad" label="Canceled" />
-                ) : (
+                ) : !canEdit ? null : (
                   <div className="flex flex-wrap gap-2">
                     {item.actions}
                     <CancelCalendarItem kind={cancel} id={item.id} name={item.name} />

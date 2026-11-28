@@ -31,12 +31,22 @@ const screens: { user?: string; paths: string[]; phone: boolean }[] = [
       "/desk/events/set-changes",
       "/desk/events/announcements",
       "/desk/waivers",
+    ],
+    phone: false,
+  },
+  // The metrics page is for managers and owners (#251), and so are the hours, class
+  // types and events forms (#254); desk staff see those pages read only.
+  {
+    user: "manager",
+    paths: [
+      "/desk/metrics",
+      "/desk/events/hours",
+      "/desk/events/class-types",
+      "/desk/events/announcements",
       "/desk/waivers/edit",
     ],
     phone: false,
   },
-  // The metrics page is for managers and owners (#251).
-  { user: "manager", paths: ["/desk/metrics"], phone: false },
 ];
 
 async function logIn(page: Page, username: string) {

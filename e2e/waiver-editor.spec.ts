@@ -5,12 +5,13 @@ import { expect, test } from "@playwright/test";
 // sign again and break the tests after it. Publishing itself is covered by
 // src/features/waivers/actions.db.test.ts.
 
-test("the desk sees the current waiver and the editor refuses an unconfirmed or unchanged publish", async ({
+test("a manager sees the current waiver and the editor refuses an unconfirmed or unchanged publish", async ({
   page,
 }) => {
+  // Changing the wording is for managers and owners (#110, #254).
   await page.goto("/login");
-  await page.getByLabel("Email").fill("desk");
-  await page.getByLabel("Password").fill("desk");
+  await page.getByLabel("Email").fill("manager");
+  await page.getByLabel("Password").fill("manager");
   await page.getByRole("button", { name: /log in|sign in/i }).click();
   await expect(page).toHaveURL(/\/desk/);
 
@@ -38,4 +39,21 @@ test("the desk sees the current waiver and the editor refuses an unconfirmed or 
   await expect(main.getByText(/Nothing changed/)).toBeVisible();
   // What was typed is kept after an error.
   await expect(title).toHaveValue("Sample climbing waiver");
+});
+
+test("desk staff see the waiver but can't change the wording", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("desk");
+  await page.getByLabel("Password").fill("desk");
+  await page.getByRole("button", { name: /log in|sign in/i }).click();
+  await expect(page).toHaveURL(/\/desk/);
+
+  await page.goto("/desk/waivers");
+  const main = page.getByRole("main");
+  await expect(main.getByText(/Version v1 · published/)).toBeVisible();
+  await expect(main.getByRole("link", { name: "Edit the wording" })).toHaveCount(0);
+  await expect(main.getByText("Only a manager or owner can change the wording.")).toBeVisible();
+  // Going to the editor directly sends them back.
+  await page.goto("/desk/waivers/edit");
+  await expect(page).toHaveURL(/\/desk\/waivers$/);
 });

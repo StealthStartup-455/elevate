@@ -10,7 +10,8 @@ import { randomStudentId } from "@/features/climbers/student-id";
 
 const SLUG = "test-pos";
 // staffId null is the shared demo desk login.
-const auth = vi.hoisted(() => ({ staff: true, staffId: null as string | null }));
+// manager: a manager or owner, the only ones who can revoke (#254).
+const auth = vi.hoisted(() => ({ staff: true, staffId: null as string | null, manager: true }));
 
 vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -21,7 +22,8 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/auth/staff", () => ({
   isStaff: async () => auth.staff,
-  getStaffContext: async () => (auth.staff ? { id: auth.staffId, gymId, role: "DESK" } : null),
+  getStaffContext: async () => (auth.staff ? { id: auth.staffId, gymId, role: auth.manager ? "MANAGER" : "DESK" } : null),
+  isManager: async () => auth.staff && auth.manager,
   requireStaff: async () => {
     if (!auth.staff) throw new Error("redirect /login");
   },
@@ -65,6 +67,7 @@ beforeAll(async () => {
 beforeEach(() => {
   auth.staff = true;
   auth.staffId = null;
+  auth.manager = true;
 });
 
 afterAll(async () => {
@@ -313,6 +316,18 @@ describe("revokeMembership", () => {
     const id = await newClimber();
     auth.staff = false;
     await expect(revokeMembership(id, "Couldn't pay")).rejects.toThrow("redirect /login");
+  });
+
+  it("is managers and owners only: desk staff are refused", async () => {
+    const id = await newClimber();
+    const result = await sell(id, [["1 month membership", 1]]);
+    if (!result.ok) throw new Error(result.message);
+    auth.manager = false;
+    expect(await revokeMembership(id, "Couldn't pay")).toEqual({
+      ok: false,
+      message: "Only managers and owners can revoke a membership.",
+    });
+    expect((await getClimber(id))?.membershipStatus).toBe("active");
   });
 });
 

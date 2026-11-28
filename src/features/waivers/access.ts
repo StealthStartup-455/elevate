@@ -1,6 +1,5 @@
 import { getCurrentUser, getSessionClimberId } from "@/features/auth/queries";
-import { hasDemoDeskSession } from "@/features/auth/session";
-import { getStaffContext, hasStaffRole } from "@/features/auth/staff";
+import { getStaffContext, isManager } from "@/features/auth/staff";
 import { db } from "@/lib/db";
 
 /**
@@ -21,9 +20,9 @@ export async function canActForClimber(climberId: string): Promise<boolean> {
 /**
  * Whether the person signed in may publish new waiver wording (#110). It's a
  * legal document and makes every climber sign again, so only managers and
- * owners, plus the demo "desk" login so the demo can show it.
+ * owners. The demo "desk" login used to be let through so the demo could show
+ * it; the demo "manager" login (#251) does that now, so desk staff can't (#254).
  */
 export async function canEditWaiver(): Promise<boolean> {
-  if (await hasDemoDeskSession()) return true;
-  return hasStaffRole("MANAGER", "OWNER");
+  return isManager();
 }

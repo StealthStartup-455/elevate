@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionClimberId } from "@/features/auth/queries";
-import { requireStaff } from "@/features/auth/staff";
+import { isManager, requireStaff } from "@/features/auth/staff";
 import { getMyGym } from "@/features/purchase/queries";
 import { db } from "@/lib/db";
 import { logEvent } from "@/lib/log";
@@ -124,10 +124,21 @@ async function staffGym() {
 
 const LOG_IN_AGAIN: CalendarResult = { ok: false, message: "Log in again to change the calendar." };
 
+// Hours, events and class types are the gym's to set (#254): managers and owners only.
+// Desk staff still see them, and still schedule classes and set changes.
+const MANAGERS_ONLY: CalendarResult = { ok: false, message: "Only managers and owners can change this." };
+
+async function managerGym() {
+  const gym = await staffGym();
+  if (!gym) return { error: LOG_IN_AGAIN };
+  if (!(await isManager())) return { error: MANAGERS_ONLY };
+  return { gym };
+}
+
 /** Saves the regular week, all seven days at once. */
 export async function saveOpeningHours(input: WeekInput): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   const checked = checkWeek(input);
   if (!checked.ok) return checked;
   await db.$transaction(
@@ -146,8 +157,8 @@ export async function saveOpeningHours(input: WeekInput): Promise<CalendarResult
 
 /** Sets the hours for one date. A date that already has special hours is replaced. */
 export async function addSpecialHours(input: SpecialDayInput): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   const checked = checkSpecialDay(input);
   if (!checked.ok) return checked;
   const { day, ...hours } = checked.data;
@@ -163,8 +174,8 @@ export async function addSpecialHours(input: SpecialDayInput): Promise<CalendarR
 
 /** Takes a special day off; the regular hours apply again. */
 export async function removeSpecialHours(id: string): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   if (!UUID.test(String(id))) return { ok: false, message: "That day isn't on the calendar." };
   await db.specialHours.updateMany({ where: { id, gymId: gym.id, removedAt: null }, data: { removedAt: new Date() } });
   logEvent("special_hours_removed", { gymId: gym.id, id });
@@ -174,8 +185,8 @@ export async function removeSpecialHours(id: string): Promise<CalendarResult> {
 
 /** Announces an event. Climbers see it at the top of their dashboard. */
 export async function addEvent(input: EventInput): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   const checked = checkEvent(input, gym.timeZone);
   if (!checked.ok) return checked;
   const { id } = await db.gymEvent.create({ data: { gymId: gym.id, ...checked.data }, select: { id: true } });
@@ -203,8 +214,8 @@ const NAME_TAKEN: CalendarResult = { ok: false, message: "There's already a clas
  * details, so names stay unique per gym.
  */
 export async function addClassType(input: ClassTypeInput): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   const checked = checkClassType(input);
   if (!checked.ok) return checked;
   const existing = await db.classType.findUnique({
@@ -222,8 +233,8 @@ export async function addClassType(input: ClassTypeInput): Promise<CalendarResul
 
 /** Changes a class type. Sessions already scheduled keep the details they were made with. */
 export async function updateClassType(id: string, input: ClassTypeInput): Promise<CalendarResult> {
-  const gym = await staffGym();
-  if (!gym) return LOG_IN_AGAIN;
+  const { gym, error } = await managerGym();
+  if (!gym) return error;
   if (!UUID.test(String(id))) return { ok: false, message: "That class type doesn't exist." };
   const checked = checkClassType(input);
   if (!checked.ok) return checked;
@@ -281,6 +292,7 @@ export type CalendarKind = "event" | "setChange" | "class" | "classType";
 export async function cancelCalendarItem(kind: CalendarKind, id: string): Promise<CalendarResult> {
   const gym = await staffGym();
   if (!gym) return LOG_IN_AGAIN;
+  if ((kind === "event" || kind === "classType") && !(await isManager())) return MANAGERS_ONLY;
   if (!UUID.test(String(id))) return { ok: false, message: "That isn't on the calendar." };
   if (kind === "classType") {
     const { count } = await db.classType.updateMany({ where: { id, gymId: gym.id, active: true }, data: { active: false } });

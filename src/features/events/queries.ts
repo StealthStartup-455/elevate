@@ -349,7 +349,15 @@ async function deskGym(): Promise<Gym | null> {
   return getDeskGym();
 }
 
-export type DeskWeekday = { weekday: number; name: string; closed: boolean; opensAt: string; closesAt: string };
+export type DeskWeekday = {
+  weekday: number;
+  name: string;
+  closed: boolean;
+  opensAt: string;
+  closesAt: string;
+  /** "6 AM – 10 PM" or "Closed", for staff who can see the hours but not change them (#254). */
+  hours: string;
+};
 
 export type DeskHours = {
   /** False until staff save the regular week for the first time. */
@@ -384,6 +392,7 @@ export async function getDeskHours(): Promise<DeskHours | null> {
         closed: row.closed,
         opensAt: clockValue(row.opensAt),
         closesAt: clockValue(row.closesAt),
+        hours: describeHours(row.closed ? null : { opensAt: row.opensAt, closesAt: row.closesAt }),
       };
     }),
     specialDays: special.map((s) => ({

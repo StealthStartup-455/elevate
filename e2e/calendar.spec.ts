@@ -98,9 +98,10 @@ test("a climber signs up for a class and cancels, and a full class can't be join
   await context.close();
 });
 
-test("the desk announces an event and the climber sees it, until it is canceled", async ({ browser }) => {
+test("a manager announces an event and the climber sees it, until it is canceled", async ({ browser }) => {
   const desk = await browser.newPage();
-  await logIn(desk, "desk", /\/desk/);
+  // Events are for managers and owners to set (#254).
+  await logIn(desk, "manager", /\/desk/);
   await desk.getByRole("navigation").getByRole("link", { name: "Calendar", exact: true }).click();
   await expect(desk.getByRole("heading", { name: "Calendar", level: 1 })).toBeVisible();
   // It opens on the Calendar; events have their own tab.
@@ -140,14 +141,40 @@ test("the desk announces an event and the climber sees it, until it is canceled"
   await desk.close();
 });
 
-test("the desk's hours form shows the regular week", async ({ page }) => {
-  await logIn(page, "desk", /\/desk/);
+test("a manager's hours form shows the regular week", async ({ page }) => {
+  await logIn(page, "manager", /\/desk/);
   await page.goto("/desk/events/hours");
   // Inside <main>: while the page streams in, a second copy can briefly sit outside it.
   const main = page.getByRole("main");
   await expect(main.getByLabel("Mon opens")).toHaveValue("06:00");
   await expect(main.getByLabel("Sun closes")).toHaveValue("18:00");
   await expect(main.getByRole("list", { name: "Special days" })).toContainText("Staff training day");
+});
+
+test("desk staff see the hours, class types and events, but can't change them", async ({ page }) => {
+  await logIn(page, "desk", /\/desk/);
+  const main = page.getByRole("main");
+
+  await page.goto("/desk/events/hours");
+  await expect(main.getByRole("list", { name: "Opening hours" })).toContainText("6 AM");
+  await expect(main.getByRole("list", { name: "Special days" })).toContainText("Staff training day");
+  await expect(main.getByLabel("Mon opens")).toHaveCount(0);
+  await expect(main.getByRole("button", { name: "Save hours" })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: /^Cancel|^Remove/ })).toHaveCount(0);
+
+  await page.goto("/desk/events/class-types");
+  await expect(main.getByRole("list", { name: "Class types" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Add class type" })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: /^(Edit|Archive)/ })).toHaveCount(0);
+
+  await page.goto("/desk/events/announcements");
+  await expect(main.getByRole("list", { name: "Events" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Announce event" })).toHaveCount(0);
+  await expect(main.getByText("Only managers and owners can change these.")).toBeVisible();
+
+  // Classes and set changes stay with the desk.
+  await page.goto("/desk/events/classes");
+  await expect(main.getByRole("button", { name: "Schedule a class" })).toBeVisible();
 });
 
 test("the desk opens a day on the calendar and finds who is registered", async ({ page }) => {
@@ -214,9 +241,10 @@ test("the desk calendar marks closed days and fits a phone", async ({ browser })
   await context.close();
 });
 
-test("the desk adds a class type, schedules a class of it, and a climber can sign up", async ({ browser }) => {
+test("a manager adds a class type, schedules a class of it, and a climber can sign up", async ({ browser }) => {
   const desk = await browser.newPage();
-  await logIn(desk, "desk", /\/desk/);
+  // Class types are for managers and owners (#254); scheduling a class isn't.
+  await logIn(desk, "manager", /\/desk/);
   await desk.goto("/desk/events/class-types");
   const deskMain = desk.getByRole("main");
   const name = `Crack climbing ${Date.now()}`;

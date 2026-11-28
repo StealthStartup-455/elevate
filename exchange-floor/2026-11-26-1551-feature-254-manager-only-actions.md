@@ -1,0 +1,24 @@
+# 2026-11-26 15:51 UTC: Manager-only revoke, hours, events and class types
+
+- **Developer:** @Khanh150104
+- **AI tool / model:** Claude Code (claude-opus-5-5)
+- **Issue / PR:** StealthStartup-455/elevate#254 / PR to follow
+- **Branch:** `feature/254-manager-only-actions`
+- **What the agent did:**
+  - New `isManager()` in `src/features/auth/staff.ts` (manager or owner, from `getStaffContext`), with the pure check `isManagerRole` in `src/features/auth/roles.ts`.
+  - Server: `revokeMembership` refuses desk staff ("Only managers and owners can revoke a membership."). In `events/actions.ts`, `saveOpeningHours`, `addSpecialHours`, `removeSpecialHours`, `addEvent`, `addClassType`, `updateClassType`, and `cancelCalendarItem` for an event or class type go through `managerGym()` and refuse desk staff ("Only managers and owners can change this.").
+  - Screens: desk staff see the Hours, Class types and Events tabs read only (the week as a list, no Add, Edit, Archive, Cancel or Remove, and "Only managers and owners can change these."). `DeskWeekday` has a new `hours` string for that list.
+  - "Revoke membership" moved off the POS climber card to the climber's page under Customers (`climbers/components/RevokeMembership.tsx`), shown to managers and owners when the membership is active or paused. The action stays in `pos/actions.ts`.
+- **Files touched:** `src/features/auth/{staff.ts,roles.ts}`, `src/features/events/{actions.ts,queries.ts,README.md,components/desk/DeskCalendar.tsx,actions.db.test.ts}`, `src/features/pos/{actions.ts,README.md,components/ClimberPanel.tsx,actions.db.test.ts}`, `src/features/climbers/components/RevokeMembership.tsx`, `src/app/desk/customers/[climberId]/page.tsx`, `src/features/waivers/{access.ts,README.md}`, `e2e/{calendar,revoke-membership,accessibility,waiver-editor}.spec.ts`.
+- **Decisions and why:**
+  - Built on #252 (the demo `manager` login), merged into this branch with `origin/dev`. #252 had a conflict with dev (imports only, in `climbers/actions.ts` and `ManualCheckIn.tsx`); this branch keeps both sides. #252 itself was not changed.
+  - Classes and set changes stay with desk staff: #254 names events, class types and store hours only.
+  - Refused actions return a message rather than `requireStaffRole`'s redirect to /login, so a desk login isn't logged out by a stale page.
+  - The demo "desk" login is DESK here, so the demo shows the difference. `canEditWaiver` no longer lets the demo desk login through (it did so the demo could show the editor; the demo `manager` login does that now), so desk staff can't change the waiver wording. `e2e/waiver-editor.spec.ts` uses `manager` and checks that `desk` can't.
+  - The tab pages await their query (which calls `connection()`) before `isManager()`. Running both in `Promise.all` made `next start` log "blocking-prerender-current-time" errors on those routes.
+- **Gotchas:** The lint rule reads `#254` inside a test name as a hex color; test names say it without the number. Playwright in the cloud container needs `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`.
+- **Open follow-ups:**
+  - Once #252 merges, the merge commit from it here goes away in the PR diff; if #252 changes before merging, merge `origin/dev` again.
+  - Open PR #262 also changes `EventsTabs.tsx` and the events layout, and #261 and #266 change the climber page: expect small conflicts with whichever merges second.
+  - "Maybe later" from #254: desk staff file a request instead of revoking.
+- **Verification:** `npm run lint` clean; `npx tsc --noEmit` clean; `npm test` 53 files, 468 passed (2 todo); `npm run test:db` 13 files, 138 passed (including new desk-refused tests for revoke and the calendar); `npm run build` passed (second run; the first stops on the Next.js security notice). Playwright on a production build, freshly migrated and seeded local Postgres, DEMO_MODE: `calendar`, `revoke-membership`, `accessibility` (light and dark, new manager pages), `pos`, `metrics`: 27 passed. Desk and manager screens checked in light and dark screenshots. Full e2e suite not run. Waiver follow-up: `npm test` 469 passed, `npm run test:db` 138 passed, build passed, Playwright `waiver-editor`, `accessibility`, `gym-onboarding`: 16 passed.
